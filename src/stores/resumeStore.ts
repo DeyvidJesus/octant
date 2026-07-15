@@ -5,6 +5,7 @@ import { createSeedResume } from '@/constants/seedData'
 import { appStorage } from '@/services/storage/zustandStorage'
 import { STORAGE_KEYS } from '@/services/storage/types'
 import { nowIso } from '@/utils/dates'
+import { migrateResumeState } from './resumeMigrations'
 
 interface ResumeState {
   resume: MasterResume
@@ -23,7 +24,8 @@ export const useResumeStore = create<ResumeState>()(
     {
       name: STORAGE_KEYS.resume,
       storage: appStorage,
-      version: 1,
+      version: 2,
+      migrate: (persisted, version) => migrateResumeState(persisted, version),
     },
   ),
 )

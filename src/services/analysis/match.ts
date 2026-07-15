@@ -10,8 +10,10 @@ import { extractSkills, type TaxonomyHit } from './extract'
  */
 export function collectResumeSkills(resume: MasterResume): Set<string> {
   const explicitTerms = [
-    ...resume.skills.flatMap((category) => category.skills),
+    ...resume.skills.map((skill) => skill.canonical),
     ...resume.projects.flatMap((project) => project.tech),
+    ...resume.experience.flatMap((entry) => entry.accomplishments.flatMap((a) => a.skills)),
+    ...resume.projects.flatMap((project) => project.accomplishments.flatMap((a) => a.skills)),
   ].join('\n')
 
   // Factual profile fields only — goals are aspirational and must never
@@ -20,8 +22,8 @@ export function collectResumeSkills(resume: MasterResume): Set<string> {
     resume.summary,
     resume.personal.location,
     resume.personal.role,
-    ...resume.experience.flatMap((entry) => entry.bullets),
-    ...resume.projects.flatMap((project) => [project.description, ...project.bullets]),
+    ...resume.experience.flatMap((entry) => entry.accomplishments.map((a) => a.text)),
+    ...resume.projects.flatMap((project) => [project.description, ...project.accomplishments.map((a) => a.text)]),
   ].join('\n')
 
   const canonical = new Set<string>()

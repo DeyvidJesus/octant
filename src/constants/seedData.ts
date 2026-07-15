@@ -1,11 +1,15 @@
-import type { MasterResume } from '@/types/resume'
+import type { Accomplishment, MasterResume } from '@/types/resume'
 import type { JobOpportunity } from '@/types/job'
 import { createId } from '@/utils/id'
 import { nowIso } from '@/utils/dates'
 
+function accomplishment(text: string, skills: string[], metric?: string): Accomplishment {
+  return { id: createId(), text, skills, keywords: skills, metric }
+}
+
 /**
- * Initial data migrated from the original prototype. Used only to seed the
- * stores on first run (or after "Reset to seed data" in Settings).
+ * Initial data migrated from the original prototype, expanded to the rich
+ * model. Used to seed the stores on first run (or after "Reset to seed data").
  */
 export function createSeedResume(): MasterResume {
   return {
@@ -13,8 +17,7 @@ export function createSeedResume(): MasterResume {
       name: 'Deyvid Gondim',
       role: 'Software Engineer',
       location: 'Brazil (Remote)',
-      english: 'C1 (Professional Working Proficiency)',
-      experienceLabel: '~3 years professional experience',
+      timezone: 'America/Sao_Paulo (GMT-3)',
     },
     summary:
       'Software Engineer with ~3 years of experience focused on Product Engineering, Software Architecture, and delivering business value. Proven track record in enterprise Headless Commerce and multi-tenant SaaS applications. Strong dual-stack proficiency (React/Next.js and Java/Spring Boot) with hands-on experience integrating AI workflows.',
@@ -33,13 +36,13 @@ export function createSeedResume(): MasterResume {
         company: 'Econverse',
         role: 'Software Engineer (Promoted from Trainee)',
         duration: 'June 2024 - Present',
-        bullets: [
-          'Develop and maintain enterprise Headless Commerce applications using React and Next.js.',
-          'Integrate complex GraphQL APIs and implement reusable component systems.',
-          'Optimize application performance, significantly improving Core Web Vitals (CLS, LCP) and Lighthouse metrics.',
-          'Ensure high standards for SEO and WCAG accessibility across platforms.',
-          'Collaborate closely with design and product teams to translate business requirements into features.',
-          'Participate actively in architecture discussions and code reviews.',
+        accomplishments: [
+          accomplishment('Develop and maintain enterprise Headless Commerce applications using React and Next.js.', ['React', 'Next.js', 'E-commerce']),
+          accomplishment('Integrate complex GraphQL APIs and implement reusable component systems.', ['GraphQL', 'React']),
+          accomplishment('Optimize application performance, significantly improving Core Web Vitals (CLS, LCP) and Lighthouse metrics.', ['Core Web Vitals', 'Performance Optimization'], 'Improved Core Web Vitals (CLS, LCP)'),
+          accomplishment('Ensure high standards for SEO and WCAG accessibility across platforms.', ['SEO', 'Accessibility (WCAG)']),
+          accomplishment('Collaborate closely with design and product teams to translate business requirements into features.', ['Product Engineering', 'Communication']),
+          accomplishment('Participate actively in architecture discussions and code reviews.', ['System Architecture', 'Code Review']),
         ],
       },
       {
@@ -47,10 +50,10 @@ export function createSeedResume(): MasterResume {
         company: 'Freelance',
         role: 'Full Stack Engineer',
         duration: '2023 - Present',
-        bullets: [
-          'Delivered complete web systems, landing pages, and administrative dashboards for international clients.',
-          'Engineered an Email Signature Management Platform end-to-end: gathered requirements, designed the solution, and delivered the production system.',
-          'Managed end-to-end client communication, project scoping, and post-launch support.',
+        accomplishments: [
+          accomplishment('Delivered complete web systems, landing pages, and administrative dashboards for international clients.', ['React', 'Node.js']),
+          accomplishment('Engineered an Email Signature Management Platform end-to-end: gathered requirements, designed the solution, and delivered the production system.', ['Product Engineering', 'System Architecture']),
+          accomplishment('Managed end-to-end client communication, project scoping, and post-launch support.', ['Communication', 'Ownership']),
         ],
       },
     ],
@@ -60,48 +63,77 @@ export function createSeedResume(): MasterResume {
         name: 'GoMech (Full Stack SaaS)',
         tech: ['React', 'Next.js', 'TypeScript', 'Java', 'Spring Boot', 'PostgreSQL', 'Docker'],
         description: 'Multi-tenant management platform for mechanical workshops.',
-        bullets: [
-          'Architected a multi-tenant backend using Java and Spring Boot with PostgreSQL.',
-          'Integrated advanced AI features including a chatbot with tenant-aware context and dynamic SQL workflows via OpenAI APIs.',
-          'Developed a modern, responsive frontend using React and Next.js.',
-          'Containerized the application stack using Docker focusing on cloud-oriented design and automation.',
+        accomplishments: [
+          accomplishment('Architected a multi-tenant backend using Java and Spring Boot with PostgreSQL.', ['Java', 'Spring Boot', 'PostgreSQL', 'SaaS', 'System Architecture']),
+          accomplishment('Integrated advanced AI features including a chatbot with tenant-aware context and dynamic SQL workflows via OpenAI APIs.', ['OpenAI APIs', 'LLMs']),
+          accomplishment('Developed a modern, responsive frontend using React and Next.js.', ['React', 'Next.js']),
+          accomplishment('Containerized the application stack using Docker focusing on cloud-oriented design and automation.', ['Docker', 'CI/CD']),
         ],
       },
     ],
     skills: [
+      skill('React', 'Frontend', 5, true),
+      skill('Next.js', 'Frontend', 5, true),
+      skill('TypeScript', 'Frontend', 5, true),
+      skill('JavaScript', 'Frontend', 5),
+      skill('HTML', 'Frontend', 5),
+      skill('CSS', 'Frontend', 4),
+      skill('Accessibility (WCAG)', 'Frontend', 4),
+      skill('SEO', 'Frontend', 4),
+      skill('Core Web Vitals', 'Frontend', 4),
+      skill('Node.js', 'Backend', 4),
+      skill('Java', 'Backend', 4, true),
+      skill('Spring Boot', 'Backend', 4, true),
+      skill('REST APIs', 'Backend', 5),
+      skill('GraphQL', 'Backend', 4),
+      skill('Authentication', 'Backend', 3),
+      skill('PostgreSQL', 'Databases', 4),
+      skill('MySQL', 'Databases', 3),
+      skill('Docker', 'Cloud', 3),
+      skill('AWS', 'Cloud', 2),
+      skill('CI/CD', 'Cloud', 3),
+      skill('Git', 'Cloud', 5),
+      skill('Claude', 'AI', 4),
+      skill('OpenAI APIs', 'AI', 4),
+      skill('Prompt Engineering', 'AI', 4),
+      skill('Product Engineering', 'Practices', 4),
+      skill('System Architecture', 'Practices', 3),
+      skill('Communication', 'Practices', 4),
+      skill('Ownership', 'Practices', 5),
+    ],
+    stories: [
       {
         id: createId(),
-        label: 'Frontend',
-        skills: ['React', 'Next.js', 'TypeScript', 'JavaScript', 'HTML', 'CSS', 'Accessibility (WCAG)', 'SEO', 'Core Web Vitals'],
+        title: 'Rescuing Core Web Vitals on a flagship storefront',
+        situation: 'A high-traffic Headless Commerce storefront was failing Core Web Vitals, hurting SEO rankings.',
+        task: 'Own the performance work and bring CLS and LCP into the green without regressing features.',
+        action: 'Profiled rendering, deferred non-critical work, optimized images and hydration, and enforced budgets in review.',
+        result: 'Moved CLS and LCP into passing ranges and improved Lighthouse scores, protecting organic traffic.',
+        skills: ['Core Web Vitals', 'Performance Optimization', 'SEO'],
+        competencies: ['ownership', 'technical depth'],
+        tags: ['performance', 'frontend'],
       },
-      {
-        id: createId(),
-        label: 'Backend',
-        skills: ['Node.js', 'Java', 'Spring Boot', 'REST APIs', 'GraphQL', 'Authentication'],
-      },
-      {
-        id: createId(),
-        label: 'Databases',
-        skills: ['PostgreSQL', 'MySQL'],
-      },
-      {
-        id: createId(),
-        label: 'Cloud',
-        skills: ['Docker', 'AWS (Basics)', 'CI/CD', 'Git'],
-      },
-      {
-        id: createId(),
-        label: 'AI',
-        skills: ['Claude', 'Cursor', 'GitHub Copilot', 'OpenAI APIs', 'Prompt Engineering'],
-      },
-      {
-        id: createId(),
-        label: 'Soft Skills',
-        skills: ['Product Engineering', 'System Architecture', 'Communication', 'Ownership', 'Client Communication'],
-      },
+    ],
+    certifications: [],
+    education: [],
+    publications: [],
+    learning: [],
+    portfolio: [],
+    languages: [
+      { id: createId(), name: 'Portuguese', level: 'Native' },
+      { id: createId(), name: 'English', level: 'C1 (Professional Working Proficiency)' },
     ],
     updatedAt: nowIso(),
   }
+}
+
+function skill(
+  canonical: string,
+  category: string,
+  proficiency: 1 | 2 | 3 | 4 | 5,
+  favorite = false,
+): MasterResume['skills'][number] {
+  return { id: createId(), canonical, category, proficiency, favorite }
 }
 
 interface SeedJobInput {
@@ -134,8 +166,6 @@ export function createSeedJobs(): JobOpportunity[] {
     id: createId(),
     company: job.company,
     role: job.role,
-    // Minimal pseudo-JD assembled from the prototype's fields so the local
-    // analyzer has real text to work with until a real JD is pasted.
     description: `${job.role} at ${job.company} (${job.category}). Remote position. Required stack: ${job.stack}. Experience level: ${job.exp}. Salary: ${job.salary}.`,
     url: job.link,
     category: job.category,

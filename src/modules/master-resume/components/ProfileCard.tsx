@@ -1,53 +1,61 @@
-import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
 import { Input, Textarea } from '@/components/ui/Input'
-import type { MasterResume } from '@/types/resume'
+import { Field } from '@/components/ui/Field'
+import { TagInput } from '@/components/ui/TagInput'
+import type { MasterResume, PersonalInfo } from '@/types/resume'
 
-export function ProfileCard({ resume }: { resume: MasterResume }) {
-  return (
-    <Card>
-      <h3 className="text-lg font-medium text-white mb-4">Career Profile & Values</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-        <Field label="Full Name">
-          <Input value={resume.personal.name} readOnly aria-label="Full name" />
-        </Field>
-        <Field label="Current Role">
-          <Input value={resume.personal.role} readOnly aria-label="Current role" />
-        </Field>
-        <Field label="Location">
-          <Input value={resume.personal.location} readOnly aria-label="Location" />
-        </Field>
-        <Field label="English">
-          <Input value={resume.personal.english} readOnly aria-label="English level" />
-        </Field>
-      </div>
-      <Field label="Professional Objective" className="mb-4">
-        <Textarea value={resume.goals} readOnly rows={2} aria-label="Professional objective" />
-      </Field>
-      <Field label="Engineering Values">
-        <div className="flex flex-wrap gap-2">
-          {resume.values.map((value) => (
-            <Badge key={value}>{value}</Badge>
-          ))}
-        </div>
-      </Field>
-    </Card>
-  )
+interface ProfileCardProps {
+  resume: MasterResume
+  onChange: (patch: Partial<MasterResume>) => void
 }
 
-function Field({
-  label,
-  className = '',
-  children,
-}: {
-  label: string
-  className?: string
-  children: React.ReactNode
-}) {
+export function ProfileCard({ resume, onChange }: ProfileCardProps) {
+  const setPersonal = (patch: Partial<PersonalInfo>) =>
+    onChange({ personal: { ...resume.personal, ...patch } })
+
   return (
-    <div className={className}>
-      <label className="block text-xs text-faint mb-1 uppercase tracking-wider">{label}</label>
-      {children}
-    </div>
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <Field label="Full Name">
+          <Input value={resume.personal.name} onChange={(e) => setPersonal({ name: e.target.value })} />
+        </Field>
+        <Field label="Current Role">
+          <Input value={resume.personal.role} onChange={(e) => setPersonal({ role: e.target.value })} />
+        </Field>
+        <Field label="Location">
+          <Input value={resume.personal.location} onChange={(e) => setPersonal({ location: e.target.value })} />
+        </Field>
+        <Field label="Timezone">
+          <Input value={resume.personal.timezone ?? ''} onChange={(e) => setPersonal({ timezone: e.target.value || undefined })} />
+        </Field>
+        <Field label="Email">
+          <Input type="email" value={resume.personal.email ?? ''} onChange={(e) => setPersonal({ email: e.target.value || undefined })} />
+        </Field>
+        <Field label="Phone">
+          <Input value={resume.personal.phone ?? ''} onChange={(e) => setPersonal({ phone: e.target.value || undefined })} />
+        </Field>
+        <Field label="Website">
+          <Input value={resume.personal.website ?? ''} onChange={(e) => setPersonal({ website: e.target.value || undefined })} />
+        </Field>
+        <Field label="GitHub">
+          <Input value={resume.personal.github ?? ''} onChange={(e) => setPersonal({ github: e.target.value || undefined })} />
+        </Field>
+        <Field label="LinkedIn">
+          <Input value={resume.personal.linkedin ?? ''} onChange={(e) => setPersonal({ linkedin: e.target.value || undefined })} />
+        </Field>
+        <Field label="Work Authorization">
+          <Input value={resume.personal.workAuthorization ?? ''} onChange={(e) => setPersonal({ workAuthorization: e.target.value || undefined })} />
+        </Field>
+      </div>
+
+      <Field label="Professional Summary" className="mb-4">
+        <Textarea rows={4} value={resume.summary} onChange={(e) => onChange({ summary: e.target.value })} />
+      </Field>
+      <Field label="Career Goals" className="mb-4">
+        <Textarea rows={3} value={resume.goals} onChange={(e) => onChange({ goals: e.target.value })} />
+      </Field>
+      <Field label="Engineering Values">
+        <TagInput ariaLabel="Engineering values" values={resume.values} onChange={(values) => onChange({ values })} />
+      </Field>
+    </>
   )
 }

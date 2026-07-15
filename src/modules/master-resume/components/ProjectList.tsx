@@ -1,32 +1,47 @@
-import { Badge } from '@/components/ui/Badge'
 import type { ProjectEntry } from '@/types/resume'
+import { Input, Textarea } from '@/components/ui/Input'
+import { Field } from '@/components/ui/Field'
+import { TagInput } from '@/components/ui/TagInput'
+import { createId } from '@/utils/id'
+import { EntityList } from './EntityList'
+import { AccomplishmentsEditor } from './AccomplishmentsEditor'
 
-export function ProjectList({ projects }: { projects: ProjectEntry[] }) {
+interface ProjectListProps {
+  projects: ProjectEntry[]
+  onChange: (next: ProjectEntry[]) => void
+}
+
+export function ProjectList({ projects, onChange }: ProjectListProps) {
   return (
-    <>
-      {projects.map((project) => (
-        <div key={project.id} className="border-l-2 border-indigo-900 pl-4 mb-4">
-          <h4 className="text-md font-medium text-white">{project.name}</h4>
-          <p className="text-xs text-muted mb-2">{project.description}</p>
-          <div className="flex flex-wrap gap-1 mb-3">
-            {project.tech.map((tech) => (
-              <Badge key={tech} tone="indigo" className="text-[10px] px-1.5 py-0.5">
-                {tech}
-              </Badge>
-            ))}
+    <EntityList
+      items={projects}
+      onChange={onChange}
+      create={(): ProjectEntry => ({ id: createId(), name: '', tech: [], description: '', accomplishments: [] })}
+      addLabel="Add project"
+      emptyHint="No projects yet."
+      itemTitle={(item) => item.name || 'New project'}
+      renderItem={(item, update) => (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Name">
+              <Input value={item.name} onChange={(e) => update({ name: e.target.value })} />
+            </Field>
+            <Field label="URL (optional)">
+              <Input value={item.url ?? ''} onChange={(e) => update({ url: e.target.value || undefined })} />
+            </Field>
           </div>
-          <ul className="space-y-1">
-            {project.bullets.map((bullet, i) => (
-              <li key={i} className="text-sm text-ink-3 flex gap-2">
-                <span className="text-ghost" aria-hidden>
-                  -
-                </span>
-                {bullet}
-              </li>
-            ))}
-          </ul>
+          <Field label="Description">
+            <Textarea rows={2} value={item.description} onChange={(e) => update({ description: e.target.value })} />
+          </Field>
+          <Field label="Tech stack">
+            <TagInput ariaLabel="Tech stack" values={item.tech} onChange={(tech) => update({ tech })} />
+          </Field>
+          <AccomplishmentsEditor
+            accomplishments={item.accomplishments}
+            onChange={(accomplishments) => update({ accomplishments })}
+          />
         </div>
-      ))}
-    </>
+      )}
+    />
   )
 }
