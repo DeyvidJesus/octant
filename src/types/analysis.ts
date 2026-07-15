@@ -1,6 +1,12 @@
 export type SeniorityLevel = 'junior' | 'mid' | 'senior' | 'staff' | 'lead' | 'unknown'
 
 /**
+ * Whether the job description frames a skill as a hard requirement or an
+ * optional "nice to have" / "bonus". Drives gap triage and ATS weighting.
+ */
+export type RequirementImportance = 'required' | 'preferred'
+
+/**
  * The result of analyzing a job description against the Master Resume.
  * Produced by any JobAnalyzer implementation (local heuristic today, LLM
  * later) — the shape is provider-independent so the UI never cares which
@@ -28,6 +34,7 @@ export interface DetectedSkill {
   category: string
   count: number
   inResume: boolean
+  importance: RequirementImportance
 }
 
 export interface MatchReport {

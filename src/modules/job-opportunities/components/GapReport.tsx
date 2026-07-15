@@ -1,31 +1,55 @@
-import { AlertCircle, CheckCircle2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, MinusCircle } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import type { JobAnalysis } from '@/types/analysis'
 
 export function GapReport({ analysis }: { analysis: JobAnalysis }) {
-  const { matched, missing } = analysis.match
+  const { matched } = analysis.match
+  const missing = analysis.detectedStack.filter((skill) => !skill.inResume)
+  const missingMustHaves = missing.filter((skill) => skill.importance === 'required')
+  const missingNiceToHaves = missing.filter((skill) => skill.importance === 'preferred')
 
   return (
     <div className="space-y-6">
       <Card className="border-red-900/30 bg-red-900/5">
         <h3 className="text-sm font-medium text-red-400 mb-4 flex items-center gap-2">
-          <AlertCircle size={16} aria-hidden /> Missing Keywords / ATS Risks
+          <AlertCircle size={16} aria-hidden /> Missing Must-Haves
         </h3>
-        {missing.length === 0 ? (
-          <p className="text-sm text-ink-2">No gaps detected — every recognized keyword in this job description exists in your Master Resume.</p>
+        {missingMustHaves.length === 0 ? (
+          <p className="text-sm text-ink-2">
+            No hard-requirement gaps — every skill this posting requires exists in your Master Resume.
+          </p>
         ) : (
           <ul className="space-y-2">
-            {missing.map((skill) => (
-              <li key={skill} className="text-sm text-ink-2 flex gap-2">
+            {missingMustHaves.map((skill) => (
+              <li key={skill.canonical} className="text-sm text-ink-2 flex gap-2">
                 <span className="text-red-500/50" aria-hidden>
                   -
                 </span>
-                {skill} — not found in your Master Resume. Add it only if you genuinely have the experience.
+                {skill.canonical} — required and not found in your Master Resume. Add it only if you
+                genuinely have the experience.
               </li>
             ))}
           </ul>
         )}
       </Card>
+
+      {missingNiceToHaves.length > 0 && (
+        <Card>
+          <h3 className="text-sm font-medium text-muted mb-4 flex items-center gap-2">
+            <MinusCircle size={16} aria-hidden /> Missing Nice-to-Haves
+          </h3>
+          <ul className="space-y-2">
+            {missingNiceToHaves.map((skill) => (
+              <li key={skill.canonical} className="text-sm text-ink-3 flex gap-2">
+                <span className="text-faint" aria-hidden>
+                  -
+                </span>
+                {skill.canonical} — optional in this posting, so a lower-priority gap.
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card className="border-emerald-900/30 bg-emerald-900/5">
         <h3 className="text-sm font-medium text-emerald-400 mb-4 flex items-center gap-2">

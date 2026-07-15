@@ -1,4 +1,4 @@
-import type { SeniorityLevel } from '@/types/analysis'
+import type { RequirementImportance, SeniorityLevel } from '@/types/analysis'
 import { SKILL_TAXONOMY, type TaxonomyEntry } from '@/constants/skillTaxonomy'
 
 export interface TaxonomyHit {
@@ -6,6 +6,11 @@ export interface TaxonomyHit {
   /** The alias that actually appeared in the text (most frequent one). */
   term: string
   count: number
+  /**
+   * 'required' if mentioned in any must-have context, else 'preferred'.
+   * A skill named in both contexts is treated as required (stronger signal).
+   */
+  importance: RequirementImportance
 }
 
 function escapeRegex(value: string): string {
@@ -21,26 +26,80 @@ function countOccurrences(text: string, alias: string): number {
   return (text.match(pattern) ?? []).length
 }
 
-/** Finds every taxonomy skill mentioned in the text, with frequencies. */
-export function extractSkills(text: string): TaxonomyHit[] {
-  const lower = text.toLowerCase()
-  const hits: TaxonomyHit[] = []
+// Headings that flip the section mode for the lines that follow them.
+const PREFERRED_HEADINGS = ['nice to have', 'nice-to-have', 'bonus', 'preferred', 'pluses', 'good to have', 'desirable', 'nice-to-haves']
+const REQUIRED_HEADINGS = ['requirement', 'required', 'must have', 'must-have', "what you'll need", 'what you need', 'qualification', 'we require', 'minimum qualification', 'you have']
+// Markers that make a single line optional regardless of the current section.
+const INLINE_PREFERRED_MARKERS = ['a plus', 'is a plus', 'plus if', 'nice to have', 'ideally', 'would be great', 'good to have', 'desirable', 'not required', 'bonus points', 'a bonus']
 
-  for (const entry of SKILL_TAXONOMY) {
-    let total = 0
-    let bestAlias = ''
-    let bestCount = 0
-    for (const alias of entry.aliases) {
-      const count = countOccurrences(lower, alias)
-      total += count
-      if (count > bestCount) {
-        bestCount = count
-        bestAlias = alias
+interface Line {
+  text: string
+  mode: RequirementImportance
+}
+
+/**
+ * Splits the JD into fine segments (on both line breaks and sentence
+ * boundaries) and tags each with required/preferred based on the nearest
+ * preceding heading, plus inline "a plus"-style markers. Splitting on
+ * sentences too means a single-line description with "Requirements: … Nice to
+ * have: …" is still classified section-by-section.
+ */
+function segmentLines(lower: string): Line[] {
+  const raw = lower.split(/\n|(?<=[.;])\s+/)
+  const lines: Line[] = []
+  let mode: RequirementImportance = 'required'
+
+  for (const chunk of raw) {
+    const line = chunk.trim()
+    if (!line) continue
+    if (PREFERRED_HEADINGS.some((h) => line.includes(h))) {
+      mode = 'preferred'
+    } else if (REQUIRED_HEADINGS.some((h) => line.includes(h))) {
+      mode = 'required'
+    }
+    const lineMode: RequirementImportance = INLINE_PREFERRED_MARKERS.some((m) => line.includes(m))
+      ? 'preferred'
+      : mode
+    lines.push({ text: line, mode: lineMode })
+  }
+
+  return lines
+}
+
+/** Finds every taxonomy skill mentioned in the text, with frequencies and importance. */
+export function extractSkills(text: string): TaxonomyHit[] {
+  const lines = segmentLines(text.toLowerCase())
+
+  const accumulator = new Map<
+    TaxonomyEntry,
+    { total: number; requiredCount: number; bestAlias: string; bestCount: number }
+  >()
+
+  for (const line of lines) {
+    for (const entry of SKILL_TAXONOMY) {
+      for (const alias of entry.aliases) {
+        const count = countOccurrences(line.text, alias)
+        if (count === 0) continue
+        const rec = accumulator.get(entry) ?? { total: 0, requiredCount: 0, bestAlias: '', bestCount: 0 }
+        rec.total += count
+        if (line.mode === 'required') rec.requiredCount += count
+        if (count > rec.bestCount) {
+          rec.bestCount = count
+          rec.bestAlias = alias
+        }
+        accumulator.set(entry, rec)
       }
     }
-    if (total > 0) {
-      hits.push({ entry, term: bestAlias, count: total })
-    }
+  }
+
+  const hits: TaxonomyHit[] = []
+  for (const [entry, rec] of accumulator) {
+    hits.push({
+      entry,
+      term: rec.bestAlias,
+      count: rec.total,
+      importance: rec.requiredCount > 0 ? 'required' : 'preferred',
+    })
   }
 
   return hits.sort((a, b) => b.count - a.count)

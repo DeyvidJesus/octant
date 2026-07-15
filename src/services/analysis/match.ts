@@ -40,8 +40,10 @@ export function buildMatchReport(jdHits: TaxonomyHit[], resumeSkills: Set<string
   const matchedHits = jdHits.filter((hit) => resumeSkills.has(hit.entry.canonical))
   const missingHits = jdHits.filter((hit) => !resumeSkills.has(hit.entry.canonical))
 
-  const totalWeight = jdHits.reduce((sum, hit) => sum + hit.count, 0)
-  const matchedWeight = matchedHits.reduce((sum, hit) => sum + hit.count, 0)
+  // Required skills count double so the score tracks hard-requirement coverage
+  // rather than being diluted by "nice to have" keywords.
+  const totalWeight = jdHits.reduce((sum, hit) => sum + weightOf(hit), 0)
+  const matchedWeight = matchedHits.reduce((sum, hit) => sum + weightOf(hit), 0)
   const atsScore = totalWeight === 0 ? 0 : Math.round((matchedWeight / totalWeight) * 100)
 
   return {
@@ -51,6 +53,10 @@ export function buildMatchReport(jdHits: TaxonomyHit[], resumeSkills: Set<string
     categoryBreakdown: buildCategoryBreakdown(jdHits, resumeSkills),
     notes: buildNotes(atsScore, matchedHits, missingHits),
   }
+}
+
+function weightOf(hit: TaxonomyHit): number {
+  return hit.importance === 'required' ? hit.count * 2 : hit.count
 }
 
 function buildCategoryBreakdown(jdHits: TaxonomyHit[], resumeSkills: Set<string>): CategoryScore[] {
@@ -85,12 +91,23 @@ function buildNotes(atsScore: number, matched: TaxonomyHit[], missing: TaxonomyH
     notes.push(`Strongest overlap: ${top} — these appear most often in the job description and exist in your Master Resume.`)
   }
 
-  if (missing.length > 0) {
-    const top = missing
+  const missingRequired = missing.filter((hit) => hit.importance === 'required')
+  const missingPreferred = missing.filter((hit) => hit.importance === 'preferred')
+
+  if (missingRequired.length > 0) {
+    const top = missingRequired
       .slice(0, 3)
       .map((hit) => hit.entry.canonical)
       .join(', ')
-    notes.push(`Largest gaps: ${top} — the job description emphasizes these but your Master Resume doesn't mention them.`)
+    notes.push(`Missing must-haves: ${top} — the job frames these as requirements and your Master Resume doesn't mention them. Highest-priority gaps.`)
+  }
+
+  if (missingPreferred.length > 0) {
+    const top = missingPreferred
+      .slice(0, 3)
+      .map((hit) => hit.entry.canonical)
+      .join(', ')
+    notes.push(`Missing nice-to-haves: ${top} — optional in this posting, so lower priority.`)
   }
 
   if (atsScore >= 75) {

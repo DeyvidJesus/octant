@@ -9,7 +9,7 @@ import { buildMatchReport, collectResumeSkills } from './match'
  * Master Resume. Same input always produces the same output.
  */
 class LocalHeuristicAnalyzer implements JobAnalyzer {
-  readonly id = 'local-heuristic-v1'
+  readonly id = 'local-heuristic-v2'
   readonly kind = 'local' as const
 
   async analyze({ job, resume }: AnalyzerContext): Promise<JobAnalysis> {
@@ -29,6 +29,7 @@ class LocalHeuristicAnalyzer implements JobAnalyzer {
         category: hit.entry.category,
         count: hit.count,
         inResume: resumeSkills.has(hit.entry.canonical),
+        importance: hit.importance,
       })),
       detectedSeniority: seniority.level,
       seniorityEvidence: seniority.evidence,
