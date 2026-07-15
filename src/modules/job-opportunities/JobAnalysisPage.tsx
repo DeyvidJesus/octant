@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Briefcase,
   CheckCircle2,
   FileSearch,
-  ScanSearch,
+  Loader2,
   Star,
   AlertCircle,
   type LucideIcon,
@@ -41,6 +41,30 @@ export function JobAnalysisPage() {
 
   const [activeSection, setActiveSection] = useState<SectionId>('requirements')
   const [running, setRunning] = useState(false)
+  const autoRan = useRef(false)
+
+  const runAnalysis = async () => {
+    if (!job) return
+    setRunning(true)
+    try {
+      const result = await getAnalyzer().analyze({ job, resume })
+      saveAnalysis(result)
+      setActiveSection('requirements')
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  // Analysis is instant, local, and non-destructive — run it automatically the
+  // first time an unanalyzed job is opened so there's no extra click. Re-runs
+  // stay explicit via the "Re-run" button.
+  useEffect(() => {
+    if (job && !analysis && !autoRan.current) {
+      autoRan.current = true
+      void runAnalysis()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job, analysis])
 
   if (!job) {
     return (
@@ -55,17 +79,6 @@ export function JobAnalysisPage() {
         }
       />
     )
-  }
-
-  const runAnalysis = async () => {
-    setRunning(true)
-    try {
-      const result = await getAnalyzer().analyze({ job, resume })
-      saveAnalysis(result)
-      setActiveSection('requirements')
-    } finally {
-      setRunning(false)
-    }
   }
 
   const saveToTracker = () => {
@@ -92,17 +105,23 @@ export function JobAnalysisPage() {
       <div className="flex items-center justify-center h-full animate-fade-in">
         <div className="text-center max-w-md px-6">
           <div className="w-16 h-16 bg-surface border border-edge-2 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
-            <ScanSearch size={32} className="text-white" aria-hidden />
+            <Loader2 size={32} className={`text-white ${running ? 'animate-spin' : ''}`} aria-hidden />
           </div>
-          <h2 className="text-2xl font-semibold text-white mb-3">Job Analyzer</h2>
+          <h2 className="text-2xl font-semibold text-white mb-3">
+            {running ? 'Analyzing…' : 'Job Analyzer'}
+          </h2>
           <p className="text-muted text-sm mb-8 leading-relaxed">
-            Analyze <strong className="text-ink-2">{job.company} — {job.role}</strong> against your
-            Master Resume: detected stack, seniority signals, keyword match, and gaps. Runs entirely
-            on your device — deterministic, no invented experience.
+            {running ? (
+              <>Matching <strong className="text-ink-2">{job.company} — {job.role}</strong> against your Master Resume.</>
+            ) : (
+              <>Analyze <strong className="text-ink-2">{job.company} — {job.role}</strong> against your Master Resume: detected stack, seniority signals, keyword match, and gaps. Runs entirely on your device — deterministic, no invented experience.</>
+            )}
           </p>
-          <Button className="w-full py-3 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]" onClick={runAnalysis} disabled={running}>
-            {running ? 'Analyzing…' : 'Run Analysis'}
-          </Button>
+          {!running && (
+            <Button className="w-full py-3 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]" onClick={runAnalysis}>
+              Run Analysis
+            </Button>
+          )}
         </div>
       </div>
     )

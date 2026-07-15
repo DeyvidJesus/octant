@@ -3,6 +3,7 @@ import { AppLayout } from './AppLayout'
 import { DashboardPage } from '@/modules/dashboard/DashboardPage'
 import { MasterResumePage } from '@/modules/master-resume/MasterResumePage'
 import { JobBoardPage } from '@/modules/job-opportunities/JobBoardPage'
+import { JobFormPage } from '@/modules/job-opportunities/JobFormPage'
 import { JobAnalysisPage } from '@/modules/job-opportunities/JobAnalysisPage'
 import { ApplicationsPage } from '@/modules/application-tracker/ApplicationsPage'
 import { SettingsPage } from '@/modules/settings/SettingsPage'
@@ -15,6 +16,8 @@ export function AppRoutes() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/resume" element={<MasterResumePage />} />
         <Route path="/jobs" element={<JobBoardPage />} />
+        <Route path="/jobs/new" element={<JobFormPage />} />
+        <Route path="/jobs/:jobId/edit" element={<JobFormPage />} />
         <Route path="/jobs/:jobId/analysis" element={<JobAnalysisPage />} />
         <Route path="/applications" element={<ApplicationsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
