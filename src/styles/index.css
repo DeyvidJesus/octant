@@ -1,0 +1,74 @@
+@import 'tailwindcss';
+
+/*
+ * CareerOS design tokens — the visual identity extracted from the original
+ * prototype. Dark, minimal, terminal-inspired. These are the ONLY places the
+ * palette hex values live; components use the semantic utility names.
+ */
+@theme {
+  --color-base: #0a0a0a; /* app background */
+  --color-surface: #111111; /* cards */
+  --color-surface-2: #1a1a1a; /* pills, hovers, nested surfaces */
+  --color-edge: #222222; /* default borders */
+  --color-edge-2: #333333; /* emphasized borders */
+  --color-ink: #ededed; /* primary text */
+  --color-ink-2: #cccccc; /* secondary text */
+  --color-ink-3: #aaaaaa; /* tertiary text */
+  --color-muted: #888888; /* muted text / labels */
+  --color-faint: #666666; /* faint text */
+  --color-ghost: #444444; /* decorative marks */
+
+  --animate-fade-in: fade-in 0.5s ease both;
+  --animate-rise-in: rise-in 0.3s ease both;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-base);
+  color: var(--color-ink);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Slim scrollbar matching the prototype's custom-scrollbar aesthetic */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-edge-2) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-edge-2);
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
