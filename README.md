@@ -48,11 +48,13 @@ npm run lint     # oxlint
 ## Roadmap
 
 1. ✅ Foundation (scaffold, persistence, local analyzer)
-2. Master Resume editor (full CRUD)
-3. Job Opportunities (paste real JDs, analyzer v2)
-4. Application Tracker (rich fields, stages, follow-ups)
-5. Resume Generator (deterministic tailoring — selection/reordering only)
+2. ✅ Master Resume editor (full rich entity model + CRUD)
+3. ✅ Job Opportunities (paste real JDs, must-have/nice-to-have analysis)
+4. Resume Generator + AI provider layer (deterministic tailoring — selection/reordering only)
+5. Application Tracker (rich fields, stages, follow-ups)
 6. Career Metrics + Dashboard v2
 7. Interview Preparation
-8. Knowledge Base + AI provider plug-in point
+8. Knowledge Base + Repository/Dexie-tables migration
 9. Polish (keyboard navigation, command palette, accessibility, light mode)
+
+See `docs/DESIGN_REVIEW.md` for the full architectural review that shapes this roadmap.
