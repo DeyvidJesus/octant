@@ -109,7 +109,9 @@ npm run lint     # oxlint
    tailoring with live coverage meter, print/PDF + markdown export)
 5. Application Tracker (rich fields, stages, follow-ups)
 6. Career Metrics + Dashboard v2
-7. Interview Preparation
+7. ✅ Interview Preparation (deterministic technical/behavioral/system-design questions with
+   model answers, persisted per-question progress + readiness dashboard, and a grounded AI
+   practice coach) — pulled ahead of #5/#6
 8. Knowledge Base + Repository/Dexie-tables migration
 9. Polish (keyboard navigation, command palette, accessibility, light mode)
 

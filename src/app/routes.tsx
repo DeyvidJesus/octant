@@ -12,7 +12,6 @@ import { ApplicationsPage } from '@/modules/application-tracker/ApplicationsPage
 import { InterviewPrepPage } from '@/modules/interview-prep/InterviewPrepPage'
 import { SettingsPage } from '@/modules/settings/SettingsPage'
 import { PlaceholderPage } from '@/modules/PlaceholderPage'
-import { InterviewPrepPage } from '@/modules/interview-prep/InterviewPrepPage'
 
 export function AppRoutes() {
   return (

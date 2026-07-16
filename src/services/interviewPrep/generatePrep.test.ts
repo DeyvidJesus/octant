@@ -75,8 +75,9 @@ const analysis: JobAnalysis = {
 describe('generatePrep', () => {
   it('prioritizes missing required skills before matched, preferred, and resume-only topics', () => {
     const prep = generatePrep(resume, job, analysis)
+    const technical = prep.topics.filter((topic) => topic.category === 'technical')
 
-    expect(prep.topics.map((topic) => [topic.technology, topic.priority])).toEqual([
+    expect(technical.map((topic) => [topic.topic, topic.priority])).toEqual([
       ['Go', 'required-missing'],
       ['React', 'required-matched'],
       ['Kubernetes', 'preferred'],
@@ -85,19 +86,37 @@ describe('generatePrep', () => {
     ])
   })
 
-  it('creates deterministic beginner, intermediate, and advanced questions for each topic', () => {
+  it('creates deterministic beginner, intermediate, and advanced questions for each technical topic', () => {
     const prep = generatePrep(resume, job, analysis)
+    const technical = prep.topics.filter((topic) => topic.category === 'technical')
 
-    expect(prep.topics[0].questions.map((question) => question.level)).toEqual([
+    expect(technical[0].questions.map((question) => question.difficulty)).toEqual([
       'beginner',
       'intermediate',
       'advanced',
     ])
-    expect(prep.topics[0].questions.map((question) => question.id)).toEqual([
+    expect(technical[0].questions.map((question) => question.id)).toEqual([
       'go-beginner',
       'go-intermediate',
       'go-advanced',
     ])
+    expect(technical[0].questions.every((question) => question.category === 'technical')).toBe(true)
+  })
+
+  it('composes behavioral and architecture questions alongside the technical set', () => {
+    const prep = generatePrep(resume, job, analysis)
+    const categories = new Set(prep.topics.map((topic) => topic.category))
+
+    expect(categories).toEqual(new Set(['technical', 'behavioral', 'architecture']))
+
+    const behavioral = prep.topics.filter((topic) => topic.category === 'behavioral')
+    expect(behavioral.length).toBeGreaterThan(0)
+    // Behavioral prompts are personalized with the target company/role.
+    expect(behavioral.some((topic) => topic.questions[0].question.includes('Acme'))).toBe(true)
+
+    const architecture = prep.topics.filter((topic) => topic.category === 'architecture')
+    expect(architecture.length).toBeGreaterThan(0)
+    expect(architecture[0].questions[0].expectedAnswer).toBeTruthy()
   })
 
   it('includes job-specific context when a selected job and analysis exist', () => {
@@ -110,5 +129,12 @@ describe('generatePrep', () => {
       missingRequirements: ['Go', 'Kubernetes'],
       atsScore: 67,
     })
+  })
+
+  it('still produces behavioral and architecture questions with no job context', () => {
+    const prep = generatePrep(resume)
+    expect(prep.jobContext).toBeUndefined()
+    expect(prep.topics.some((topic) => topic.category === 'behavioral')).toBe(true)
+    expect(prep.topics.some((topic) => topic.category === 'architecture')).toBe(true)
   })
 })

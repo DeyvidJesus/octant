@@ -1,36 +1,15 @@
 import type { JobAnalysis } from '@/types/analysis'
 import type { JobOpportunity } from '@/types/job'
 import type { CareerKnowledgeBase } from '@/types/resume'
-
-export type PrepLevel = 'beginner' | 'intermediate' | 'advanced'
-export type PrepPriority = 'required-missing' | 'required-matched' | 'preferred' | 'resume-core'
-
-export interface PrepQuestion {
-  id: string
-  technology: string
-  level: PrepLevel
-  question: string
-  priority: PrepPriority
-}
-
-export interface PrepJobContext {
-  company: string
-  role: string
-  detectedStack: string[]
-  missingRequirements: string[]
-  atsScore: number
-}
-
-export interface InterviewPrepTopic {
-  technology: string
-  priority: PrepPriority
-  questions: PrepQuestion[]
-}
-
-export interface InterviewPrepPlan {
-  topics: InterviewPrepTopic[]
-  jobContext?: PrepJobContext
-}
+import type {
+  InterviewPrepPlan,
+  InterviewPrepTopic,
+  PrepDifficulty,
+  PrepPriority,
+  PrepQuestion,
+} from '@/types/interviewPrep'
+import { architectureQuestions } from './questionBank'
+import { behavioralQuestions } from './behavioralBank'
 
 interface TechnologyCandidate {
   canonical: string
@@ -45,7 +24,7 @@ const PRIORITY_RANK: Record<PrepPriority, number> = {
   'resume-core': 3,
 }
 
-const LEVELS: PrepLevel[] = ['beginner', 'intermediate', 'advanced']
+const LEVELS: PrepDifficulty[] = ['beginner', 'intermediate', 'advanced']
 
 export function generatePrep(
   resume: CareerKnowledgeBase,
@@ -53,14 +32,30 @@ export function generatePrep(
   analysis?: JobAnalysis,
 ): InterviewPrepPlan {
   const technologies = rankTechnologies(resume, analysis)
-  const topics = technologies.map((technology) => ({
-    technology: technology.canonical,
+
+  const technicalTopics: InterviewPrepTopic[] = technologies.map((technology) => ({
+    topic: technology.canonical,
+    category: 'technical',
     priority: technology.priority,
-    questions: LEVELS.map((level) => buildQuestion(technology.canonical, level, technology.priority)),
+    questions: LEVELS.map((level) => buildTechnicalQuestion(technology.canonical, level, technology.priority)),
+  }))
+
+  const architectureTopics: InterviewPrepTopic[] = architectureQuestions().map((question) => ({
+    topic: question.topic ?? question.id,
+    category: 'architecture',
+    priority: question.priority,
+    questions: [question],
+  }))
+
+  const behavioralTopics: InterviewPrepTopic[] = behavioralQuestions(job).map((question) => ({
+    topic: question.topic ?? question.id,
+    category: 'behavioral',
+    priority: question.priority,
+    questions: [question],
   }))
 
   return {
-    topics,
+    topics: [...technicalTopics, ...behavioralTopics, ...architectureTopics],
     ...(job && analysis ? { jobContext: buildJobContext(job, analysis) } : {}),
   }
 }
@@ -125,8 +120,8 @@ function rankTechnologies(resume: CareerKnowledgeBase, analysis?: JobAnalysis): 
   })
 }
 
-function buildQuestion(technology: string, level: PrepLevel, priority: PrepPriority): PrepQuestion {
-  const prompts: Record<PrepLevel, string> = {
+function buildTechnicalQuestion(technology: string, level: PrepDifficulty, priority: PrepPriority): PrepQuestion {
+  const prompts: Record<PrepDifficulty, string> = {
     beginner: `Explain the core purpose of ${technology} and when you would choose it in a production system.`,
     intermediate: `Describe a practical ${technology} implementation challenge you have solved or would expect in this role.`,
     advanced: `How would you evaluate tradeoffs, failure modes, and scaling concerns for ${technology} in a business-critical system?`,
@@ -134,14 +129,15 @@ function buildQuestion(technology: string, level: PrepLevel, priority: PrepPrior
 
   return {
     id: `${slugify(technology)}-${level}`,
-    technology,
-    level,
+    category: 'technical',
+    difficulty: level,
     priority,
+    topic: technology,
     question: prompts[level],
   }
 }
 
-function buildJobContext(job: JobOpportunity, analysis: JobAnalysis): PrepJobContext {
+function buildJobContext(job: JobOpportunity, analysis: JobAnalysis) {
   return {
     company: job.company,
     role: job.role,
@@ -158,4 +154,3 @@ function normalizeKey(value: string): string {
 function slugify(value: string): string {
   return normalizeKey(value).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
-

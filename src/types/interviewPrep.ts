@@ -1,80 +1,80 @@
-export type InterviewPrepStatus =
-  | 'unknown'
-  | 'need_review'
-  | 'mastered'
-  | 'review_tomorrow'
-  | 'review_next_week'
+/**
+ * Single source of truth for the Interview Prep module. Everything else
+ * (the deterministic generator, the static question bank, the behavioral set,
+ * the store, the page, and the dashboard) imports from here — no local
+ * re-declarations of these concepts.
+ */
 
-export type InterviewQuestionDifficulty = 'beginner' | 'intermediate' | 'advanced'
+/** The three readiness categories surfaced on the dashboard. */
+export type InterviewQuestionCategory = 'technical' | 'behavioral' | 'architecture'
 
-export type InterviewQuestionCategory =
-  | 'technical'
-  | 'behavioral'
-  | 'architecture'
-  | 'system_design'
-  | 'product'
-  | 'problem_solving'
+export type PrepDifficulty = 'beginner' | 'intermediate' | 'advanced'
 
-export interface InterviewPrepQuestion {
+/**
+ * How relevant a question is to the selected job, driving ordering. Behavioral
+ * and architecture questions default to `resume-core` when there is no JD signal.
+ */
+export type PrepPriority = 'required-missing' | 'required-matched' | 'preferred' | 'resume-core'
+
+/** A single generated (deterministic) interview question. */
+export interface PrepQuestion {
   id: string
-  /** Optional stack/topic tag, e.g. React, Node.js, PostgreSQL, or AWS. */
-  technology?: string
   category: InterviewQuestionCategory
-  difficulty: InterviewQuestionDifficulty
+  difficulty: PrepDifficulty
   question: string
-  expectedAnswer: string
-  whyInterviewersAsk: string
-  commonMistakes: string[]
-  followUps: string[]
+  /** Stack/topic tag, e.g. React, Authentication, or Leadership. */
+  topic?: string
+  priority: PrepPriority
+  /** Model answer or outline the candidate can study against. */
+  expectedAnswer?: string
+  whyInterviewersAsk?: string
+  commonMistakes?: string[]
+  followUps?: string[]
 }
 
-export interface InterviewPrepProgress {
-  questionId: string
-  status: InterviewPrepStatus
-  /** User-rated readiness for this question, stored as a 0-100 percentage. */
-  confidence: number
-  lastReviewedAt?: string
-  nextReviewAt?: string
-  notes?: string
+export interface InterviewPrepTopic {
+  topic: string
+  category: InterviewQuestionCategory
+  priority: PrepPriority
+  questions: PrepQuestion[]
 }
 
-export interface MockInterviewAnswerReview {
-  questionId: string
-  userAnswer: string
-  idealAnswer: string
-  comparison: string
-  /** Per-answer score, stored as a 0-100 percentage. */
-  score: number
-}
-
-export interface MockInterviewSession {
-  id: string
-  /** Optional link to a saved job/application target. */
-  jobId?: string
+export interface PrepJobContext {
   company: string
-  createdAt: string
-  questions: InterviewPrepQuestion[]
-  answers: MockInterviewAnswerReview[]
-  /** Overall session score, stored as a 0-100 percentage. */
-  score: number
-}
-
-export interface InterviewPrepDailyStudyItem {
-  id: string
-  date: string
-  questionIds: string[]
-  topics: string[]
-  completed: boolean
+  role: string
+  detectedStack: string[]
+  missingRequirements: string[]
+  atsScore: number
 }
 
 export interface InterviewPrepPlan {
+  topics: InterviewPrepTopic[]
+  jobContext?: PrepJobContext
+}
+
+/** Where a tracked question sits in the user's review cycle. */
+export type InterviewPrepStatus =
+  | 'not_started'
+  | 'in_progress'
+  | 'need_review'
+  | 'review_tomorrow'
+  | 'review_next_week'
+  | 'mastered'
+
+/**
+ * A question the user has engaged with, merged with their progress. Denormalized
+ * so the dashboard can compute readiness without re-running the generator.
+ */
+export interface TrackedQuestion {
   id: string
-  createdAt: string
-  dailyStudyItems: InterviewPrepDailyStudyItem[]
-  weakTopics: string[]
-  reviewTopics: string[]
-  /** Overall readiness score, stored as a 0-100 percentage. */
-  readinessPercentage: number
-  /** Topic-level readiness scores, each stored as a 0-100 percentage. */
-  topicReadinessPercentages: Record<string, number>
+  category: InterviewQuestionCategory
+  difficulty: PrepDifficulty
+  question: string
+  topic?: string
+  /** User-rated readiness, stored as a 0-100 percentage. */
+  confidence: number
+  status: InterviewPrepStatus
+  mastered: boolean
+  notes?: string
+  lastReviewedAt?: string
 }

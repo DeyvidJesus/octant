@@ -1,9 +1,11 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useApplicationsStore } from '@/stores/applicationsStore'
-import { useInterviewPrepStore, type InterviewQuestionCategory } from '@/stores/interviewPrepStore'
+import { useInterviewPrepStore } from '@/stores/interviewPrepStore'
+import type { InterviewQuestionCategory, TrackedQuestion } from '@/types/interviewPrep'
 import { INTERVIEW_STAGES } from '@/constants/applicationStages'
 import { StatCard } from './components/StatCard'
 
@@ -14,14 +16,14 @@ function formatPercent(value: number) {
 }
 
 function getAverageConfidenceByCategory(
-  questions: ReturnType<typeof useInterviewPrepStore.getState>['questions'],
+  questions: TrackedQuestion[],
   category: InterviewQuestionCategory,
 ) {
   const categoryQuestions = questions.filter((question) => question.category === category)
   if (categoryQuestions.length === 0) return 0
 
-  const totalConfidence = categoryQuestions.reduce((sum, question) => sum + (question.confidence ?? 0), 0)
-  return (totalConfidence / categoryQuestions.length) * 100
+  const totalConfidence = categoryQuestions.reduce((sum, question) => sum + question.confidence, 0)
+  return totalConfidence / categoryQuestions.length
 }
 
 function InterviewPrepStatLink({ label, value, accent = false }: { label: string; value: number | string; accent?: boolean }) {
@@ -34,7 +36,8 @@ function InterviewPrepStatLink({ label, value, accent = false }: { label: string
 
 export function DashboardPage() {
   const applications = useApplicationsStore((state) => state.applications)
-  const interviewQuestions = useInterviewPrepStore((state) => state.questions)
+  const tracked = useInterviewPrepStore((state) => state.tracked)
+  const interviewQuestions = useMemo(() => Object.values(tracked), [tracked])
 
   const appliedCount = applications.filter((app) => app.stage === 'applied').length
   const interviewingCount = applications.filter((app) => INTERVIEW_STAGES.includes(app.stage)).length

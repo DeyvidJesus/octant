@@ -1,9 +1,37 @@
+import { useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { AlertCircle, Briefcase, CheckCircle2, FileSearch, MessageSquare, Star } from 'lucide-react'
+import { AlertCircle, Briefcase, FileSearch, MessageSquare } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useJobsStore } from '@/stores/jobsStore'
+import { useResumeStore } from '@/stores/resumeStore'
+import { useInterviewPrepStore } from '@/stores/interviewPrepStore'
+import { generatePrep } from '@/services/interviewPrep/generatePrep'
+import type { InterviewQuestionCategory, PrepQuestion } from '@/types/interviewPrep'
+import type { MasterResume } from '@/types/resume'
+import { QuestionCard } from './components/QuestionCard'
+
+const CATEGORY_ORDER: InterviewQuestionCategory[] = ['technical', 'behavioral', 'architecture']
+
+const CATEGORY_LABEL: Record<InterviewQuestionCategory, string> = {
+  technical: 'Technical & stack',
+  behavioral: 'Behavioral (STAR)',
+  architecture: 'System design',
+}
+
+function buildResumeEvidence(resume: MasterResume): string[] {
+  const evidence: string[] = []
+  for (const story of resume.stories) {
+    if (story.title && story.result) evidence.push(`${story.title}: ${story.result}`)
+  }
+  for (const entry of resume.experience) {
+    for (const accomplishment of entry.accomplishments) {
+      if (accomplishment.text) evidence.push(accomplishment.text)
+    }
+  }
+  return evidence.slice(0, 12)
+}
 
 export function InterviewPrepPage() {
   const [searchParams] = useSearchParams()
@@ -11,10 +39,19 @@ export function InterviewPrepPage() {
   const activeJobId = searchParams.get('jobId') ?? undefined
   const jobs = useJobsStore((state) => state.jobs)
   const analyses = useJobsStore((state) => state.analyses)
+  const knowledgeBase = useResumeStore((state) => state.knowledgeBase)
+  const resume = useResumeStore((state) => state.resume)
+  const tracked = useInterviewPrepStore((state) => state.tracked)
 
   const activeJob = activeJobId ? jobs.find((job) => job.id === activeJobId) : undefined
   const activeAnalysis = activeJobId ? analyses[activeJobId] : undefined
   const analyzedJobs = jobs.filter((job) => analyses[job.id])
+
+  const plan = useMemo(
+    () => (activeJob && activeAnalysis ? generatePrep(knowledgeBase, activeJob, activeAnalysis) : null),
+    [knowledgeBase, activeJob, activeAnalysis],
+  )
+  const resumeEvidence = useMemo(() => buildResumeEvidence(resume), [resume])
 
   if (activeJobId && !activeJob) {
     return (
@@ -46,7 +83,7 @@ export function InterviewPrepPage() {
     )
   }
 
-  if (!activeAnalysis || !activeJob) {
+  if (!activeAnalysis || !activeJob || !plan) {
     return (
       <div className="p-8 max-w-5xl mx-auto animate-fade-in">
         <div className="mb-8">
@@ -55,8 +92,9 @@ export function InterviewPrepPage() {
           </div>
           <h1 className="text-3xl font-semibold text-white">Interview Preparation</h1>
           <p className="text-muted mt-2 max-w-2xl">
-            Select an analyzed opportunity to prepare with job-specific stack, gap, and ATS context.
-            Jobs without analysis need to be analyzed first.
+            Select an analyzed opportunity to generate targeted technical, behavioral, and system-design
+            questions with model answers and an AI practice coach. Jobs without analysis need to be
+            analyzed first.
           </p>
         </div>
 
@@ -79,9 +117,12 @@ export function InterviewPrepPage() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-white font-medium">{job.company} — {job.role}</div>
+                      <div className="text-white font-medium">
+                        {job.company} — {job.role}
+                      </div>
                       <div className="text-xs text-muted mt-1">
-                        {analysis.detectedStack.length} stack signals · {analysis.match.missing.length} gaps · ATS {analysis.match.atsScore}%
+                        {analysis.detectedStack.length} stack signals · {analysis.match.missing.length} gaps · ATS{' '}
+                        {analysis.match.atsScore}%
                       </div>
                     </div>
                     <Badge tone="emerald">Analyzed</Badge>
@@ -95,14 +136,20 @@ export function InterviewPrepPage() {
     )
   }
 
+  const questionsByCategory = groupByCategory(plan.topics.flatMap((topic) => topic.questions))
+  const missingSkills = activeAnalysis.match.missing
+
   return (
     <div className="p-8 max-w-5xl mx-auto animate-fade-in">
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
           <div className="text-xs text-faint font-semibold uppercase tracking-widest mb-2">Active prep context</div>
-          <h1 className="text-3xl font-semibold text-white">{activeJob.company} — {activeJob.role}</h1>
+          <h1 className="text-3xl font-semibold text-white">
+            {activeJob.company} — {activeJob.role}
+          </h1>
           <p className="text-muted mt-2 max-w-2xl">
-            Prep is scoped to this job's detected stack, resume gaps, and ATS keywords from the latest analysis.
+            Questions are ranked by this job's detected stack and resume gaps. Rate your confidence to
+            build readiness, or practice an answer with the AI coach.
           </p>
         </div>
         <Button variant="subtle" onClick={() => navigate('/interviews')}>
@@ -111,47 +158,63 @@ export function InterviewPrepPage() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-surface border border-edge rounded-xl p-5">
-          <Star size={18} className="text-white mb-3" aria-hidden />
-          <div className="text-2xl font-semibold text-white">{activeAnalysis.match.atsScore}%</div>
-          <div className="text-xs text-muted mt-1">ATS match score</div>
-        </div>
-        <div className="bg-surface border border-edge rounded-xl p-5">
-          <CheckCircle2 size={18} className="text-emerald-500 mb-3" aria-hidden />
-          <div className="text-2xl font-semibold text-white">{activeAnalysis.match.matched.length}</div>
-          <div className="text-xs text-muted mt-1">Matched signals to emphasize</div>
-        </div>
-        <div className="bg-surface border border-edge rounded-xl p-5">
-          <AlertCircle size={18} className="text-amber-500 mb-3" aria-hidden />
-          <div className="text-2xl font-semibold text-white">{activeAnalysis.match.missing.length}</div>
-          <div className="text-xs text-muted mt-1">Missing gaps to address honestly</div>
-        </div>
+        {CATEGORY_ORDER.map((category) => {
+          const questions = questionsByCategory[category] ?? []
+          const readiness = categoryReadiness(questions, tracked)
+          return (
+            <div key={category} className="bg-surface border border-edge rounded-xl p-5">
+              <div className="text-xs text-faint font-semibold uppercase tracking-widest mb-2">
+                {CATEGORY_LABEL[category]}
+              </div>
+              <div className="text-2xl font-semibold text-white">{readiness}%</div>
+              <div className="text-xs text-muted mt-1">{questions.length} questions</div>
+            </div>
+          )
+        })}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <section className="bg-surface border border-edge rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">Stack-focused prompts</h2>
-          <div className="flex flex-wrap gap-2">
-            {activeAnalysis.detectedStack.map((skill) => (
-              <Badge key={`${skill.canonical}-${skill.term}`} tone={skill.inResume ? 'emerald' : 'red'}>
-                {skill.canonical}
-              </Badge>
-            ))}
-          </div>
-        </section>
-        <section className="bg-surface border border-edge rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">Gap talking points</h2>
-          {activeAnalysis.match.missing.length > 0 ? (
-            <ul className="space-y-2 text-sm text-muted">
-              {activeAnalysis.match.missing.map((gap) => (
-                <li key={gap}>• Prepare an honest bridge for <span className="text-ink-2">{gap}</span>.</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted">No missing skills detected. Prepare concise examples for your matched strengths.</p>
-          )}
-        </section>
+      <div className="space-y-10">
+        {CATEGORY_ORDER.map((category) => {
+          const questions = questionsByCategory[category] ?? []
+          if (questions.length === 0) return null
+          return (
+            <section key={category}>
+              <h2 className="text-lg font-semibold text-white mb-4">{CATEGORY_LABEL[category]}</h2>
+              <div className="space-y-4">
+                {questions.map((question) => (
+                  <QuestionCard
+                    key={question.id}
+                    question={question}
+                    job={activeJob}
+                    resume={resume}
+                    resumeEvidence={resumeEvidence}
+                    missingSkills={missingSkills}
+                  />
+                ))}
+              </div>
+            </section>
+          )
+        })}
       </div>
     </div>
   )
+}
+
+function groupByCategory(questions: PrepQuestion[]): Record<InterviewQuestionCategory, PrepQuestion[]> {
+  const grouped: Record<InterviewQuestionCategory, PrepQuestion[]> = {
+    technical: [],
+    behavioral: [],
+    architecture: [],
+  }
+  for (const question of questions) grouped[question.category].push(question)
+  return grouped
+}
+
+function categoryReadiness(
+  questions: PrepQuestion[],
+  tracked: Record<string, { confidence: number }>,
+): number {
+  if (questions.length === 0) return 0
+  const total = questions.reduce((sum, question) => sum + (tracked[question.id]?.confidence ?? 0), 0)
+  return Math.round(total / questions.length)
 }

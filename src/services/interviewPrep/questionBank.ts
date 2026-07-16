@@ -1,20 +1,22 @@
-export type InterviewDifficulty = 'junior' | 'early-mid' | 'advanced';
+import type { PrepDifficulty, PrepPriority, PrepQuestion } from '@/types/interviewPrep'
+
+export type InterviewDifficulty = 'junior' | 'early-mid' | 'advanced'
 
 export type StackVariant = {
-  stack: 'React/Next.js frontend' | 'Node/Spring Boot backend' | 'PostgreSQL/Supabase database' | 'Docker/AWS deployment';
-  notes: string[];
-};
+  stack: 'React/Next.js frontend' | 'Node/Spring Boot backend' | 'PostgreSQL/Supabase database' | 'Docker/AWS deployment'
+  notes: string[]
+}
 
 export type InterviewQuestionTemplate = {
-  topic: string;
-  question: string;
-  expectedAnswerOutline: string[];
-  whyInterviewersAskThis: string;
-  commonMistakes: string[];
-  followUpQuestions: string[];
-  difficulty: InterviewDifficulty;
-  stackSpecificVariants?: StackVariant[];
-};
+  topic: string
+  question: string
+  expectedAnswerOutline: string[]
+  whyInterviewersAskThis: string
+  commonMistakes: string[]
+  followUpQuestions: string[]
+  difficulty: InterviewDifficulty
+  stackSpecificVariants?: StackVariant[]
+}
 
 export const questionBank: InterviewQuestionTemplate[] = [
   {
@@ -503,4 +505,38 @@ export const questionBank: InterviewQuestionTemplate[] = [
 
 export const questionBankByTopic = Object.fromEntries(
   questionBank.map((template) => [template.topic, template]),
-) as Record<string, InterviewQuestionTemplate>;
+) as Record<string, InterviewQuestionTemplate>
+
+const DIFFICULTY_MAP: Record<InterviewDifficulty, PrepDifficulty> = {
+  junior: 'beginner',
+  'early-mid': 'intermediate',
+  advanced: 'advanced',
+}
+
+function slugify(value: string): string {
+  return value.trim().toLocaleLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+/** Maps a static architecture/system-design template to a unified PrepQuestion. */
+export function templateToPrepQuestion(
+  template: InterviewQuestionTemplate,
+  priority: PrepPriority = 'resume-core',
+): PrepQuestion {
+  return {
+    id: `arch-${slugify(template.topic)}`,
+    category: 'architecture',
+    difficulty: DIFFICULTY_MAP[template.difficulty],
+    question: template.question,
+    topic: template.topic,
+    priority,
+    expectedAnswer: template.expectedAnswerOutline.join('\n'),
+    whyInterviewersAsk: template.whyInterviewersAskThis,
+    commonMistakes: template.commonMistakes,
+    followUps: template.followUpQuestions,
+  }
+}
+
+/** The full architecture/system-design bank as unified PrepQuestions. */
+export function architectureQuestions(): PrepQuestion[] {
+  return questionBank.map((template) => templateToPrepQuestion(template))
+}
