@@ -11,6 +11,7 @@ import { GeneratorEditorPage } from '@/modules/resume-generator/GeneratorEditorP
 import { ApplicationsPage } from '@/modules/application-tracker/ApplicationsPage'
 import { SettingsPage } from '@/modules/settings/SettingsPage'
 import { PlaceholderPage } from '@/modules/PlaceholderPage'
+import { InterviewPrepPage } from '@/modules/interview-prep/InterviewPrepPage'
 
 export function AppRoutes() {
   return (
@@ -27,15 +28,7 @@ export function AppRoutes() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/generator" element={<GeneratorPage />} />
         <Route path="/generator/:jobId" element={<GeneratorEditorPage />} />
-        <Route
-          path="/interviews"
-          element={
-            <PlaceholderPage
-              title="Interview Preparation"
-              description="Question banks, STAR answer builder, and per-application prep dossiers. Coming in a future increment."
-            />
-          }
-        />
+        <Route path="/interviews" element={<InterviewPrepPage />} />
         <Route
           path="/knowledge"
           element={

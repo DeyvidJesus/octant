@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ScanSearch, Briefcase, ExternalLink, Plus, Pencil, Archive, ArchiveRestore, Trash2, Radar } from 'lucide-react'
+import { ScanSearch, Briefcase, ExternalLink, Plus, Pencil, Archive, ArchiveRestore, Trash2, Radar, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { IconButton } from '@/components/ui/IconButton'
@@ -122,9 +122,19 @@ export function JobBoardPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="subtle" onClick={() => navigate(`/jobs/${job.id}/analysis`)}>
-                          <ScanSearch size={14} aria-hidden /> Analyze
-                        </Button>
+                        {analysis ? (
+                          <Button variant="subtle" onClick={() => navigate(`/interviews?jobId=${encodeURIComponent(job.id)}`)}>
+                            <MessageSquare size={14} aria-hidden /> Prepare for interview
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="subtle"
+                            title="Analyze this job first; Interview Prep depends on detected stack, missing gaps, and ATS data."
+                            onClick={() => navigate(`/jobs/${job.id}/analysis`)}
+                          >
+                            <ScanSearch size={14} aria-hidden /> Analyze first
+                          </Button>
+                        )}
                         <IconButton icon={Pencil} label="Edit" onClick={() => navigate(`/jobs/${job.id}/edit`)} />
                         <IconButton
                           icon={job.archived ? ArchiveRestore : Archive}
