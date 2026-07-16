@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Briefcase, FileText, LayoutDashboard, Database, 
-  Settings, ChevronRight, CheckCircle2, Star, 
+import {
+  Briefcase, FileText, LayoutDashboard, Database,
+  Settings, ChevronRight, CheckCircle2, Star,
   AlertCircle, ArrowRight, Play, Loader2, Sparkles,
   Save, X, TerminalSquare, ExternalLink, Calendar
 } from 'lucide-react';
@@ -137,8 +137,8 @@ export default function CareerOS() {
         {activeView === 'master' && <MasterResumeEditor data={masterResume} setData={setMasterResume} />}
         {activeView === 'jobs' && <JobBoard jobs={JOB_DATABASE} onAnalyze={(id) => handleNavigate('analysis', id)} />}
         {activeView === 'analysis' && activeJobId && (
-          <AnalysisEngine 
-            job={JOB_DATABASE.find(j => j.id === activeJobId)} 
+          <AnalysisEngine
+            job={JOB_DATABASE.find(j => j.id === activeJobId)}
             masterResume={masterResume}
             cache={analysisCache}
             setCache={setAnalysisCache}
@@ -159,11 +159,10 @@ function NavItem({ icon: Icon, label, isActive, onClick, disabled }) {
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
-        isActive 
-          ? 'bg-[#1a1a1a] text-white font-medium border border-[#333]' 
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isActive
+          ? 'bg-[#1a1a1a] text-white font-medium border border-[#333]'
           : 'text-[#888] hover:bg-[#111] hover:text-[#ccc] border border-transparent'
-      } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+        } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
     >
       <Icon size={16} className={isActive ? 'text-white' : 'text-[#666]'} />
       {label}
@@ -186,7 +185,7 @@ function Dashboard({ pipeline }) {
   return (
     <div className="p-8 max-w-6xl mx-auto animate-in fade-in duration-500">
       <h2 className="text-2xl font-semibold mb-8 tracking-tight">Command Center</h2>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card>
           <h3 className="text-[#888] text-xs font-semibold uppercase tracking-widest mb-2">Total Opportunities tracked</h3>
@@ -241,7 +240,7 @@ function MasterResumeEditor({ data, setData }) {
       </div>
 
       <div className="space-y-6">
-        {}
+        { }
         <Card>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-white">Career Profile & Values</h3>
@@ -268,7 +267,7 @@ function MasterResumeEditor({ data, setData }) {
           </div>
         </Card>
 
-        {}
+        { }
         <Card>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-white">Experience & Project Repository</h3>
@@ -308,7 +307,7 @@ function MasterResumeEditor({ data, setData }) {
           </div>
         </Card>
 
-        {}
+        { }
         <Card>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-white">Technical Architecture & Taxonomy</h3>
@@ -364,7 +363,7 @@ function JobBoard({ jobs, onAnalyze }) {
                   <div className="text-xs text-[#666] mt-0.5">{job.exp}</div>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button 
+                  <button
                     onClick={() => onAnalyze(job.id)}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-[#222] text-white text-sm font-medium rounded-lg hover:bg-white hover:text-black transition-all border border-[#333] hover:border-white"
                   >
@@ -405,7 +404,7 @@ function AnalysisEngine({ job, masterResume, cache, setCache, onSaveToPipeline }
     setStatus('thinking');
     setLogs([]);
     addLog(`Initializing Analysis Engine for ${job.company}...`);
-    
+
     try {
       // Simulate the 10 step thinking process for UX
       setTimeout(() => addLog("Step 1: Analyzing company maturity and engineering culture..."), 500);
@@ -464,10 +463,10 @@ function AnalysisEngine({ job, masterResume, cache, setCache, onSaveToPipeline }
       });
 
       if (!response.ok) throw new Error("API Connection Failed");
-      
+
       const result = await response.json();
       const rawText = result.candidates[0].content.parts[0].text;
-      
+
       // Safety parse (sometimes LLMs wrap json in markdown despite instructions)
       const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsedData = JSON.parse(cleanJson);
@@ -482,7 +481,7 @@ function AnalysisEngine({ job, masterResume, cache, setCache, onSaveToPipeline }
     } catch (err) {
       console.error(err);
       addLog(`ERROR: ${err.message}. Using high-fidelity fallback generation...`);
-      
+
       // Fallback robust mock data if API fails or rate limits
       setTimeout(() => {
         const mockData = {
@@ -513,7 +512,7 @@ function AnalysisEngine({ job, masterResume, cache, setCache, onSaveToPipeline }
           <p className="text-[#888] text-sm mb-8 leading-relaxed">
             Run the 10-step proprietary Career OS workflow. The engine will read your Master Resume, analyze <strong className="text-[#ccc]">{job.company}</strong>, compute match scores, find gaps, and systematically generate tailored application assets.
           </p>
-          <button 
+          <button
             onClick={runAnalysis}
             className="w-full py-3 bg-white text-black font-semibold rounded-xl hover:bg-gray-200 transition shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center gap-2"
           >
@@ -562,15 +561,14 @@ function AnalysisEngine({ job, masterResume, cache, setCache, onSaveToPipeline }
           <div className="text-white font-medium truncate">{job.company}</div>
           <div className="text-[#888] text-xs truncate">{job.role}</div>
         </div>
-        
+
         <nav className="space-y-1 px-3">
           {steps.map(s => (
             <button
               key={s.id}
               onClick={() => setActiveStep(s.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition ${
-                activeStep === s.id ? 'bg-[#1a1a1a] text-white border border-[#333]' : 'text-[#888] hover:text-[#ccc] border border-transparent'
-              }`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition ${activeStep === s.id ? 'bg-[#1a1a1a] text-white border border-[#333]' : 'text-[#888] hover:text-[#ccc] border border-transparent'
+                }`}
             >
               <s.icon size={14} className={activeStep === s.id ? 'text-white' : 'text-[#555]'} />
               <span className="truncate">{s.id}. {s.title}</span>
@@ -579,7 +577,7 @@ function AnalysisEngine({ job, masterResume, cache, setCache, onSaveToPipeline }
         </nav>
 
         <div className="px-6 mt-8 pt-6 border-t border-[#222]">
-          <button 
+          <button
             onClick={() => onSaveToPipeline({ jobId: job.id, company: job.company, role: job.role, status: 'Saved', date: new Date().toLocaleDateString(), score: analysis.step4_match.overall })}
             className="w-full py-2 bg-emerald-600/10 text-emerald-500 border border-emerald-600/20 hover:bg-emerald-600/20 font-medium rounded-lg text-sm transition flex items-center justify-center gap-2"
           >
@@ -591,7 +589,7 @@ function AnalysisEngine({ job, masterResume, cache, setCache, onSaveToPipeline }
       {/* Main Analysis Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-[#0a0a0a]">
         <div className="max-w-3xl">
-          
+
           {/* STEP 1 */}
           {activeStep === 1 && (
             <div className="animate-in fade-in slide-in-from-right-4">
@@ -634,14 +632,14 @@ function AnalysisEngine({ job, masterResume, cache, setCache, onSaveToPipeline }
               <h2 className="text-2xl font-semibold text-white mb-6">Gap Analysis & Strategy</h2>
               <div className="space-y-6">
                 <Card className="border-red-900/30 bg-red-900/5">
-                  <h3 className="text-sm font-medium text-red-400 mb-4 flex items-center gap-2"><AlertCircle size={16}/> Missing Keywords / ATS Risks</h3>
+                  <h3 className="text-sm font-medium text-red-400 mb-4 flex items-center gap-2"><AlertCircle size={16} /> Missing Keywords / ATS Risks</h3>
                   <ul className="space-y-2">
                     {analysis.step5_gap.missing.map((m, i) => <li key={i} className="text-sm text-[#ccc] flex gap-2"><span className="text-red-500/50">-</span> {m}</li>)}
-                    {analysis.step5_gap.concerns.map((c, i) => <li key={i+10} className="text-sm text-[#ccc] flex gap-2"><span className="text-red-500/50">-</span> {c}</li>)}
+                    {analysis.step5_gap.concerns.map((c, i) => <li key={i + 10} className="text-sm text-[#ccc] flex gap-2"><span className="text-red-500/50">-</span> {c}</li>)}
                   </ul>
                 </Card>
                 <Card className="border-indigo-900/30 bg-indigo-900/5">
-                  <h3 className="text-sm font-medium text-indigo-400 mb-4 flex items-center gap-2"><Settings size={16}/> Pre-Generation Directives</h3>
+                  <h3 className="text-sm font-medium text-indigo-400 mb-4 flex items-center gap-2"><Settings size={16} /> Pre-Generation Directives</h3>
                   <ul className="space-y-2">
                     {analysis.step6_recs.map((r, i) => <li key={i} className="text-sm text-[#ccc] flex gap-2"><span className="text-indigo-500/50">→</span> {r}</li>)}
                   </ul>
@@ -664,9 +662,9 @@ function AnalysisEngine({ job, masterResume, cache, setCache, onSaveToPipeline }
           )}
 
           {/* Fallback rendering for missing steps for prototype brevity */}
-          {![1,4,5,6,7].includes(activeStep) && (
+          {![1, 4, 5, 6, 7].includes(activeStep) && (
             <div className="animate-in fade-in slide-in-from-right-4">
-              <h2 className="text-2xl font-semibold text-white mb-6 capitalize">Step {activeStep}: {steps.find(s=>s.id===activeStep)?.title}</h2>
+              <h2 className="text-2xl font-semibold text-white mb-6 capitalize">Step {activeStep}: {steps.find(s => s.id === activeStep)?.title}</h2>
               <Card>
                 <pre className="whitespace-pre-wrap font-sans text-sm text-[#ccc] leading-relaxed">
                   {activeStep === 2 && JSON.stringify(analysis.step2_job, null, 2)}
