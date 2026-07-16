@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Sparkles,
   FileText,
+  MessageSquare,
   type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -164,6 +165,9 @@ export function JobAnalysisPage() {
           </Button>
           <Button variant="subtle" className="w-full" onClick={() => navigate(`/generator/${job.id}`)}>
             <FileText size={14} aria-hidden /> Tailor Resume
+          </Button>
+          <Button variant="subtle" className="w-full" onClick={() => navigate(`/interviews?jobId=${encodeURIComponent(job.id)}`)}>
+            <MessageSquare size={14} aria-hidden /> Prepare for interview
           </Button>
           <Button variant="ghost" className="w-full" onClick={runAnalysis} disabled={running}>
             {running ? 'Analyzing…' : 'Re-run Analysis'}
