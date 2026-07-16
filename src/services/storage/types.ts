@@ -21,6 +21,7 @@ export const STORAGE_KEYS = {
   settings: 'careeros:settings',
   discovery: 'careeros:discovery',
   generated: 'careeros:generated',
+  interviewPrep: 'careeros:interview-prep',
 } as const
 
 export const STORAGE_KEY_PREFIX = 'careeros:'
