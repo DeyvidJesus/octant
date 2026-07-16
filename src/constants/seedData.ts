@@ -174,5 +174,6 @@ export function createSeedJobs(): JobOpportunity[] {
     tags: [job.category, job.exp],
     createdAt: nowIso(),
     archived: false,
+    source: 'manual',
   }))
 }

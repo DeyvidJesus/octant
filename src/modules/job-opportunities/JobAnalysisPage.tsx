@@ -7,6 +7,8 @@ import {
   Loader2,
   Star,
   AlertCircle,
+  Sparkles,
+  FileText,
   type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -20,13 +22,15 @@ import { nowIso } from '@/utils/dates'
 import { DetectedRequirements } from './components/DetectedRequirements'
 import { MatchReportView } from './components/MatchReportView'
 import { GapReport } from './components/GapReport'
+import { RecruiterRead } from './components/RecruiterRead'
 
-type SectionId = 'requirements' | 'match' | 'gaps'
+type SectionId = 'requirements' | 'match' | 'gaps' | 'recruiter'
 
 const SECTIONS: Array<{ id: SectionId; title: string; icon: LucideIcon }> = [
   { id: 'requirements', title: 'Detected Requirements', icon: FileSearch },
   { id: 'match', title: 'Match Report', icon: Star },
   { id: 'gaps', title: 'Gaps & Strengths', icon: AlertCircle },
+  { id: 'recruiter', title: 'Recruiter Read', icon: Sparkles },
 ]
 
 export function JobAnalysisPage() {
@@ -158,6 +162,9 @@ export function JobAnalysisPage() {
           <Button variant="accent" className="w-full" onClick={saveToTracker}>
             <CheckCircle2 size={14} aria-hidden /> Save to Tracker
           </Button>
+          <Button variant="subtle" className="w-full" onClick={() => navigate(`/generator/${job.id}`)}>
+            <FileText size={14} aria-hidden /> Tailor Resume
+          </Button>
           <Button variant="ghost" className="w-full" onClick={runAnalysis} disabled={running}>
             {running ? 'Analyzing…' : 'Re-run Analysis'}
           </Button>
@@ -172,6 +179,9 @@ export function JobAnalysisPage() {
           {activeSection === 'requirements' && <DetectedRequirements analysis={analysis} />}
           {activeSection === 'match' && <MatchReportView match={analysis.match} />}
           {activeSection === 'gaps' && <GapReport analysis={analysis} />}
+          {activeSection === 'recruiter' && (
+            <RecruiterRead job={job} resume={resume} analysis={analysis} />
+          )}
         </div>
       </div>
     </div>

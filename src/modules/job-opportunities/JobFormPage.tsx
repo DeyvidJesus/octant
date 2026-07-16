@@ -51,7 +51,7 @@ export function JobFormPage() {
       navigate(`/jobs/${existing.id}/analysis`)
     } else {
       const id = createId()
-      addJob({ id, ...patch, createdAt: nowIso(), archived: false })
+      addJob({ id, ...patch, createdAt: nowIso(), archived: false, source: 'manual' })
       navigate(`/jobs/${id}/analysis`)
     }
   }

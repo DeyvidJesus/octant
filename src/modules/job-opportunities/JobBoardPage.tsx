@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ScanSearch, Briefcase, ExternalLink, Plus, Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
+import { ScanSearch, Briefcase, ExternalLink, Plus, Pencil, Archive, ArchiveRestore, Trash2, Radar } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
 import { IconButton } from '@/components/ui/IconButton'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useJobsStore } from '@/stores/jobsStore'
+import { DiscoveryStalenessBanner } from '@/modules/job-discovery/components/DiscoveryStalenessBanner'
 
 export function JobBoardPage() {
   const jobs = useJobsStore((state) => state.jobs)
@@ -19,9 +21,14 @@ export function JobBoardPage() {
   const archivedCount = jobs.filter((job) => job.archived).length
 
   const addButton = (
-    <Button onClick={() => navigate('/jobs/new')}>
-      <Plus size={16} aria-hidden /> Add Opportunity
-    </Button>
+    <div className="flex items-center gap-2">
+      <Button variant="subtle" onClick={() => navigate('/jobs/discovery')}>
+        <Radar size={16} aria-hidden /> Import & Discover
+      </Button>
+      <Button onClick={() => navigate('/jobs/new')}>
+        <Plus size={16} aria-hidden /> Add Opportunity
+      </Button>
+    </div>
   )
 
   if (jobs.length === 0) {
@@ -42,6 +49,8 @@ export function JobBoardPage() {
         subtitle="Paste real job descriptions and analyze how you match against your Master Resume."
         actions={addButton}
       />
+
+      <DiscoveryStalenessBanner />
 
       {archivedCount > 0 && (
         <div className="mb-4">
@@ -93,9 +102,16 @@ export function JobBoardPage() {
                           </a>
                         )}
                       </div>
-                      <div className="text-xs text-muted mt-0.5">
-                        {job.role}
-                        {job.category ? ` • ${job.category}` : ''}
+                      <div className="text-xs text-muted mt-0.5 flex items-center gap-2">
+                        <span>
+                          {job.role}
+                          {job.category ? ` • ${job.category}` : ''}
+                        </span>
+                        {job.source !== 'manual' && (
+                          <Badge tone="indigo" className="py-0.5! text-[10px]">
+                            {job.source}
+                          </Badge>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">

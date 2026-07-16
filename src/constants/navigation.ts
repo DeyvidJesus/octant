@@ -24,7 +24,7 @@ export const NAV_ENTRIES: NavEntry[] = [
   { label: 'Master Resume', path: '/resume', icon: Database },
   { label: 'Opportunities', path: '/jobs', icon: Briefcase },
   { label: 'Applications', path: '/applications', icon: KanbanSquare },
-  { label: 'Resume Generator', path: '/generator', icon: FileText, planned: true },
+  { label: 'Resume Generator', path: '/generator', icon: FileText },
   { label: 'Interview Prep', path: '/interviews', icon: MessageSquare, planned: true },
   { label: 'Knowledge Base', path: '/knowledge', icon: BookOpen, planned: true },
   { label: 'Career Metrics', path: '/metrics', icon: BarChart3, planned: true },

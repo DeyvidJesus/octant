@@ -3,7 +3,7 @@ import { NavItem } from './NavItem'
 
 export function Sidebar() {
   return (
-    <aside className="w-64 border-r border-edge bg-base flex flex-col shrink-0">
+    <aside className="w-64 border-r border-edge bg-base flex flex-col shrink-0 print:hidden">
       <div className="p-6">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-8 h-8 rounded-md bg-white text-black flex items-center justify-center font-bold text-sm">

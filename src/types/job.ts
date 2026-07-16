@@ -1,5 +1,8 @@
 export type WorkMode = 'remote' | 'hybrid' | 'onsite' | 'unknown'
 
+/** How a job entered the board: hand-entered, imported from a pasted report, or found by a sweep. */
+export type JobSource = 'manual' | 'imported' | 'discovered'
+
 export interface JobOpportunity {
   id: string
   company: string
@@ -14,4 +17,5 @@ export interface JobOpportunity {
   tags: string[]
   createdAt: string
   archived: boolean
+  source: JobSource
 }

@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/Button'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { dexieStore } from '@/services/storage/dexieStore'
 import { exportBackup, importBackup, clearAllData } from '@/services/storage/backup'
+import { clearAllApiKeys } from '@/services/ai/vault'
+import { AiProviderSettings } from './components/AiProviderSettings'
+import { DiscoverySettings } from './components/DiscoverySettings'
 
 export function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -43,6 +46,8 @@ export function SettingsPage() {
       return
     }
     await clearAllData(dexieStore)
+    // Vault keys use a non-backup prefix, so clearAllData skips them — wipe explicitly.
+    await clearAllApiKeys()
     window.location.reload()
   }
 
@@ -54,6 +59,10 @@ export function SettingsPage() {
       />
 
       <div className="space-y-6">
+        <AiProviderSettings />
+
+        <DiscoverySettings />
+
         <Card>
           <h3 className="text-lg font-medium text-white mb-2">Backup & Restore</h3>
           <p className="text-sm text-muted mb-6">

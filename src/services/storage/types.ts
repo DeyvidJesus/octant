@@ -19,6 +19,8 @@ export const STORAGE_KEYS = {
   jobs: 'careeros:jobs',
   applications: 'careeros:applications',
   settings: 'careeros:settings',
+  discovery: 'careeros:discovery',
+  generated: 'careeros:generated',
 } as const
 
 export const STORAGE_KEY_PREFIX = 'careeros:'
