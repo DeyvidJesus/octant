@@ -27,6 +27,6 @@ export const NAV_ENTRIES: NavEntry[] = [
   { label: 'Resume Generator', path: '/generator', icon: FileText },
   { label: 'Interview Prep', path: '/interviews', icon: MessageSquare },
   { label: 'Knowledge Base', path: '/knowledge', icon: BookOpen, planned: true },
-  { label: 'Career Metrics', path: '/metrics', icon: BarChart3, planned: true },
+  { label: 'Career Metrics', path: '/metrics', icon: BarChart3 },
   { label: 'Settings', path: '/settings', icon: Settings },
 ]

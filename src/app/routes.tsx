@@ -9,7 +9,9 @@ import { JobDiscoveryPage } from '@/modules/job-discovery/JobDiscoveryPage'
 import { GeneratorPage } from '@/modules/resume-generator/GeneratorPage'
 import { GeneratorEditorPage } from '@/modules/resume-generator/GeneratorEditorPage'
 import { ApplicationsPage } from '@/modules/application-tracker/ApplicationsPage'
+import { ApplicationFormPage } from '@/modules/application-tracker/ApplicationFormPage'
 import { InterviewPrepPage } from '@/modules/interview-prep/InterviewPrepPage'
+import { MetricsPage } from '@/modules/metrics/MetricsPage'
 import { SettingsPage } from '@/modules/settings/SettingsPage'
 import { PlaceholderPage } from '@/modules/PlaceholderPage'
 
@@ -25,6 +27,8 @@ export function AppRoutes() {
         <Route path="/jobs/:jobId/edit" element={<JobFormPage />} />
         <Route path="/jobs/:jobId/analysis" element={<JobAnalysisPage />} />
         <Route path="/applications" element={<ApplicationsPage />} />
+        <Route path="/applications/new" element={<ApplicationFormPage />} />
+        <Route path="/applications/:applicationId/edit" element={<ApplicationFormPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/generator" element={<GeneratorPage />} />
         <Route path="/generator/:jobId" element={<GeneratorEditorPage />} />
@@ -38,15 +42,7 @@ export function AppRoutes() {
             />
           }
         />
-        <Route
-          path="/metrics"
-          element={
-            <PlaceholderPage
-              title="Career Metrics"
-              description="Funnel metrics, response rates, and match score trends. Coming in a future increment."
-            />
-          }
-        />
+        <Route path="/metrics" element={<MetricsPage />} />
         <Route
           path="*"
           element={<PlaceholderPage title="Not found" description="This page does not exist." />}

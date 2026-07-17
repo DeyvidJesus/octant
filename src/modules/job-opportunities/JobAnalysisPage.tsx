@@ -87,6 +87,7 @@ export function JobAnalysisPage() {
   }
 
   const saveToTracker = () => {
+    const createdAt = nowIso()
     upsertApplication({
       id: createId(),
       jobId: job.id,
@@ -96,11 +97,12 @@ export function JobAnalysisPage() {
       location: job.location,
       workMode: job.workMode,
       stage: 'saved',
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
+      createdAt,
+      updatedAt: createdAt,
       links: job.url ? [{ label: 'Job posting', url: job.url }] : [],
       notes: '',
       matchScore: analysis?.match.atsScore,
+      events: [{ id: createId(), at: createdAt, kind: 'created' }],
     })
     navigate('/applications')
   }

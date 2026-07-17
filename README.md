@@ -107,8 +107,11 @@ npm run lint     # oxlint
 4. ✅ AI provider layer (provider-agnostic adapters, guardrails, key vault, Recruiter Read) +
    Job Discovery (paste/sweep/Deep Research → review queue) + Resume Generator (deterministic
    tailoring with live coverage meter, print/PDF + markdown export)
-5. Application Tracker (rich fields, stages, follow-ups)
-6. Career Metrics + Dashboard v2
+5. ✅ Application Tracker (board + table views, drag-to-move stages, rich fields — contacts,
+   comp/logistics, follow-ups with overdue surfacing, and a per-application activity timeline)
+6. ✅ Career Metrics + Dashboard v2 (funnel & conversion, response/offer/ghost rates, stage
+   velocity, activity + match-score trends — Recharts on the dark theme; dashboard shows a
+   pipeline + activity preview)
 7. ✅ Interview Preparation (deterministic technical/behavioral/system-design questions with
    model answers, persisted per-question progress + readiness dashboard, and a grounded AI
    practice coach) — pulled ahead of #5/#6

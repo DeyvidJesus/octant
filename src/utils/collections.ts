@@ -17,3 +17,13 @@ export function move<T>(items: T[], index: number, delta: number): T[] {
   next.splice(target, 0, item)
   return next
 }
+
+/** Groups items by a string key derived from each item, preserving order. */
+export function groupBy<T, K extends string>(items: T[], keyOf: (item: T) => K): Record<K, T[]> {
+  const groups = {} as Record<K, T[]>
+  for (const item of items) {
+    const key = keyOf(item)
+    ;(groups[key] ??= []).push(item)
+  }
+  return groups
+}
