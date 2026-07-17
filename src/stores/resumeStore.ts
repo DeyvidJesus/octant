@@ -14,6 +14,8 @@ interface ResumeState {
   /** Runtime-only compatibility query view; never written to storage. */
   resume: MasterResume
   updateKnowledgeBase: (knowledgeBase: CareerKnowledgeBase) => void
+  /** Patches specific knowledge-base collections (used by the Knowledge Base editor). */
+  patchKnowledgeBase: (patch: Partial<CareerKnowledgeBase>) => void
   /** @deprecated Compatibility bridge for the existing editor. */
   updateResume: (patch: Partial<MasterResume>) => void
 }
@@ -33,6 +35,11 @@ export const useResumeStore = create<ResumeState>()(
           const knowledgeBase = withTimestamp(next)
           set({ knowledgeBase, resume: projectKnowledgeBase(knowledgeBase) })
         },
+        patchKnowledgeBase: (patch) =>
+          set((state) => {
+            const knowledgeBase = withTimestamp({ ...state.knowledgeBase, ...patch })
+            return { knowledgeBase, resume: projectKnowledgeBase(knowledgeBase) }
+          }),
         updateResume: (patch) => set((state) => {
           const projected = { ...state.resume, ...patch, updatedAt: nowIso() }
           const migrated = migrateV2ToV3(projected)

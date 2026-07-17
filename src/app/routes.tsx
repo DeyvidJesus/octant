@@ -12,6 +12,7 @@ import { ApplicationsPage } from '@/modules/application-tracker/ApplicationsPage
 import { ApplicationFormPage } from '@/modules/application-tracker/ApplicationFormPage'
 import { InterviewPrepPage } from '@/modules/interview-prep/InterviewPrepPage'
 import { MetricsPage } from '@/modules/metrics/MetricsPage'
+import { KnowledgeBasePage } from '@/modules/knowledge-base/KnowledgeBasePage'
 import { SettingsPage } from '@/modules/settings/SettingsPage'
 import { PlaceholderPage } from '@/modules/PlaceholderPage'
 
@@ -33,15 +34,7 @@ export function AppRoutes() {
         <Route path="/generator" element={<GeneratorPage />} />
         <Route path="/generator/:jobId" element={<GeneratorEditorPage />} />
         <Route path="/interviews" element={<InterviewPrepPage />} />
-        <Route
-          path="/knowledge"
-          element={
-            <PlaceholderPage
-              title="Knowledge Base"
-              description="Your personal, searchable engineering wiki. Coming in a future increment."
-            />
-          }
-        />
+        <Route path="/knowledge" element={<KnowledgeBasePage />} />
         <Route path="/metrics" element={<MetricsPage />} />
         <Route
           path="*"
