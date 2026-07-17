@@ -1,4 +1,4 @@
-import type { Metric } from '@/types/resume'
+import type { FactStatus, Metric } from '@/types/resume'
 import { Badge } from '@/components/ui/Badge'
 import { Field } from '@/components/ui/Field'
 import { Input } from '@/components/ui/Input'
@@ -24,9 +24,10 @@ interface MetricsSectionProps {
   metrics: Metric[]
   onChange: (next: Metric[]) => void
   query: string
+  statusFilter: 'all' | FactStatus
 }
 
-export function MetricsSection({ metrics, onChange, query }: MetricsSectionProps) {
+export function MetricsSection({ metrics, onChange, query, statusFilter }: MetricsSectionProps) {
   return (
     <KnowledgeList
       items={metrics}
@@ -34,7 +35,10 @@ export function MetricsSection({ metrics, onChange, query }: MetricsSectionProps
       create={emptyMetric}
       addLabel="Add metric"
       emptyHint="No metrics yet. Capture quantified outcomes (e.g. 'cut p95 latency 40%') to strengthen resume bullets."
-      isVisible={(m) => metricText(m).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())}
+      isVisible={(m) => {
+        if (statusFilter !== 'all' && m.status !== statusFilter) return false
+        return metricText(m).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())
+      }}
       itemTitle={(m) => (
         <span className="flex items-center gap-2">
           <Badge tone={FACT_STATUS_TONES[m.status]}>{FACT_STATUS_LABELS[m.status]}</Badge>

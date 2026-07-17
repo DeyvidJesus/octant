@@ -2,6 +2,7 @@ import type {
   CareerFact,
   CareerKnowledgeBase,
   KnowledgeLearningEntry,
+  KnowledgeStory,
   Metric,
   TechnicalDecision,
   UnclassifiedFact,
@@ -53,12 +54,17 @@ export function unclassifiedText(item: UnclassifiedFact): string {
   return [item.rawText, item.source, item.reason].join(' ')
 }
 
+export function storyText(story: KnowledgeStory): string {
+  return [story.title, ...story.competencies, ...story.tags].join(' ')
+}
+
 export interface KnowledgeStats {
   facts: number
   needsReview: number
   decisions: number
   metrics: number
   learning: number
+  stories: number
   inbox: number
 }
 
@@ -70,6 +76,7 @@ export function knowledgeStats(kb: CareerKnowledgeBase): KnowledgeStats {
     decisions: kb.technicalDecisions.length,
     metrics: kb.metrics.length,
     learning: kb.learning.length,
+    stories: kb.stories.length,
     inbox: kb.unclassifiedFacts.length,
   }
 }

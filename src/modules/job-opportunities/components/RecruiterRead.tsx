@@ -19,14 +19,7 @@ interface RecruiterReadProps {
 }
 
 export function RecruiterRead({ job, resume, analysis }: RecruiterReadProps) {
-  const ai = useSettingsStore((state) => state.ai)
-  const apiKeys = useSettingsStore((state) => state.apiKeys)
-
-  useEffect(() => {
-    void useSettingsStore.getState().hydrateKeys()
-  }, [])
-
-  const config = useMemo(() => resolveAiRunConfig(ai, apiKeys), [ai, apiKeys])
+  const config = useMemo(() => resolveAiRunConfig(), [])
 
   const [result, setResult] = useState<ExplainMatchResult | null>(null)
   const [loading, setLoading] = useState(false)

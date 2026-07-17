@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { filterByQuery, knowledgeStats, matchesQuery } from './search'
-import type { CareerFact, CareerKnowledgeBase } from '@/types/resume'
+import { filterByQuery, knowledgeStats, matchesQuery, storyText } from './search'
+import type { CareerFact, CareerKnowledgeBase, KnowledgeStory } from '@/types/resume'
 
 describe('matchesQuery', () => {
   it('matches when every token is present, case-insensitively', () => {
@@ -34,6 +34,21 @@ const fact = (status: CareerFact['status']): CareerFact => ({
   provenance: { source: 'test', excerpt: 's' },
 })
 
+const story = (): KnowledgeStory => ({
+  id: 'story-1',
+  title: 'Led database migration',
+  situationFactIds: [],
+  taskFactIds: [],
+  actionFactIds: [],
+  resultFactIds: [],
+  skillIds: [],
+  competencies: ['leadership', 'architecture'],
+  roleIds: [],
+  tags: ['migration', 'postgres'],
+  status: 'confirmed',
+  provenance: { source: 'test', excerpt: '' },
+})
+
 const kb = (overrides: Partial<CareerKnowledgeBase> = {}): CareerKnowledgeBase => ({
   schemaVersion: 3,
   profile: {
@@ -61,16 +76,27 @@ const kb = (overrides: Partial<CareerKnowledgeBase> = {}): CareerKnowledgeBase =
   ...overrides,
 })
 
+describe('storyText', () => {
+  it('joins title, competencies, and tags for search', () => {
+    const text = storyText(story())
+    expect(text).toContain('Led database migration')
+    expect(text).toContain('leadership')
+    expect(text).toContain('postgres')
+  })
+})
+
 describe('knowledgeStats', () => {
   it('counts collections and non-confirmed facts as needs-review', () => {
     const stats = knowledgeStats(
       kb({
         facts: [fact('confirmed'), fact('needs_review'), fact('todo')],
+        stories: [story()],
         unclassifiedFacts: [{ id: 'u1', rawText: 'note', source: 'test', reason: 'x', status: 'needs_review' }],
       }),
     )
     expect(stats.facts).toBe(3)
     expect(stats.needsReview).toBe(2) // needs_review + todo
+    expect(stats.stories).toBe(1)
     expect(stats.inbox).toBe(1)
     expect(stats.decisions).toBe(0)
   })

@@ -1,4 +1,4 @@
-import type { CareerFact, FactType } from '@/types/resume'
+import type { CareerFact, FactStatus, FactType } from '@/types/resume'
 import { Badge } from '@/components/ui/Badge'
 import { Field } from '@/components/ui/Field'
 import { Textarea } from '@/components/ui/Input'
@@ -14,9 +14,10 @@ interface FactsSectionProps {
   facts: CareerFact[]
   onChange: (next: CareerFact[]) => void
   query: string
+  statusFilter: 'all' | FactStatus
 }
 
-export function FactsSection({ facts, onChange, query }: FactsSectionProps) {
+export function FactsSection({ facts, onChange, query, statusFilter }: FactsSectionProps) {
   return (
     <KnowledgeList
       items={facts}
@@ -24,11 +25,15 @@ export function FactsSection({ facts, onChange, query }: FactsSectionProps) {
       create={emptyFact}
       addLabel="Add fact"
       emptyHint="No facts yet. Facts are the atomic career claims that power resume tailoring and interview prep."
-      isVisible={(fact) => factText(fact).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())}
+      isVisible={(fact) => {
+        if (statusFilter !== 'all' && fact.status !== statusFilter) return false
+        return factText(fact).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())
+      }}
       itemTitle={(fact) => (
         <span className="flex items-center gap-2">
           <Badge tone={FACT_STATUS_TONES[fact.status]}>{FACT_STATUS_LABELS[fact.status]}</Badge>
           {FACT_TYPE_LABELS[fact.type]}
+          {fact.statement && <span className="text-muted truncate max-w-xs hidden sm:inline">— {fact.statement}</span>}
         </span>
       )}
       renderItem={(fact, update) => (

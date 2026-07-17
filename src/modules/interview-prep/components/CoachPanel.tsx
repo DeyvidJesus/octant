@@ -20,14 +20,7 @@ interface CoachPanelProps {
 }
 
 export function CoachPanel({ job, resume, question, resumeEvidence, missingSkills }: CoachPanelProps) {
-  const ai = useSettingsStore((state) => state.ai)
-  const apiKeys = useSettingsStore((state) => state.apiKeys)
-
-  useEffect(() => {
-    void useSettingsStore.getState().hydrateKeys()
-  }, [])
-
-  const config = useMemo(() => resolveAiRunConfig(ai, apiKeys), [ai, apiKeys])
+  const config = useMemo(() => resolveAiRunConfig(), [])
 
   const [answer, setAnswer] = useState('')
   const [result, setResult] = useState<InterviewCoachResult | null>(null)

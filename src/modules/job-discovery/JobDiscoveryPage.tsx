@@ -16,15 +16,9 @@ const SOURCES: Array<{ id: SourceId; title: string; hint: string; icon: LucideIc
 ]
 
 export function JobDiscoveryPage() {
-  const ai = useSettingsStore((state) => state.ai)
-  const apiKeys = useSettingsStore((state) => state.apiKeys)
   const [source, setSource] = useState<SourceId>('paste')
 
-  useEffect(() => {
-    void useSettingsStore.getState().hydrateKeys()
-  }, [])
-
-  const config = useMemo(() => resolveAiRunConfig(ai, apiKeys), [ai, apiKeys])
+  const config = useMemo(() => resolveAiRunConfig(), [])
 
   return (
     <div className="p-8 max-w-4xl mx-auto animate-fade-in pb-24">

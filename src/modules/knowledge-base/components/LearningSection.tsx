@@ -1,4 +1,4 @@
-import type { KnowledgeLearningEntry } from '@/types/resume'
+import type { FactStatus, KnowledgeLearningEntry } from '@/types/resume'
 import { Badge } from '@/components/ui/Badge'
 import { Field } from '@/components/ui/Field'
 import { Input, Textarea } from '@/components/ui/Input'
@@ -24,9 +24,10 @@ interface LearningSectionProps {
   learning: KnowledgeLearningEntry[]
   onChange: (next: KnowledgeLearningEntry[]) => void
   query: string
+  statusFilter: 'all' | FactStatus
 }
 
-export function LearningSection({ learning, onChange, query }: LearningSectionProps) {
+export function LearningSection({ learning, onChange, query, statusFilter }: LearningSectionProps) {
   return (
     <KnowledgeList
       items={learning}
@@ -34,7 +35,10 @@ export function LearningSection({ learning, onChange, query }: LearningSectionPr
       create={emptyLearning}
       addLabel="Add learning entry"
       emptyHint="No learning entries yet. Track courses, certifications, and study you want to surface on resumes."
-      isVisible={(l) => learningText(l).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())}
+      isVisible={(l) => {
+        if (statusFilter !== 'all' && l.status !== statusFilter) return false
+        return learningText(l).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())
+      }}
       itemTitle={(l) => (
         <span className="flex items-center gap-2">
           <Badge tone={FACT_STATUS_TONES[l.status]}>{FACT_STATUS_LABELS[l.status]}</Badge>

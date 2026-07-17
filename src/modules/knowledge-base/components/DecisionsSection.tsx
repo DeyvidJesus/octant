@@ -1,4 +1,4 @@
-import type { TechnicalDecision } from '@/types/resume'
+import type { FactStatus, TechnicalDecision } from '@/types/resume'
 import { Badge } from '@/components/ui/Badge'
 import { Field } from '@/components/ui/Field'
 import { Input, Textarea } from '@/components/ui/Input'
@@ -30,9 +30,10 @@ interface DecisionsSectionProps {
   decisions: TechnicalDecision[]
   onChange: (next: TechnicalDecision[]) => void
   query: string
+  statusFilter: 'all' | FactStatus
 }
 
-export function DecisionsSection({ decisions, onChange, query }: DecisionsSectionProps) {
+export function DecisionsSection({ decisions, onChange, query, statusFilter }: DecisionsSectionProps) {
   return (
     <KnowledgeList
       items={decisions}
@@ -40,7 +41,10 @@ export function DecisionsSection({ decisions, onChange, query }: DecisionsSectio
       create={emptyDecision}
       addLabel="Add decision"
       emptyHint="No technical decisions yet. Record architecture/tech choices as lightweight ADRs — context, options, tradeoffs, outcome."
-      isVisible={(d) => decisionText(d).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())}
+      isVisible={(d) => {
+        if (statusFilter !== 'all' && d.status !== statusFilter) return false
+        return decisionText(d).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())
+      }}
       itemTitle={(d) => (
         <span className="flex items-center gap-2">
           <Badge tone={FACT_STATUS_TONES[d.status]}>{FACT_STATUS_LABELS[d.status]}</Badge>

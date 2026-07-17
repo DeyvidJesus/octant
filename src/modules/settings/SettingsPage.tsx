@@ -6,7 +6,6 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { dexieStore } from '@/services/storage/dexieStore'
 import { exportBackup, importBackup, clearAllData } from '@/services/storage/backup'
 import { clearAllApiKeys } from '@/services/ai/vault'
-import { AiProviderSettings } from './components/AiProviderSettings'
 import { DiscoverySettings } from './components/DiscoverySettings'
 
 export function SettingsPage() {
@@ -59,8 +58,6 @@ export function SettingsPage() {
       />
 
       <div className="space-y-6">
-        <AiProviderSettings />
-
         <DiscoverySettings />
 
         <Card>
