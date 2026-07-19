@@ -1,10 +1,10 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import type { DiscoveredCandidate } from '@/types/discovery'
-import { appStorage } from '@/services/storage/zustandStorage'
-import { STORAGE_KEYS } from '@/services/storage/types'
 import { candidateKey } from '@/services/discovery/dedupe'
 import { nowIso } from '@/utils/dates'
+import { discoveryRepository, type DiscoveryMeta } from '@/repositories/DiscoveryRepository'
+import { UnauthenticatedError } from '@/repositories/errors'
+import { persist } from '@/repositories/persist'
 
 /**
  * Dismissed keys are remembered so a posting the user rejected doesn't
@@ -25,22 +25,41 @@ interface DiscoveryState {
   dismissCandidates: (ids: string[]) => void
   markSweepRan: () => void
   setPendingInteraction: (id: string | null) => void
+  _fetchFromSupabase: () => Promise<void>
 }
 
 export const useDiscoveryStore = create<DiscoveryState>()(
-  persist(
-    (set) => ({
+  (set, get) => {
+    /**
+     * Persists ONLY the small review metadata (dedupe keys + timestamps) to the `discoveries`
+     * blob. The candidate queue itself lives in the relational `discovered_jobs` table and is
+     * never re-uploaded wholesale — that was the multi-megabyte-per-swipe bug this phase removes.
+     */
+    const persistMeta = (context: string) => {
+      const { dismissedKeys, lastSweepAt, pendingInteractionId } = get()
+      const meta: DiscoveryMeta = { dismissedKeys, lastSweepAt, pendingInteractionId }
+      persist(() => discoveryRepository.saveMeta(meta), context)
+    }
+
+    return {
       candidates: [],
       dismissedKeys: [],
       lastSweepAt: null,
       pendingInteractionId: null,
 
-      addCandidates: (fresh) => set((state) => ({ candidates: [...fresh, ...state.candidates] })),
+      addCandidates: (fresh) => {
+        set((state) => ({ candidates: [...fresh, ...state.candidates] }))
+        // Each scraped candidate becomes its own pending row — targeted inserts, not a blob upload.
+        persist(() => discoveryRepository.insertCandidates(fresh), 'discovery.addCandidates')
+      },
 
-      removeCandidates: (ids) =>
-        set((state) => ({ candidates: state.candidates.filter((c) => !ids.includes(c.id)) })),
+      removeCandidates: (ids) => {
+        set((state) => ({ candidates: state.candidates.filter((c) => !ids.includes(c.id)) }))
+        // Approve path: flip just these rows to 'approved'.
+        persist(() => discoveryRepository.setStatus(ids, 'approved'), 'discovery.removeCandidates')
+      },
 
-      dismissCandidates: (ids) =>
+      dismissCandidates: (ids) => {
         set((state) => {
           const dismissed = state.candidates.filter((c) => ids.includes(c.id))
           const keys = [...state.dismissedKeys, ...dismissed.map((c) => candidateKey(c.company, c.role))]
@@ -48,16 +67,39 @@ export const useDiscoveryStore = create<DiscoveryState>()(
             candidates: state.candidates.filter((c) => !ids.includes(c.id)),
             dismissedKeys: keys.slice(-MAX_DISMISSED_KEYS),
           }
-        }),
+        })
+        // Reject path: flip just these rows to 'rejected', then persist the (small) dedupe-key list.
+        persist(() => discoveryRepository.setStatus(ids, 'rejected'), 'discovery.dismissCandidates')
+        persistMeta('discovery.dismissCandidates.meta')
+      },
 
-      markSweepRan: () => set({ lastSweepAt: nowIso() }),
+      markSweepRan: () => {
+        set({ lastSweepAt: nowIso() })
+        persistMeta('discovery.markSweepRan')
+      },
 
-      setPendingInteraction: (id) => set({ pendingInteractionId: id }),
-    }),
-    {
-      name: STORAGE_KEYS.discovery,
-      storage: appStorage,
-      version: 1,
-    },
-  ),
+      setPendingInteraction: (id) => {
+        set({ pendingInteractionId: id })
+        persistMeta('discovery.setPendingInteraction')
+      },
+
+      _fetchFromSupabase: async () => {
+        try {
+          const [candidates, meta] = await Promise.all([
+            discoveryRepository.getPendingCandidates(),
+            discoveryRepository.getMeta(),
+          ])
+          set({
+            candidates,
+            dismissedKeys: meta?.dismissedKeys ?? [],
+            lastSweepAt: meta?.lastSweepAt ?? null,
+            pendingInteractionId: meta?.pendingInteractionId ?? null,
+          })
+        } catch (error) {
+          if (error instanceof UnauthenticatedError) return
+          console.error('[discoveryStore] failed to load from Supabase', error)
+        }
+      },
+    }
+  },
 )

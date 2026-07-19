@@ -1,6 +1,5 @@
 import {
   LayoutDashboard,
-  Database,
   Briefcase,
   FileText,
   KanbanSquare,
@@ -21,12 +20,11 @@ export interface NavEntry {
 
 export const NAV_ENTRIES: NavEntry[] = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
-  { label: 'Master Resume', path: '/resume', icon: Database },
   { label: 'Opportunities', path: '/jobs', icon: Briefcase },
   { label: 'Applications', path: '/applications', icon: KanbanSquare },
   { label: 'Resume Generator', path: '/generator', icon: FileText },
   { label: 'Interview Prep', path: '/interviews', icon: MessageSquare },
-  { label: 'Knowledge Base', path: '/knowledge', icon: BookOpen, planned: true },
-  { label: 'Career Metrics', path: '/metrics', icon: BarChart3, planned: true },
+  { label: 'Knowledge Base', path: '/knowledge', icon: BookOpen },
+  { label: 'Career Metrics', path: '/metrics', icon: BarChart3 },
   { label: 'Settings', path: '/settings', icon: Settings },
 ]

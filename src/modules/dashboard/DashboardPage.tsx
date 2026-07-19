@@ -5,25 +5,26 @@ import { Card } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useApplicationsStore } from '@/stores/applicationsStore'
 import { useInterviewPrepStore } from '@/stores/interviewPrepStore'
-import type { InterviewQuestionCategory, TrackedQuestion } from '@/types/interviewPrep'
-import { INTERVIEW_STAGES } from '@/constants/applicationStages'
+import type { InterviewQuestionCategory, UserSkill } from '@/types/interviewPrep'
+import { MASTERY_THRESHOLD } from '@/services/interviewPrep/mastery'
+import { INTERVIEW_STAGES, TERMINAL_STAGES } from '@/constants/applicationStages'
+import { isDue } from '@/utils/dates'
+import { activityByWeek, funnel } from '@/services/metrics/computeMetrics'
+import { ChartCard } from '@/modules/metrics/components/ChartCard'
+import { FunnelChart } from '@/modules/metrics/components/FunnelChart'
+import { ActivityChart } from '@/modules/metrics/components/ActivityChart'
 import { StatCard } from './components/StatCard'
-
-const REVIEW_STATUSES = new Set(['need_review', 'review_tomorrow', 'review_next_week'])
 
 function formatPercent(value: number) {
   return `${Math.round(value)}%`
 }
 
-function getAverageConfidenceByCategory(
-  questions: TrackedQuestion[],
-  category: InterviewQuestionCategory,
-) {
-  const categoryQuestions = questions.filter((question) => question.category === category)
-  if (categoryQuestions.length === 0) return 0
+function getAverageMasteryByCategory(skills: UserSkill[], category: InterviewQuestionCategory) {
+  const categorySkills = skills.filter((skill) => skill.category === category)
+  if (categorySkills.length === 0) return 0
 
-  const totalConfidence = categoryQuestions.reduce((sum, question) => sum + question.confidence, 0)
-  return totalConfidence / categoryQuestions.length
+  const totalMastery = categorySkills.reduce((sum, skill) => sum + skill.mastery, 0)
+  return totalMastery / categorySkills.length
 }
 
 function InterviewPrepStatLink({ label, value, accent = false }: { label: string; value: number | string; accent?: boolean }) {
@@ -36,27 +37,46 @@ function InterviewPrepStatLink({ label, value, accent = false }: { label: string
 
 export function DashboardPage() {
   const applications = useApplicationsStore((state) => state.applications)
-  const tracked = useInterviewPrepStore((state) => state.tracked)
-  const interviewQuestions = useMemo(() => Object.values(tracked), [tracked])
+  const skills = useInterviewPrepStore((state) => state.skills)
+  const interviewSkills = useMemo(() => Object.values(skills), [skills])
 
   const appliedCount = applications.filter((app) => app.stage === 'applied').length
   const interviewingCount = applications.filter((app) => INTERVIEW_STAGES.includes(app.stage)).length
-  const trackedQuestionsCount = interviewQuestions.length
-  const masteredQuestionsCount = interviewQuestions.filter((question) => question.mastered || question.status === 'mastered').length
-  const overallReadiness = trackedQuestionsCount === 0 ? 0 : (masteredQuestionsCount / trackedQuestionsCount) * 100
-  const technicalReadiness = getAverageConfidenceByCategory(interviewQuestions, 'technical')
-  const behavioralReadiness = getAverageConfidenceByCategory(interviewQuestions, 'behavioral')
-  const architectureReadiness = getAverageConfidenceByCategory(interviewQuestions, 'architecture')
-  const weakTopicsCount = interviewQuestions.filter((question) => question.status && REVIEW_STATUSES.has(question.status)).length
+  const followUpsDue = applications.filter(
+    (app) => !TERMINAL_STAGES.includes(app.stage) && isDue(app.followUpAt),
+  ).length
+  const trackedSkillsCount = interviewSkills.length
+  const overallReadiness = trackedSkillsCount === 0
+    ? 0
+    : interviewSkills.reduce((sum, skill) => sum + skill.mastery, 0) / trackedSkillsCount
+  const technicalReadiness = getAverageMasteryByCategory(interviewSkills, 'technical')
+  const behavioralReadiness = getAverageMasteryByCategory(interviewSkills, 'behavioral')
+  const architectureReadiness = getAverageMasteryByCategory(interviewSkills, 'architecture')
+  // Skills practiced but not yet mastered — the ones to keep drilling.
+  const weakTopicsCount = interviewSkills.filter((skill) => skill.attempts > 0 && skill.mastery < MASTERY_THRESHOLD).length
+
+  const funnelSteps = useMemo(() => funnel(applications), [applications])
+  const activity = useMemo(() => activityByWeek(applications), [applications])
 
   return (
     <div className="p-8 max-w-6xl mx-auto animate-fade-in">
       <PageHeader title="Command Center" />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <StatCard label="Total Opportunities Tracked" value={applications.length} />
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        <Link
+          to="/applications"
+          className="block transition hover:-translate-y-0.5 hover:border-ghost/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ghost rounded-xl"
+        >
+          <StatCard label="Total Opportunities Tracked" value={applications.length} />
+        </Link>
         <StatCard label="Active Applications" value={appliedCount} />
         <StatCard label="Interview Pipeline" value={interviewingCount} accent />
+        <Link
+          to="/applications"
+          className="block transition hover:-translate-y-0.5 hover:border-ghost/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ghost rounded-xl"
+        >
+          <StatCard label="Follow-ups Due" value={followUpsDue} />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-8">
@@ -65,6 +85,29 @@ export function DashboardPage() {
         <InterviewPrepStatLink label="Behavioral Readiness" value={formatPercent(behavioralReadiness)} />
         <InterviewPrepStatLink label="Architecture Readiness" value={formatPercent(architectureReadiness)} />
         <InterviewPrepStatLink label="Weak Topics Needing Review" value={weakTopicsCount} />
+      </div>
+
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold text-white uppercase tracking-widest">Pipeline &amp; activity</h2>
+        <Link to="/metrics" className="text-sm text-muted hover:text-ink-2">
+          View all metrics →
+        </Link>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {applications.length > 0 ? (
+          <>
+            <ChartCard title="Pipeline funnel" subtitle="Applications reaching each stage.">
+              <FunnelChart steps={funnelSteps} />
+            </ChartCard>
+            <ChartCard title="Activity over time" subtitle="Applications added per week.">
+              <ActivityChart weeks={activity} />
+            </ChartCard>
+          </>
+        ) : (
+          <Card className="lg:col-span-2 text-sm text-muted">
+            Track applications to unlock pipeline and activity analytics.
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

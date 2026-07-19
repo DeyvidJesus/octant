@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, ShieldCheck, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { SectionLabel } from '@/components/ui/SectionLabel'
-import { useSettingsStore, resolveAiRunConfig } from '@/stores/settingsStore'
+import { resolveAiRunConfig } from '@/stores/settingsStore'
 import { getProviderDescriptor } from '@/services/ai/registry'
 import { explainMatch, type ExplainMatchResult } from '@/services/ai/tasks/explainMatch'
 import type { JobOpportunity } from '@/types/job'
@@ -19,14 +19,7 @@ interface RecruiterReadProps {
 }
 
 export function RecruiterRead({ job, resume, analysis }: RecruiterReadProps) {
-  const ai = useSettingsStore((state) => state.ai)
-  const apiKeys = useSettingsStore((state) => state.apiKeys)
-
-  useEffect(() => {
-    void useSettingsStore.getState().hydrateKeys()
-  }, [])
-
-  const config = useMemo(() => resolveAiRunConfig(ai, apiKeys), [ai, apiKeys])
+  const config = useMemo(() => resolveAiRunConfig(), [])
 
   const [result, setResult] = useState<ExplainMatchResult | null>(null)
   const [loading, setLoading] = useState(false)

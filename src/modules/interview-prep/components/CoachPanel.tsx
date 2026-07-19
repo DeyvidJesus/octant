@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, ShieldCheck, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { SectionLabel } from '@/components/ui/SectionLabel'
-import { useSettingsStore, resolveAiRunConfig } from '@/stores/settingsStore'
+import { resolveAiRunConfig } from '@/stores/settingsStore'
 import { getProviderDescriptor } from '@/services/ai/registry'
 import { interviewCoach, type InterviewCoachResult } from '@/services/ai/tasks/interviewCoach'
+import { useInterviewPrepStore } from '@/stores/interviewPrepStore'
+import { skillKeyFor } from '@/services/interviewPrep/mastery'
 import type { JobOpportunity } from '@/types/job'
 import type { MasterResume } from '@/types/resume'
 import type { PrepQuestion } from '@/types/interviewPrep'
@@ -20,19 +22,14 @@ interface CoachPanelProps {
 }
 
 export function CoachPanel({ job, resume, question, resumeEvidence, missingSkills }: CoachPanelProps) {
-  const ai = useSettingsStore((state) => state.ai)
-  const apiKeys = useSettingsStore((state) => state.apiKeys)
+  const config = useMemo(() => resolveAiRunConfig(), [])
 
-  useEffect(() => {
-    void useSettingsStore.getState().hydrateKeys()
-  }, [])
-
-  const config = useMemo(() => resolveAiRunConfig(ai, apiKeys), [ai, apiKeys])
-
+  const recordAnswer = useInterviewPrepStore((state) => state.recordAnswer)
   const [answer, setAnswer] = useState('')
   const [result, setResult] = useState<InterviewCoachResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [masteryNote, setMasteryNote] = useState<string | null>(null)
 
   if (!config) {
     return (
@@ -54,20 +51,30 @@ export function CoachPanel({ job, resume, question, resumeEvidence, missingSkill
     setLoading(true)
     setError(null)
     try {
-      setResult(
-        await interviewCoach(
-          {
-            job,
-            question: question.question,
-            userAnswer: answer,
-            expectedAnswer: question.expectedAnswer ?? '',
-            resume,
-            resumeEvidence,
-            missingSkills,
-          },
-          config,
-        ),
+      const coachResult = await interviewCoach(
+        {
+          job,
+          question: question.question,
+          userAnswer: answer,
+          expectedAnswer: question.expectedAnswer ?? '',
+          resume,
+          resumeEvidence,
+          missingSkills,
+        },
+        config,
       )
+      setResult(coachResult)
+      // Closed loop: persist the answer and blend its AI score into the skill's mastery.
+      const updated = await recordAnswer({
+        job: { id: job.id, company: job.company, role: job.role },
+        skill: skillKeyFor(question.topic, question.category),
+        category: question.category,
+        question: question.question,
+        answer,
+        score: coachResult.score,
+        feedback: coachResult,
+      })
+      if (updated) setMasteryNote(`${updated.skill} mastery is now ${updated.mastery}% (${updated.attempts} attempt${updated.attempts === 1 ? '' : 's'}).`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Coaching failed.')
     } finally {
@@ -102,6 +109,7 @@ export function CoachPanel({ job, resume, question, resumeEvidence, missingSkill
       )}
 
       {result && <CoachFeedback result={result} providerLabel={providerLabel} />}
+      {masteryNote && <p className="text-xs text-emerald-400">{masteryNote}</p>}
     </div>
   )
 }

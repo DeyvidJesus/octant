@@ -1,5 +1,6 @@
 import { AiError, type CompletionRequest, type CompletionResult } from '../types'
 import type { AiProviderId } from '@/types/ai'
+import { supabase } from '@/services/supabase/client'
 
 interface OpenAiCompatibleOptions {
   providerId: AiProviderId
@@ -8,10 +9,63 @@ interface OpenAiCompatibleOptions {
   extraHeaders?: Record<string, string>
 }
 
+/** Same-project Edge Function that holds vendor keys and makes hosted AI calls server-side. */
+const AI_PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/ai-proxy`
+
 /**
- * The `/chat/completions` shape shared by OpenAI, OpenRouter, and most local
- * servers (Ollama, LM Studio). System messages are supported natively, so no
- * message rewriting is needed here.
+ * Runs a hosted-provider completion through the Supabase Edge Function proxy (`ai-proxy`).
+ *
+ * The browser never holds or sends a vendor API key or vendor URL — it POSTs the normalized request
+ * with the user's Supabase JWT, and the Edge Function injects the key (from its own environment),
+ * calls the vendor, and returns a normalized `{ text, model }`. This is what fixes both API-key
+ * exposure and vendor CORS. Local (offline) models keep calling direct via `completeOpenAiCompatible`.
+ */
+export async function completeViaProxy(
+  request: CompletionRequest,
+  providerId: AiProviderId,
+): Promise<CompletionResult> {
+  if (request.webSearch) {
+    // Fail fast, before any network — these providers can't ground on live search.
+    throw new AiError(`${providerId}: web search grounding is not supported by this provider.`)
+  }
+
+  // getSession() reads the session from local storage — no network round-trip (see Phase 3).
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) throw new AiError('You must be signed in to use AI features.')
+
+  const data = await postJson(
+    AI_PROXY_URL,
+    { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    {
+      providerId,
+      model: request.model,
+      messages: request.messages,
+      temperature: request.temperature,
+      maxTokens: request.maxTokens,
+      webSearch: request.webSearch,
+    },
+    request.signal,
+    providerId,
+  )
+
+  const text = data?.text
+  if (typeof text !== 'string' || text.length === 0) {
+    throw new AiError(`${providerId}: the AI proxy returned no text content.`)
+  }
+
+  return {
+    text,
+    model: typeof data?.model === 'string' ? data.model : request.model,
+    providerId,
+  }
+}
+
+/**
+ * Direct `/chat/completions` call for LOCAL, offline servers (Ollama, LM Studio) — those run on the
+ * user's machine, carry no key, and a cloud Edge Function cannot reach them. Hosted providers
+ * (OpenAI, OpenRouter) go through `completeViaProxy` instead so their keys stay server-side.
+ * System messages are supported natively, so no message rewriting is needed here.
  */
 export async function completeOpenAiCompatible(
   request: CompletionRequest,

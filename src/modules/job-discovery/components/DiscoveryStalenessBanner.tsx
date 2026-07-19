@@ -14,12 +14,10 @@ const DAY_MS = 24 * 60 * 60 * 1000
  */
 export function DiscoveryStalenessBanner() {
   const staleReminder = useSettingsStore((state) => state.discovery.staleReminder)
-  const ai = useSettingsStore((state) => state.ai)
-  const apiKeys = useSettingsStore((state) => state.apiKeys)
   const lastSweepAt = useDiscoveryStore((state) => state.lastSweepAt)
 
   if (!staleReminder) return null
-  const config = resolveAiRunConfig(ai, apiKeys)
+  const config = resolveAiRunConfig()
   if (!config || !providerSupportsWebSearch(config.providerId)) return null
 
   const stale = lastSweepAt === null || Date.now() - new Date(lastSweepAt).getTime() > DAY_MS

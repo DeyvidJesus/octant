@@ -1,36 +1,58 @@
-import { Card } from '@/components/ui/Card'
-import { SectionLabel } from '@/components/ui/SectionLabel'
+import { useNavigate } from 'react-router-dom'
+import { CalendarClock, Star } from 'lucide-react'
 import type { Application } from '@/types/application'
-import { APPLICATION_STAGE_LABELS } from '@/constants/applicationStages'
+import { formatRelative, isOverdue } from '@/utils/dates'
+import { StagePill } from './StagePill'
 
-export function ApplicationCard({ application }: { application: Application }) {
+interface ApplicationCardProps {
+  application: Application
+  /** When true, renders a compact, draggable board card; otherwise a wider row. */
+  compact?: boolean
+  onDragStart?: (event: React.DragEvent) => void
+}
+
+export function ApplicationCard({ application, compact = false, onDragStart }: ApplicationCardProps) {
+  const navigate = useNavigate()
+  const open = () => navigate(`/applications/${application.id}/edit`)
+  const overdue = isOverdue(application.followUpAt)
+
   return (
-    <Card className="flex items-center justify-between p-4 bg-[#0d0d0d] hover:bg-surface transition">
-      <div className="flex items-center gap-6">
-        <div className="w-12 h-12 rounded-lg bg-surface-2 border border-edge-2 flex items-center justify-center shrink-0">
-          <span className="text-lg font-bold text-white" aria-hidden>
-            {application.company.charAt(0)}
-          </span>
+    <div
+      draggable={compact}
+      onDragStart={onDragStart}
+      onClick={open}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), open())}
+      role="button"
+      tabIndex={0}
+      className={`bg-[#0d0d0d] border border-edge rounded-xl hover:bg-surface transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ghost ${
+        compact ? 'p-3' : 'p-4'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            {application.priority && <Star size={13} className="text-amber-400 shrink-0" aria-label="Priority" />}
+            <h3 className="text-white font-medium truncate">{application.company}</h3>
+          </div>
+          <p className="text-muted text-sm truncate">{application.role}</p>
         </div>
-        <div>
-          <h3 className="text-white font-medium">{application.company}</h3>
-          <p className="text-muted text-sm">{application.role}</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-8">
         {application.matchScore !== undefined && (
-          <div className="text-right hidden md:block">
-            <SectionLabel className="mb-1 normal-case">Match</SectionLabel>
-            <div className="text-white font-medium">{application.matchScore}%</div>
-          </div>
+          <span className="text-xs text-faint shrink-0">Match {application.matchScore}%</span>
         )}
-        <div className="text-right">
-          <SectionLabel className="mb-1 normal-case">Status</SectionLabel>
-          <div className="px-3 py-1 bg-surface-2 text-ink-2 text-xs rounded-full border border-edge-2">
-            {APPLICATION_STAGE_LABELS[application.stage]}
-          </div>
-        </div>
       </div>
-    </Card>
+
+      <div className="flex items-center justify-between gap-2 mt-3">
+        <StagePill stage={application.stage} />
+        {application.followUpAt && (
+          <span
+            className={`inline-flex items-center gap-1 text-xs ${overdue ? 'text-red-400' : 'text-faint'}`}
+            title="Next follow-up"
+          >
+            <CalendarClock size={12} aria-hidden />
+            {formatRelative(application.followUpAt)}
+          </span>
+        )}
+      </div>
+    </div>
   )
 }

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ClipboardPaste, FlaskConical, Radar, type LucideIcon } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { useSettingsStore, resolveAiRunConfig } from '@/stores/settingsStore'
+import { resolveAiRunConfig } from '@/stores/settingsStore'
 import { PasteImportPanel } from './components/PasteImportPanel'
 import { SweepPanel } from './components/SweepPanel'
 import { DeepResearchPanel } from './components/DeepResearchPanel'
@@ -16,15 +16,9 @@ const SOURCES: Array<{ id: SourceId; title: string; hint: string; icon: LucideIc
 ]
 
 export function JobDiscoveryPage() {
-  const ai = useSettingsStore((state) => state.ai)
-  const apiKeys = useSettingsStore((state) => state.apiKeys)
   const [source, setSource] = useState<SourceId>('paste')
 
-  useEffect(() => {
-    void useSettingsStore.getState().hydrateKeys()
-  }, [])
-
-  const config = useMemo(() => resolveAiRunConfig(ai, apiKeys), [ai, apiKeys])
+  const config = useMemo(() => resolveAiRunConfig(), [])
 
   return (
     <div className="p-8 max-w-4xl mx-auto animate-fade-in pb-24">

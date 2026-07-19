@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { CheckCircle2, ChevronDown, ChevronRight, Flag } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
 import { useInterviewPrepStore } from '@/stores/interviewPrepStore'
+import { MASTERY_THRESHOLD, skillKeyFor } from '@/services/interviewPrep/mastery'
 import type { JobOpportunity } from '@/types/job'
 import type { MasterResume } from '@/types/resume'
 import type { PrepPriority, PrepQuestion } from '@/types/interviewPrep'
@@ -16,8 +16,6 @@ interface QuestionCardProps {
   missingSkills: string[]
 }
 
-const CONFIDENCE_STEPS = [0, 25, 50, 75, 100]
-
 const PRIORITY_LABEL: Record<PrepPriority, string> = {
   'required-missing': 'Gap — required',
   'required-matched': 'Required',
@@ -26,17 +24,13 @@ const PRIORITY_LABEL: Record<PrepPriority, string> = {
 }
 
 export function QuestionCard({ question, job, resume, resumeEvidence, missingSkills }: QuestionCardProps) {
-  const tracked = useInterviewPrepStore((state) => state.tracked[question.id])
-  const rate = useInterviewPrepStore((state) => state.rate)
-  const setStatus = useInterviewPrepStore((state) => state.setStatus)
-  const toggleMastered = useInterviewPrepStore((state) => state.toggleMastered)
+  const skill = skillKeyFor(question.topic, question.category)
+  const mastery = useInterviewPrepStore((state) => state.skills[skill]?.mastery)
+  const mastered = (mastery ?? 0) >= MASTERY_THRESHOLD
 
   const [showDetails, setShowDetails] = useState(false)
   const [showCoach, setShowCoach] = useState(false)
 
-  const confidence = tracked?.confidence ?? 0
-  const mastered = tracked?.mastered ?? false
-  const needsReview = tracked?.status === 'need_review'
   const hasDetails =
     Boolean(question.expectedAnswer) ||
     (question.commonMistakes?.length ?? 0) > 0 ||
@@ -53,6 +47,9 @@ export function QuestionCard({ question, job, resume, resumeEvidence, missingSki
         {question.topic && <Badge tone="indigo">{question.topic}</Badge>}
         <Badge>{question.difficulty}</Badge>
         {question.priority !== 'resume-core' && <Badge tone="default">{PRIORITY_LABEL[question.priority]}</Badge>}
+        <Badge tone={mastered ? 'emerald' : 'default'}>
+          {mastery === undefined ? 'Not attempted' : `Mastery ${mastery}%`}
+        </Badge>
       </div>
 
       {hasDetails && (
@@ -85,45 +82,11 @@ export function QuestionCard({ question, job, resume, resumeEvidence, missingSki
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3 pt-1">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-faint">Confidence</span>
-          <div className="flex gap-1">
-            {CONFIDENCE_STEPS.map((step) => (
-              <button
-                key={step}
-                type="button"
-                onClick={() => rate(question, step)}
-                aria-pressed={confidence === step}
-                className={`px-2 py-1 rounded text-xs border transition-colors ${
-                  confidence === step
-                    ? 'border-white bg-white text-black font-medium'
-                    : 'border-edge-2 text-muted hover:text-ink-2'
-                }`}
-              >
-                {step}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <Button
-          variant={needsReview ? 'accent' : 'ghost'}
-          onClick={() => setStatus(question, needsReview ? 'in_progress' : 'need_review')}
-        >
-          <Flag size={14} aria-hidden />
-          {needsReview ? 'Marked for review' : 'Needs review'}
-        </Button>
-
-        <Button variant={mastered ? 'accent' : 'subtle'} onClick={() => toggleMastered(question)}>
-          <CheckCircle2 size={14} aria-hidden />
-          {mastered ? 'Mastered' : 'Mark mastered'}
-        </Button>
-
+      <div className="pt-1">
         <button
           type="button"
           onClick={() => setShowCoach((value) => !value)}
-          className="ml-auto text-xs text-muted hover:text-ink-2"
+          className="text-xs text-muted hover:text-ink-2"
         >
           {showCoach ? 'Hide practice' : 'Practice with AI coach'}
         </button>
