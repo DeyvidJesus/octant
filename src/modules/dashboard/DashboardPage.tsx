@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useApplicationsStore } from '@/stores/applicationsStore'
 import { useInterviewPrepStore } from '@/stores/interviewPrepStore'
-import type { InterviewQuestionCategory, TrackedQuestion } from '@/types/interviewPrep'
+import type { InterviewQuestionCategory, UserSkill } from '@/types/interviewPrep'
+import { MASTERY_THRESHOLD } from '@/services/interviewPrep/mastery'
 import { INTERVIEW_STAGES, TERMINAL_STAGES } from '@/constants/applicationStages'
 import { isDue } from '@/utils/dates'
 import { activityByWeek, funnel } from '@/services/metrics/computeMetrics'
@@ -14,21 +15,16 @@ import { FunnelChart } from '@/modules/metrics/components/FunnelChart'
 import { ActivityChart } from '@/modules/metrics/components/ActivityChart'
 import { StatCard } from './components/StatCard'
 
-const REVIEW_STATUSES = new Set(['need_review', 'review_tomorrow', 'review_next_week'])
-
 function formatPercent(value: number) {
   return `${Math.round(value)}%`
 }
 
-function getAverageConfidenceByCategory(
-  questions: TrackedQuestion[],
-  category: InterviewQuestionCategory,
-) {
-  const categoryQuestions = questions.filter((question) => question.category === category)
-  if (categoryQuestions.length === 0) return 0
+function getAverageMasteryByCategory(skills: UserSkill[], category: InterviewQuestionCategory) {
+  const categorySkills = skills.filter((skill) => skill.category === category)
+  if (categorySkills.length === 0) return 0
 
-  const totalConfidence = categoryQuestions.reduce((sum, question) => sum + question.confidence, 0)
-  return totalConfidence / categoryQuestions.length
+  const totalMastery = categorySkills.reduce((sum, skill) => sum + skill.mastery, 0)
+  return totalMastery / categorySkills.length
 }
 
 function InterviewPrepStatLink({ label, value, accent = false }: { label: string; value: number | string; accent?: boolean }) {
@@ -41,21 +37,23 @@ function InterviewPrepStatLink({ label, value, accent = false }: { label: string
 
 export function DashboardPage() {
   const applications = useApplicationsStore((state) => state.applications)
-  const tracked = useInterviewPrepStore((state) => state.tracked)
-  const interviewQuestions = useMemo(() => Object.values(tracked), [tracked])
+  const skills = useInterviewPrepStore((state) => state.skills)
+  const interviewSkills = useMemo(() => Object.values(skills), [skills])
 
   const appliedCount = applications.filter((app) => app.stage === 'applied').length
   const interviewingCount = applications.filter((app) => INTERVIEW_STAGES.includes(app.stage)).length
   const followUpsDue = applications.filter(
     (app) => !TERMINAL_STAGES.includes(app.stage) && isDue(app.followUpAt),
   ).length
-  const trackedQuestionsCount = interviewQuestions.length
-  const masteredQuestionsCount = interviewQuestions.filter((question) => question.mastered || question.status === 'mastered').length
-  const overallReadiness = trackedQuestionsCount === 0 ? 0 : (masteredQuestionsCount / trackedQuestionsCount) * 100
-  const technicalReadiness = getAverageConfidenceByCategory(interviewQuestions, 'technical')
-  const behavioralReadiness = getAverageConfidenceByCategory(interviewQuestions, 'behavioral')
-  const architectureReadiness = getAverageConfidenceByCategory(interviewQuestions, 'architecture')
-  const weakTopicsCount = interviewQuestions.filter((question) => question.status && REVIEW_STATUSES.has(question.status)).length
+  const trackedSkillsCount = interviewSkills.length
+  const overallReadiness = trackedSkillsCount === 0
+    ? 0
+    : interviewSkills.reduce((sum, skill) => sum + skill.mastery, 0) / trackedSkillsCount
+  const technicalReadiness = getAverageMasteryByCategory(interviewSkills, 'technical')
+  const behavioralReadiness = getAverageMasteryByCategory(interviewSkills, 'behavioral')
+  const architectureReadiness = getAverageMasteryByCategory(interviewSkills, 'architecture')
+  // Skills practiced but not yet mastered — the ones to keep drilling.
+  const weakTopicsCount = interviewSkills.filter((skill) => skill.attempts > 0 && skill.mastery < MASTERY_THRESHOLD).length
 
   const funnelSteps = useMemo(() => funnel(applications), [applications])
   const activity = useMemo(() => activityByWeek(applications), [applications])

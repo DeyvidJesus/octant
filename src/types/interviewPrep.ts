@@ -78,3 +78,15 @@ export interface TrackedQuestion {
   notes?: string
   lastReviewedAt?: string
 }
+
+/**
+ * Per-skill mastery, driven by AI answer scores (Phase 10) rather than manual self-rating. One row
+ * per (user, skill) in `user_skills`; `mastery` is a running 0-100 blend of scored answers.
+ */
+export interface UserSkill {
+  skill: string
+  category: InterviewQuestionCategory
+  mastery: number
+  attempts: number
+  lastScoredAt?: string
+}

@@ -1,14 +1,11 @@
 import type { LLMProvider } from '../types'
-import { completeOpenAiCompatible } from './openAiCompatible'
+import { completeViaProxy } from './openAiCompatible'
 
-const ENDPOINT = 'https://api.openai.com/v1/chat/completions'
-
+/**
+ * OpenAI ChatGPT. The vendor URL and API key live server-side in the `ai-proxy` Edge Function;
+ * the browser forwards the normalized request with the user's Supabase JWT.
+ */
 export const openaiProvider: LLMProvider = {
   id: 'openai',
-  complete: (request) =>
-    completeOpenAiCompatible(request, {
-      providerId: 'openai',
-      endpoint: ENDPOINT,
-      requiresApiKey: true,
-    }),
+  complete: (request) => completeViaProxy(request, 'openai'),
 }

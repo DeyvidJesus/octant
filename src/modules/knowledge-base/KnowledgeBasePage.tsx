@@ -13,9 +13,24 @@ import { TriageSection } from './components/TriageSection'
 import { MetricsSection } from './components/MetricsSection'
 import { LearningSection } from './components/LearningSection'
 import { StoriesSection } from './components/StoriesSection'
+import { ProfileSection } from './components/ProfileSection'
+import { ExperienceSection } from './components/ExperienceSection'
+import { ProjectsSection } from './components/ProjectsSection'
+import { SkillsSection } from './components/SkillsSection'
+import { CredentialsSection } from './components/CredentialsSection'
+import { PortfolioSection } from './components/PortfolioSection'
+import { PublicationsSection } from './components/PublicationsSection'
 
-type SectionKey = 'facts' | 'decisions' | 'stories' | 'triage' | 'metrics' | 'learning'
+type SectionKey =
+  | 'profile' | 'experience' | 'projects' | 'skills'
+  | 'facts' | 'decisions' | 'stories' | 'metrics' | 'learning'
+  | 'credentials' | 'portfolio' | 'publications' | 'triage'
 type StatusFilter = 'all' | FactStatus
+
+/** Sections whose entities carry a FactStatus field (and therefore honor the status filter). */
+const STATUS_SECTIONS = new Set<SectionKey>([
+  'facts', 'decisions', 'stories', 'metrics', 'learning', 'credentials', 'portfolio', 'publications',
+])
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -33,17 +48,23 @@ export function KnowledgeBasePage() {
 
   const stats = useMemo(() => knowledgeStats(knowledgeBase), [knowledgeBase])
 
-  const tabs: { key: SectionKey; label: string; count: number }[] = [
+  const tabs: { key: SectionKey; label: string; count?: number }[] = [
+    { key: 'profile', label: 'Profile' },
+    { key: 'experience', label: 'Experience', count: knowledgeBase.organizations.length + knowledgeBase.roles.length },
+    { key: 'projects', label: 'Projects', count: knowledgeBase.initiatives.length },
+    { key: 'skills', label: 'Skills', count: knowledgeBase.skills.length },
     { key: 'facts', label: 'Facts', count: stats.facts },
     { key: 'decisions', label: 'Decisions', count: stats.decisions },
     { key: 'stories', label: 'Stories', count: stats.stories },
-    { key: 'triage', label: 'Triage inbox', count: stats.inbox },
     { key: 'metrics', label: 'Metrics', count: stats.metrics },
     { key: 'learning', label: 'Learning', count: stats.learning },
+    { key: 'credentials', label: 'Credentials', count: knowledgeBase.credentials.length },
+    { key: 'portfolio', label: 'Portfolio', count: knowledgeBase.portfolioAssets.length },
+    { key: 'publications', label: 'Publications', count: knowledgeBase.publications.length },
+    { key: 'triage', label: 'Triage inbox', count: stats.inbox },
   ]
 
-  /** True when the section's entities carry a FactStatus field. */
-  const sectionHasStatus = section !== 'triage'
+  const sectionHasStatus = STATUS_SECTIONS.has(section)
 
   const classify = (item: UnclassifiedFact, type: FactType) =>
     patchKnowledgeBase({
@@ -87,7 +108,9 @@ export function KnowledgeBasePage() {
             }`}
           >
             {tab.label}
-            <span className={`text-xs ${section === tab.key ? 'text-black/60' : 'text-faint'}`}>{tab.count}</span>
+            {tab.count !== undefined && (
+              <span className={`text-xs ${section === tab.key ? 'text-black/60' : 'text-faint'}`}>{tab.count}</span>
+            )}
           </button>
         ))}
       </div>
@@ -157,6 +180,59 @@ export function KnowledgeBasePage() {
           query={query}
           statusFilter={statusFilter}
           onChange={(learning) => patchKnowledgeBase({ learning })}
+        />
+      )}
+      {section === 'profile' && (
+        <ProfileSection
+          profile={knowledgeBase.profile}
+          onChange={(profile) => patchKnowledgeBase({ profile })}
+        />
+      )}
+      {section === 'experience' && (
+        <ExperienceSection
+          organizations={knowledgeBase.organizations}
+          roles={knowledgeBase.roles}
+          onChangeOrganizations={(organizations) => patchKnowledgeBase({ organizations })}
+          onChangeRoles={(roles) => patchKnowledgeBase({ roles })}
+          query={query}
+        />
+      )}
+      {section === 'projects' && (
+        <ProjectsSection
+          initiatives={knowledgeBase.initiatives}
+          query={query}
+          onChange={(initiatives) => patchKnowledgeBase({ initiatives })}
+        />
+      )}
+      {section === 'skills' && (
+        <SkillsSection
+          skills={knowledgeBase.skills}
+          query={query}
+          onChange={(skills) => patchKnowledgeBase({ skills })}
+        />
+      )}
+      {section === 'credentials' && (
+        <CredentialsSection
+          credentials={knowledgeBase.credentials}
+          query={query}
+          statusFilter={statusFilter}
+          onChange={(credentials) => patchKnowledgeBase({ credentials })}
+        />
+      )}
+      {section === 'portfolio' && (
+        <PortfolioSection
+          portfolioAssets={knowledgeBase.portfolioAssets}
+          query={query}
+          statusFilter={statusFilter}
+          onChange={(portfolioAssets) => patchKnowledgeBase({ portfolioAssets })}
+        />
+      )}
+      {section === 'publications' && (
+        <PublicationsSection
+          publications={knowledgeBase.publications}
+          query={query}
+          statusFilter={statusFilter}
+          onChange={(publications) => patchKnowledgeBase({ publications })}
         />
       )}
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ClipboardCopy, FileText, Printer, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ClipboardCopy, Download, FileText, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useJobsStore } from '@/stores/jobsStore'
@@ -10,6 +10,7 @@ import { getAnalyzer } from '@/services/analysis/localHeuristicAnalyzer'
 import { generateTailoredResume } from '@/services/generator/generate'
 import { computeCoverage } from '@/services/generator/coverage'
 import { toMarkdown, toPlainText } from '@/services/generator/markdown'
+import { exportResumePdf } from '@/services/generator/exportPdf'
 import { CoverageMeter } from './components/CoverageMeter'
 import { ResumePaper } from './components/ResumePaper'
 
@@ -27,6 +28,8 @@ export function GeneratorEditorPage() {
   const toggleProject = useGeneratorStore((state) => state.toggleProject)
 
   const [copied, setCopied] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   const bootstrapped = useRef(false)
 
   // Bootstrap: analyze (local, instant) if needed, then generate if needed.
@@ -51,6 +54,19 @@ export function GeneratorEditorPage() {
     () => (tailored && analysis ? computeCoverage(tailored, analysis) : null),
     [tailored, analysis],
   )
+
+  const handleExportPdf = async () => {
+    if (!tailored || !job) return
+    setExporting(true)
+    setExportError(null)
+    try {
+      await exportResumePdf(tailored, `${tailored.header.name || 'resume'} - ${job.company}`)
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : 'PDF export failed.')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   if (!job) {
     return (
@@ -113,9 +129,12 @@ export function GeneratorEditorPage() {
         )}
 
         <div className="space-y-2">
-          <Button className="w-full" onClick={() => window.print()}>
-            <Printer size={14} aria-hidden /> Print / Save as PDF
+          <Button className="w-full" onClick={handleExportPdf} disabled={exporting}>
+            <Download size={14} aria-hidden /> {exporting ? 'Generating PDF…' : 'Download PDF'}
           </Button>
+          {exportError && (
+            <p className="text-xs text-red-400/90 leading-relaxed">{exportError}</p>
+          )}
           <Button variant="subtle" className="w-full" onClick={() => copy('markdown', toMarkdown(tailored))}>
             <ClipboardCopy size={14} aria-hidden />
             {copied === 'markdown' ? 'Copied!' : 'Copy as Markdown'}

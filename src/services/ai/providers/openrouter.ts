@@ -1,19 +1,11 @@
 import type { LLMProvider } from '../types'
-import { completeOpenAiCompatible } from './openAiCompatible'
+import { completeViaProxy } from './openAiCompatible'
 
-const DEFAULT_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions'
-
+/**
+ * OpenRouter (any model). The vendor URL, API key, and attribution headers live server-side in the
+ * `ai-proxy` Edge Function; the browser forwards the normalized request with the user's Supabase JWT.
+ */
 export const openrouterProvider: LLMProvider = {
   id: 'openrouter',
-  complete: (request) =>
-    completeOpenAiCompatible(request, {
-      providerId: 'openrouter',
-      endpoint: request.baseUrl?.trim() || DEFAULT_ENDPOINT,
-      requiresApiKey: true,
-      // OpenRouter attributes usage to an app via these optional headers.
-      extraHeaders: {
-        'HTTP-Referer': 'https://career-os.local',
-        'X-Title': 'CareerOS',
-      },
-    }),
+  complete: (request) => completeViaProxy(request, 'openrouter'),
 }

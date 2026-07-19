@@ -34,10 +34,18 @@ async function settle<T>(promise: Promise<T>): Promise<T> {
 }
 
 describe('resolveDeepResearchConfig', () => {
-  it('requires a gemini key, independent of active provider', () => {
-    expect(resolveDeepResearchConfig({})).toBeNull()
-    expect(resolveDeepResearchConfig({ claude: 'x' })).toBeNull()
-    expect(resolveDeepResearchConfig({ gemini: 'g' })).toEqual({ apiKey: 'g' })
+  it('resolves config iff gemini key exists', () => {
+    const original = import.meta.env.VITE_GEMINI_API_KEY
+
+    // No key
+    import.meta.env.VITE_GEMINI_API_KEY = ''
+    expect(resolveDeepResearchConfig()).toBeNull()
+
+    // Key exists
+    import.meta.env.VITE_GEMINI_API_KEY = 'g'
+    expect(resolveDeepResearchConfig()).toEqual({ apiKey: 'g' })
+
+    import.meta.env.VITE_GEMINI_API_KEY = original
   })
 })
 

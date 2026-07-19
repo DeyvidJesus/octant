@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Rocket, FileText, Brain, Search, Briefcase, CheckCircle } from 'lucide-react'
+import { Rocket, Brain, Search, Briefcase, CheckCircle } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -14,17 +14,9 @@ const ONBOARDING_STEPS = [
     bg: 'bg-indigo-400/10',
   },
   {
-    id: 'resume',
-    title: 'Master Resume',
-    description: 'Add your entire work history, skills, and projects here. We use this to tailor resumes and match you to jobs.',
-    icon: FileText,
-    color: 'text-emerald-400',
-    bg: 'bg-emerald-400/10',
-  },
-  {
     id: 'knowledge',
     title: 'Knowledge Base',
-    description: 'Log your STAR stories, technical decisions, and performance metrics. These help the AI coach you for interviews.',
+    description: 'Log your work history, skills, STAR stories, technical decisions, and metrics. We use this to tailor resumes, match you to jobs, and coach you for interviews.',
     icon: Brain,
     color: 'text-amber-400',
     bg: 'bg-amber-400/10',
@@ -32,7 +24,7 @@ const ONBOARDING_STEPS = [
   {
     id: 'discovery',
     title: 'Job Discovery',
-    description: 'Paste job links or run deep research to import opportunities. AI will score them against your Master Resume.',
+    description: 'Paste job links or run deep research to import opportunities. AI will score them against your Knowledge Base.',
     icon: Search,
     color: 'text-blue-400',
     bg: 'bg-blue-400/10',

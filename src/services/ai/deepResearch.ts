@@ -1,4 +1,3 @@
-import type { AiProviderId } from '@/types/ai'
 import { AiError } from './types'
 
 /**
@@ -34,11 +33,9 @@ export interface DeepResearchConfig {
   apiKey: string
 }
 
-/** Available iff a Gemini key exists in the vault — regardless of active provider. */
-export function resolveDeepResearchConfig(
-  apiKeys: Partial<Record<AiProviderId, string>>,
-): DeepResearchConfig | null {
-  const apiKey = apiKeys.gemini
+/** Available iff a Gemini key exists in the environment — regardless of active provider. */
+export function resolveDeepResearchConfig(): DeepResearchConfig | null {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY
   return apiKey ? { apiKey } : null
 }
 

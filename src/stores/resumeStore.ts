@@ -1,12 +1,11 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import type { CareerKnowledgeBase, MasterResume } from '@/types/resume'
 import { createSeedKnowledgeBase } from '@/constants/seedData'
 import { projectKnowledgeBase } from '@/services/resume/projection'
-import { appStorage } from '@/services/storage/zustandStorage'
-import { STORAGE_KEYS } from '@/services/storage/types'
 import { nowIso } from '@/utils/dates'
-import { migrateResumeState, migrateV2ToV3 } from './resumeMigrations'
+import { knowledgeBaseRepository } from '@/repositories/KnowledgeBaseRepository'
+import { UnauthenticatedError } from '@/repositories/errors'
+import { persist } from '@/repositories/persist'
 
 interface ResumeState {
   /** Persisted source of truth. */
@@ -16,8 +15,7 @@ interface ResumeState {
   updateKnowledgeBase: (knowledgeBase: CareerKnowledgeBase) => void
   /** Patches specific knowledge-base collections (used by the Knowledge Base editor). */
   patchKnowledgeBase: (patch: Partial<CareerKnowledgeBase>) => void
-  /** @deprecated Compatibility bridge for the existing editor. */
-  updateResume: (patch: Partial<MasterResume>) => void
+  _fetchFromSupabase: () => Promise<void>
 }
 
 function withTimestamp(knowledgeBase: CareerKnowledgeBase): CareerKnowledgeBase {
@@ -25,46 +23,45 @@ function withTimestamp(knowledgeBase: CareerKnowledgeBase): CareerKnowledgeBase 
 }
 
 export const useResumeStore = create<ResumeState>()(
-  persist(
-    (set) => {
-      const knowledgeBase = createSeedKnowledgeBase()
-      return {
-        knowledgeBase,
-        resume: projectKnowledgeBase(knowledgeBase),
-        updateKnowledgeBase: (next) => {
-          const knowledgeBase = withTimestamp(next)
-          set({ knowledgeBase, resume: projectKnowledgeBase(knowledgeBase) })
-        },
-        patchKnowledgeBase: (patch) =>
-          set((state) => {
-            const knowledgeBase = withTimestamp({ ...state.knowledgeBase, ...patch })
-            return { knowledgeBase, resume: projectKnowledgeBase(knowledgeBase) }
-          }),
-        updateResume: (patch) => set((state) => {
-          const projected = { ...state.resume, ...patch, updatedAt: nowIso() }
-          const migrated = migrateV2ToV3(projected)
-          // Keep knowledge which the legacy projection cannot edit or display.
-          const knowledgeBase = {
-            ...migrated,
-            profile: { ...migrated.profile, philosophy: state.knowledgeBase.profile.philosophy, workPreferences: state.knowledgeBase.profile.workPreferences },
-            technicalDecisions: state.knowledgeBase.technicalDecisions,
-            unclassifiedFacts: state.knowledgeBase.unclassifiedFacts,
-            facts: [...migrated.facts, ...state.knowledgeBase.facts.filter((fact) => fact.status !== 'confirmed')],
-          }
-          return { knowledgeBase, resume: projectKnowledgeBase(knowledgeBase) }
-        }),
-      }
-    },
-    {
-      name: STORAGE_KEYS.resume,
-      storage: appStorage,
-      version: 3,
-      partialize: (state) => ({ knowledgeBase: state.knowledgeBase }),
-      migrate: (persisted, version) => migrateResumeState(persisted, version),
-      merge: (persisted, current) => {
-        const knowledgeBase = (persisted as { knowledgeBase: CareerKnowledgeBase }).knowledgeBase
-        return { ...current, knowledgeBase, resume: projectKnowledgeBase(knowledgeBase) }
+  (set, get) => {
+    /**
+     * What we believe is currently persisted, used to compute per-row diffs so that editing one
+     * bullet writes one `resume_facts` row instead of the whole graph. `null` until the first
+     * write / hydration. Advanced optimistically (persistence is fire-and-forget), consistent with
+     * the rest of the store layer.
+     */
+    let persistedBaseline: CareerKnowledgeBase | null = null
+
+    /** Applies a new knowledge base to state and schedules a diffed, per-row persist. */
+    const commit = (knowledgeBase: CareerKnowledgeBase, context: string) => {
+      set({ knowledgeBase, resume: projectKnowledgeBase(knowledgeBase) })
+      const previous = persistedBaseline
+      persistedBaseline = knowledgeBase
+      persist(() => knowledgeBaseRepository.applyChanges(previous, knowledgeBase), context)
+    }
+
+    const seed = createSeedKnowledgeBase()
+    return {
+      knowledgeBase: seed,
+      resume: projectKnowledgeBase(seed),
+      updateKnowledgeBase: (next) => {
+        commit(withTimestamp(next), 'resume.updateKnowledgeBase')
       },
-    },
-  ),
+      patchKnowledgeBase: (patch) => {
+        commit(withTimestamp({ ...get().knowledgeBase, ...patch }), 'resume.patchKnowledgeBase')
+      },
+      _fetchFromSupabase: async () => {
+        try {
+          const knowledgeBase = await knowledgeBaseRepository.getKnowledgeBase()
+          if (knowledgeBase) {
+            persistedBaseline = knowledgeBase
+            set({ knowledgeBase, resume: projectKnowledgeBase(knowledgeBase) })
+          }
+        } catch (error) {
+          if (error instanceof UnauthenticatedError) return
+          console.error('[resumeStore] failed to load from Supabase', error)
+        }
+      },
+    }
+  },
 )

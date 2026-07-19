@@ -1,14 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { AlertCircle, Briefcase, FileSearch, MessageSquare } from 'lucide-react'
+import { AlertCircle, Briefcase, FileSearch, MessageSquare, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useJobsStore } from '@/stores/jobsStore'
 import { useResumeStore } from '@/stores/resumeStore'
 import { useInterviewPrepStore } from '@/stores/interviewPrepStore'
+import { resolveAiRunConfig } from '@/stores/settingsStore'
 import { generatePrep } from '@/services/interviewPrep/generatePrep'
-import type { InterviewQuestionCategory, PrepQuestion } from '@/types/interviewPrep'
+import { generateInterviewQuestions } from '@/services/ai/tasks/interviewGenerator'
+import { skillKeyFor } from '@/services/interviewPrep/mastery'
+import type { InterviewQuestionCategory, PrepQuestion, UserSkill } from '@/types/interviewPrep'
 import type { MasterResume } from '@/types/resume'
 import { QuestionCard } from './components/QuestionCard'
 
@@ -41,7 +44,11 @@ export function InterviewPrepPage() {
   const analyses = useJobsStore((state) => state.analyses)
   const knowledgeBase = useResumeStore((state) => state.knowledgeBase)
   const resume = useResumeStore((state) => state.resume)
-  const tracked = useInterviewPrepStore((state) => state.tracked)
+  const skills = useInterviewPrepStore((state) => state.skills)
+
+  const [aiQuestions, setAiQuestions] = useState<PrepQuestion[] | null>(null)
+  const [generating, setGenerating] = useState(false)
+  const [genError, setGenError] = useState<string | null>(null)
 
   const activeJob = activeJobId ? jobs.find((job) => job.id === activeJobId) : undefined
   const activeAnalysis = activeJobId ? analyses[activeJobId] : undefined
@@ -136,8 +143,27 @@ export function InterviewPrepPage() {
     )
   }
 
-  const questionsByCategory = groupByCategory(plan.topics.flatMap((topic) => topic.questions))
   const missingSkills = activeAnalysis.match.missing
+  const questions = aiQuestions ?? plan.topics.flatMap((topic) => topic.questions)
+  const questionsByCategory = groupByCategory(questions)
+
+  const generate = async () => {
+    const config = resolveAiRunConfig()
+    if (!config) return
+    setGenerating(true)
+    setGenError(null)
+    try {
+      const generated = await generateInterviewQuestions(
+        { job: activeJob, resume, missingSkills, count: 8 },
+        config,
+      )
+      setAiQuestions(generated)
+    } catch (error) {
+      setGenError(error instanceof Error ? error.message : 'Question generation failed.')
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <div className="p-8 max-w-5xl mx-auto animate-fade-in">
@@ -148,8 +174,9 @@ export function InterviewPrepPage() {
             {activeJob.company} — {activeJob.role}
           </h1>
           <p className="text-muted mt-2 max-w-2xl">
-            Questions are ranked by this job's detected stack and resume gaps. Rate your confidence to
-            build readiness, or practice an answer with the AI coach.
+            {aiQuestions
+              ? 'AI-generated questions targeting this job’s gaps. Practice an answer with the coach — your skill mastery updates automatically from the AI score.'
+              : 'Questions ranked by this job’s detected stack and resume gaps. Generate AI questions for a sharper set, or practice any answer with the coach to build mastery.'}
           </p>
         </div>
         <Button variant="subtle" onClick={() => navigate('/interviews')}>
@@ -157,17 +184,25 @@ export function InterviewPrepPage() {
         </Button>
       </div>
 
+      <div className="mb-6 flex items-center gap-3">
+        <Button onClick={generate} disabled={generating}>
+          <Sparkles size={14} aria-hidden />
+          {generating ? 'Generating…' : aiQuestions ? 'Regenerate AI questions' : 'Generate AI questions'}
+        </Button>
+        {genError && <span className="text-xs text-red-400">{genError}</span>}
+      </div>
+
       <div className="grid md:grid-cols-3 gap-4 mb-8">
         {CATEGORY_ORDER.map((category) => {
-          const questions = questionsByCategory[category] ?? []
-          const readiness = categoryReadiness(questions, tracked)
+          const categoryQuestions = questionsByCategory[category] ?? []
+          const readiness = categoryReadiness(categoryQuestions, skills)
           return (
             <div key={category} className="bg-surface border border-edge rounded-xl p-5">
               <div className="text-xs text-faint font-semibold uppercase tracking-widest mb-2">
                 {CATEGORY_LABEL[category]}
               </div>
               <div className="text-2xl font-semibold text-white">{readiness}%</div>
-              <div className="text-xs text-muted mt-1">{questions.length} questions</div>
+              <div className="text-xs text-muted mt-1">{categoryQuestions.length} questions</div>
             </div>
           )
         })}
@@ -175,13 +210,13 @@ export function InterviewPrepPage() {
 
       <div className="space-y-10">
         {CATEGORY_ORDER.map((category) => {
-          const questions = questionsByCategory[category] ?? []
-          if (questions.length === 0) return null
+          const categoryQuestions = questionsByCategory[category] ?? []
+          if (categoryQuestions.length === 0) return null
           return (
             <section key={category}>
               <h2 className="text-lg font-semibold text-white mb-4">{CATEGORY_LABEL[category]}</h2>
               <div className="space-y-4">
-                {questions.map((question) => (
+                {categoryQuestions.map((question) => (
                   <QuestionCard
                     key={question.id}
                     question={question}
@@ -210,11 +245,12 @@ function groupByCategory(questions: PrepQuestion[]): Record<InterviewQuestionCat
   return grouped
 }
 
-function categoryReadiness(
-  questions: PrepQuestion[],
-  tracked: Record<string, { confidence: number }>,
-): number {
+/** Category readiness = average AI-scored mastery of the skills its questions target. */
+function categoryReadiness(questions: PrepQuestion[], skills: Record<string, UserSkill>): number {
   if (questions.length === 0) return 0
-  const total = questions.reduce((sum, question) => sum + (tracked[question.id]?.confidence ?? 0), 0)
+  const total = questions.reduce(
+    (sum, question) => sum + (skills[skillKeyFor(question.topic, question.category)]?.mastery ?? 0),
+    0,
+  )
   return Math.round(total / questions.length)
 }

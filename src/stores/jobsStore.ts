@@ -1,11 +1,10 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import type { JobOpportunity } from '@/types/job'
 import type { JobAnalysis } from '@/types/analysis'
 import { createSeedJobs } from '@/constants/seedData'
-import { appStorage } from '@/services/storage/zustandStorage'
-import { STORAGE_KEYS } from '@/services/storage/types'
-import { migrateJobsState } from './jobsMigrations'
+import { jobRepository } from '@/repositories/JobRepository'
+import { UnauthenticatedError } from '@/repositories/errors'
+import { persist } from '@/repositories/persist'
 
 interface JobsState {
   jobs: JobOpportunity[]
@@ -17,35 +16,72 @@ interface JobsState {
   updateJob: (id: string, patch: Partial<JobOpportunity>) => void
   removeJob: (id: string) => void
   saveAnalysis: (analysis: JobAnalysis) => void
+  _fetchFromSupabase: () => Promise<void>
+  /** Subscribes to cross-device changes; returns an unsubscribe function. */
+  _subscribeRealtime: () => () => void
 }
 
 export const useJobsStore = create<JobsState>()(
-  persist(
-    (set) => ({
-      jobs: createSeedJobs(),
-      analyses: {},
-      addJob: (job) => set((state) => ({ jobs: [job, ...state.jobs] })),
-      addJobs: (jobs) => set((state) => ({ jobs: [...jobs, ...state.jobs] })),
-      updateJob: (id, patch) =>
-        set((state) => ({
-          jobs: state.jobs.map((job) => (job.id === id ? { ...job, ...patch } : job)),
-        })),
-      removeJob: (id) =>
-        set((state) => {
-          const analyses = { ...state.analyses }
-          delete analyses[id]
-          return { jobs: state.jobs.filter((job) => job.id !== id), analyses }
-        }),
-      saveAnalysis: (analysis) =>
-        set((state) => ({
-          analyses: { ...state.analyses, [analysis.jobId]: analysis },
-        })),
-    }),
-    {
-      name: STORAGE_KEYS.jobs,
-      storage: appStorage,
-      version: 2,
-      migrate: (persisted, version) => migrateJobsState(persisted, version),
+  (set, get) => ({
+    jobs: createSeedJobs(),
+    analyses: {},
+    addJob: (job) => {
+      set((state) => ({ jobs: [job, ...state.jobs] }))
+      persist(() => jobRepository.upsertJob(job), 'jobs.addJob')
     },
-  ),
+    addJobs: (jobs) => {
+      set((state) => ({ jobs: [...jobs, ...state.jobs] }))
+      persist(() => jobRepository.upsertJobs(jobs), 'jobs.addJobs')
+    },
+    updateJob: (id, patch) => {
+      set((state) => ({
+        jobs: state.jobs.map((job) => (job.id === id ? { ...job, ...patch } : job)),
+      }))
+      const job = get().jobs.find((j) => j.id === id)
+      if (job) persist(() => jobRepository.upsertJob(job), 'jobs.updateJob')
+    },
+    removeJob: (id) => {
+      set((state) => {
+        const analyses = { ...state.analyses }
+        delete analyses[id]
+        return { jobs: state.jobs.filter((job) => job.id !== id), analyses }
+      })
+      persist(() => jobRepository.deleteJob(id), 'jobs.removeJob')
+    },
+    saveAnalysis: (analysis) => {
+      set((state) => ({
+        analyses: { ...state.analyses, [analysis.jobId]: analysis },
+      }))
+      persist(() => jobRepository.upsertAnalysis(analysis), 'jobs.saveAnalysis')
+    },
+    _fetchFromSupabase: async () => {
+      try {
+        const [jobs, analyses] = await Promise.all([
+          jobRepository.getJobs(),
+          jobRepository.getAnalyses(),
+        ])
+        set({ jobs, analyses })
+      } catch (error) {
+        if (error instanceof UnauthenticatedError) return
+        console.error('[jobsStore] failed to load from Supabase', error)
+      }
+    },
+    _subscribeRealtime: () =>
+      jobRepository.subscribeToJobs({
+        // Idempotent by id: replace an existing job, else prepend. This also absorbs the realtime
+        // echo of this device's own writes (the row is simply replaced by an identical value).
+        onUpsert: (job) =>
+          set((state) => ({
+            jobs: state.jobs.some((existing) => existing.id === job.id)
+              ? state.jobs.map((existing) => (existing.id === job.id ? job : existing))
+              : [job, ...state.jobs],
+          })),
+        onDelete: (id) =>
+          set((state) => {
+            const analyses = { ...state.analyses }
+            delete analyses[id]
+            return { jobs: state.jobs.filter((job) => job.id !== id), analyses }
+          }),
+      }),
+  }),
 )

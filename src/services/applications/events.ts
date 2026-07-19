@@ -4,7 +4,7 @@ import { createId } from '@/utils/id'
 /**
  * Pure builders/reducers for an application's activity timeline. Framework-free
  * and timestamp-injected so they are unit-testable without instantiating the
- * Dexie-persisted store. Each returns a `Partial<Application>` patch to merge.
+ * store. Each returns a `Partial<Application>` patch to merge.
  */
 
 export function makeEvent(

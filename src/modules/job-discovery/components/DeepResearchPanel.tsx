@@ -24,7 +24,6 @@ import { ingestReport, formatIngestSummary, hasSkips, type IngestSummary } from 
  */
 export function DeepResearchPanel({ config }: { config: AiRunConfig | null }) {
   const prefs = useSettingsStore((state) => state.discovery)
-  const apiKeys = useSettingsStore((state) => state.apiKeys)
   const resume = useResumeStore((state) => state.resume)
   const pendingInteractionId = useDiscoveryStore((state) => state.pendingInteractionId)
   const setPendingInteraction = useDiscoveryStore((state) => state.setPendingInteraction)
@@ -38,7 +37,7 @@ export function DeepResearchPanel({ config }: { config: AiRunConfig | null }) {
   // Cancel polling (not the server-side run) when the panel unmounts.
   useEffect(() => () => abortRef.current?.abort(), [])
 
-  const drConfig = resolveDeepResearchConfig(apiKeys)
+  const drConfig = resolveDeepResearchConfig()
 
   if (!drConfig) {
     return (
