@@ -11,6 +11,7 @@
   --color-surface-2: #1a1a1a; /* pills, hovers, nested surfaces */
   --color-edge: #222222; /* default borders */
   --color-edge-2: #333333; /* emphasized borders */
+  --color-edge-3: #555555; /* focus borders / faint icons */
   --color-ink: #ededed; /* primary text */
   --color-ink-2: #cccccc; /* secondary text */
   --color-ink-3: #aaaaaa; /* tertiary text */

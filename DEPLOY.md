@@ -305,3 +305,33 @@ Após o deploy, valide na URL de produção:
 5. **Export PDF** (se configurado) — exportar um currículo baixa o PDF. (`BROWSER_PDF_WS_ENDPOINT` OK)
 6. **Deep Research** (se configurado) — o recurso só aparece com `VITE_GEMINI_API_KEY` setada.
 7. **Observabilidade** (se configurada) — um evento aparece no PostHog / um erro forçado aparece no Sentry.
+
+---
+
+## Agente de descoberta contínua (Fase 14)
+
+Pipeline assíncrono e **scheduler-agnóstico**. O worker é apenas um endpoint HTTP; qualquer agendador o chama.
+
+1. **Migrations:** aplique `0011_discovery_pipeline.sql` e `0012_scoring_snapshot.sql` (SQL Editor ou `supabase db push`). Elas criam `search_profiles`, `discovery_runs`, adicionam `discovered_jobs.score` e habilitam realtime.
+2. **Deploy do worker:** `supabase functions deploy discovery-worker`.
+   - Secrets: `supabase secrets set DISCOVERY_CRON_SECRET=<aleatório> GEMINI_API_KEY=<chave>` (opcional `FREE_TIER_MONTHLY_TOKEN_LIMIT`).
+   - O `deno.json` do worker usa import map (`@/` → `src/`) + `sloppy-imports` para reusar o núcleo puro do app. Se o edge-runtime rejeitar sloppy-imports no deploy, o fallback é mover os arquivos puros para `_shared/discovery/` com extensões `.ts`.
+3. **Scheduler externo** (não depende de pg_cron). Modo agendado: `POST` com header `x-discovery-secret` e body vazio → o worker seleciona os usuários "due" por cadência de plano (free: 24h, pro: 1h). Exemplo GitHub Actions:
+   ```yaml
+   # .github/workflows/discovery-tick.yml
+   name: discovery-tick
+   on:
+     schedule: [{ cron: '0 * * * *' }]   # de hora em hora
+   jobs:
+     tick:
+       runs-on: ubuntu-latest
+       steps:
+         - run: |
+             curl -fsS -X POST "$SUPABASE_URL/functions/v1/discovery-worker" \
+               -H "x-discovery-secret: $DISCOVERY_CRON_SECRET" -H "content-type: application/json" -d '{}'
+         env:
+           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+           DISCOVERY_CRON_SECRET: ${{ secrets.DISCOVERY_CRON_SECRET }}
+   ```
+   Alternativas equivalentes: pg_cron + pg_net (`net.http_post`), Trigger.dev, Inngest — todos apenas chamam o mesmo endpoint.
+4. **Verificação:** dispare o tick (ou "Run now" no app, que usa o JWT); `discovery_runs` deve transitar `running → succeeded` e novas linhas `discovered_jobs` (com `score` + `data.analysis`) aparecem no feed por realtime. Sem `GEMINI_API_KEY` o worker responde 500; o custo é limitado pelo teto mensal de tokens por usuário (free), Pro é ilimitado.

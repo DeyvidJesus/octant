@@ -12,6 +12,7 @@ import { useInterviewPrepStore } from '@/stores/interviewPrepStore'
 import { useGeneratorStore } from '@/stores/generatorStore'
 import { useDiscoveryStore } from '@/stores/discoveryStore'
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
+import { useSearchProfileStore } from '@/stores/searchProfileStore'
 import { resetAllStores } from '@/stores/reset'
 
 interface AuthContextValue {
@@ -83,11 +84,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           useGeneratorStore.getState()._fetchFromSupabase?.(),
           useDiscoveryStore.getState()._fetchFromSupabase?.(),
           useSubscriptionStore.getState()._fetchFromSupabase?.(),
+          useSearchProfileStore.getState()._fetchFromSupabase?.(),
         ])
         // Subscribe after the initial load so realtime deltas apply on top of a hydrated store.
         realtimeCleanups = [
           useJobsStore.getState()._subscribeRealtime(),
           useApplicationsStore.getState()._subscribeRealtime(),
+          useDiscoveryStore.getState()._subscribeRealtime(),
         ]
       }
       setIsLoading(false)

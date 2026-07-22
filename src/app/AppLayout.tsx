@@ -4,6 +4,8 @@ import { Menu } from 'lucide-react'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal'
 import { Toaster } from '@/components/ui/Toaster'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { maybeRunSessionHeartbeat } from '@/services/discovery/executor'
 
 export function AppLayout() {
   const [navOpen, setNavOpen] = useState(false)
@@ -11,6 +13,13 @@ export function AppLayout() {
 
   // Close the mobile drawer on navigation.
   useEffect(() => setNavOpen(false), [location.pathname])
+
+  // Session heartbeat: once the app is open (stores hydrated by ProtectedRoute), let the discovery
+  // agent quietly advance if the user is due per their cadence. Runs once per app open; cadence-gated.
+  useEffect(() => {
+    const timer = setTimeout(() => maybeRunSessionHeartbeat(), 2500)
+    return () => clearTimeout(timer)
+  }, [])
 
   return (
     // print: overrides let a full document (e.g. a tailored resume) flow across
@@ -50,6 +59,7 @@ export function AppLayout() {
       </div>
 
       <Toaster />
+      <ConfirmDialog />
     </div>
   )
 }

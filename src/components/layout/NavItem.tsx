@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import type { NavEntry } from '@/constants/navigation'
 
-export function NavItem({ entry }: { entry: NavEntry }) {
+/** Optional count badge (e.g. unseen discovery opportunities) shown on the right of the item. */
+export function NavItem({ entry, badge }: { entry: NavEntry; badge?: number }) {
   const Icon = entry.icon
   return (
     <NavLink
@@ -19,6 +20,14 @@ export function NavItem({ entry }: { entry: NavEntry }) {
         <>
           <Icon size={16} className={isActive ? 'text-white' : 'text-faint'} aria-hidden />
           <span className="flex-1">{entry.label}</span>
+          {badge !== undefined && badge > 0 && (
+            <span
+              className="min-w-5 text-center text-[10px] font-semibold text-black bg-emerald-400 rounded-full px-1.5 py-0.5"
+              aria-label={`${badge} new`}
+            >
+              {badge > 99 ? '99+' : badge}
+            </span>
+          )}
           {entry.planned && (
             <span className="text-[9px] uppercase tracking-wider text-faint border border-edge rounded px-1 py-0.5">
               Soon

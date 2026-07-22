@@ -28,7 +28,7 @@ export function TagInput({ values, onChange, placeholder = 'Add and press Enter'
   }
 
   return (
-    <div className="flex flex-wrap gap-2 items-center bg-base border border-edge-2 rounded px-2 py-2 focus-within:border-[#555]">
+    <div className="flex flex-wrap gap-2 items-center bg-base border border-edge-2 rounded px-2 py-2 focus-within:border-edge-3">
       {values.map((value) => (
         <span key={value} className="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-2 border border-edge-2 rounded text-xs text-ink-2">
           {value}

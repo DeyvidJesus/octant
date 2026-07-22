@@ -14,6 +14,8 @@ export const AnalyticsEvent = {
   ApplicationCreated: 'application_created',
   JobApplied: 'job_applied',
   UpgradeStarted: 'upgrade_started',
+  DiscoveryRunStarted: 'discovery_run_started',
+  DiscoveryRunCompleted: 'discovery_run_completed',
 } as const
 
 export type AnalyticsEventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent]

@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useApplicationsStore } from '@/stores/applicationsStore'
+import { confirm } from '@/stores/confirmStore'
 import { createId } from '@/utils/id'
 import { fromDateInput, nowIso } from '@/utils/dates'
 import { ApplicationForm } from './components/ApplicationForm'
@@ -80,8 +81,15 @@ export function ApplicationFormPage() {
     navigate('/applications')
   }
 
-  const handleDelete = () => {
-    if (existing && window.confirm(`Delete the application for ${existing.company} — ${existing.role}?`)) {
+  const handleDelete = async () => {
+    if (!existing) return
+    const ok = await confirm({
+      title: 'Delete application?',
+      message: `Delete the application for ${existing.company} — ${existing.role}?`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (ok) {
       removeApplication(existing.id)
       navigate('/applications')
     }

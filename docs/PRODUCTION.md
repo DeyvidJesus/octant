@@ -1,0 +1,197 @@
+# CareerOS — Runbook de Produção (Go-Live)
+
+Guia único e ordenado para colocar todo o projeto no ar, **incluindo as 5 fases do agente de descoberta**. Complementa o [DEPLOY.md](../DEPLOY.md) (base do app) com o passo a passo completo: quais chaves, onde obter, onde subir, e a ordem que faz tudo fluir.
+
+## 0. Arquitetura em produção
+
+```
+[ Browser ] ──HTTPS──> [ Netlify: SPA Vite/React ]
+     │                         │ (VITE_* públicas, embutidas no bundle)
+     │  Supabase JS (JWT)      │
+     ▼                         ▼
+[ Supabase ] Postgres + Auth + RLS + Realtime + Edge Functions (Deno)
+     │   Edge Functions (segredos server-side): ai-proxy, deep-research,
+     │   discovery-worker, stripe-webhook, create-checkout/portal, get-plan-pricing, export-pdf
+     ▼
+[ Provedores ]  Gemini (busca+estratégia+worker) · OpenAI (reasoning padrão) · Stripe · PostHog · Sentry
+     ▲
+[ Scheduler externo ] (GitHub Actions / Inngest / pg_cron) ──x-discovery-secret──> discovery-worker
+```
+
+Regras de ouro:
+- **`VITE_*` é público** (vai no bundle). Nunca coloque segredo com prefixo `VITE_`.
+- **Segredos de servidor vivem só no Supabase** (`supabase secrets set`) — nunca no `.env` do frontend nem na Netlify.
+- O gatilho do agente é só um **endpoint HTTP**; o agendador é trocável e mora fora do código.
+
+---
+
+## 1. Pré-requisitos (contas)
+
+Supabase, Netlify (ou similar), Google AI Studio (Gemini). Opcionais: OpenAI, Stripe, PostHog, Sentry. Ferramentas locais: Node 20.19+ ou 22.12+ (o repo roda em 22, mas o Vite pede 22.12+ — alinhe para evitar `--ignore-engines`), `supabase` CLI, `git`.
+
+---
+
+## 2. Matriz de chaves e segredos
+
+### 2.1 Frontend (Netlify → Site settings → Environment variables) — PÚBLICAS
+| Variável | Obrigatória | Onde obter |
+|---|---|---|
+| `VITE_SUPABASE_URL` | ✅ | Supabase › Project Settings › API › Project URL |
+| `VITE_SUPABASE_ANON_KEY` | ✅ | Supabase › Project Settings › API › `anon`/publishable key |
+| `VITE_POSTHOG_KEY` / `VITE_POSTHOG_HOST` | ⬜ | PostHog › Project Settings (host default `https://us.i.posthog.com`) |
+| `VITE_SENTRY_DSN` | ⬜ | Sentry › Project › Client Keys (DSN) |
+| `VITE_DEMO_SEED` | ⬜ | **Deixe ausente/`false` em produção** (só `true` para demо com a persona) |
+
+> ⚠️ O client faz **fail-fast em build de produção** se `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` faltarem ([client.ts](../src/services/supabase/client.ts)). Não use os prefixos `NEXT_PUBLIC_*` (o Vite ignora).
+
+### 2.2 Supabase Edge Functions (`supabase secrets set`) — SERVIDOR
+| Segredo | Usado por | Obrigatório | Onde obter |
+|---|---|---|---|
+| `GEMINI_API_KEY` | discovery-worker, deep-research, ai-proxy (gemini) | ✅ (descoberta) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| `OPENAI_API_KEY` | ai-proxy (provider padrão `gpt-4o`) | ✅ (reasoning) | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+| `ANTHROPIC_API_KEY` | ai-proxy (claude) | ⬜ | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
+| `OPENROUTER_API_KEY` | ai-proxy (openrouter) | ⬜ | [openrouter.ai/keys](https://openrouter.ai/keys) |
+| `DISCOVERY_CRON_SECRET` | discovery-worker (modo agendado) | ✅ (agente offline) | gere: `openssl rand -hex 32` |
+| `ALLOWED_ORIGINS` | CORS de todas as functions | ✅ recomendado | a URL do app (ex.: `https://seu-app.netlify.app`) |
+| `APP_URL` | billing (redirects) + fallback de CORS | ✅ (billing) | a URL do app |
+| `STRIPE_SECRET_KEY` | billing + webhook | ⬜ (se billing) | Stripe › Developers › API keys (`sk_...`) |
+| `STRIPE_WEBHOOK_SECRET` | stripe-webhook | ⬜ (se billing) | Stripe › Webhooks › signing secret (`whsec_...`) |
+| `STRIPE_PRICE_ID` | checkout + pricing | ⬜ (se billing) | Stripe › Products › Price (`price_...`) |
+| `FREE_TIER_MONTHLY_TOKEN_LIMIT` | ai-proxy + discovery-worker | ⬜ | número (default `100000`; `0` desliga o teto) |
+| `BROWSER_PDF_WS_ENDPOINT` | export-pdf | ⬜ | endpoint WS do Chromium headless (ex.: Browserless) |
+
+> `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` são **injetados automaticamente** nas Edge Functions — **não** os configure como secret.
+
+### 2.3 Scheduler (GitHub Actions → repo Settings › Secrets)
+`SUPABASE_URL` (o `https://<ref>.supabase.co`) e `DISCOVERY_CRON_SECRET` (o mesmo valor do secret do Supabase).
+
+### 🔒 Segurança obrigatória antes do go-live
+- **Rotacione a chave Gemini** que foi exposta no bundle antigo (`AQ.Ab8RN6…`) — ela é pública. Gere uma nova no Google AI Studio e restrinja por API/domínio.
+- Rotacione quaisquer `STRIPE_*`/`SUPABASE_SECRET` que já circularam fora do cofre.
+
+---
+
+## 3. Passo a passo
+
+### A) Supabase — banco, auth, realtime
+1. Crie o projeto; copie **Project URL** e **anon key** (Project Settings › API).
+2. **Aplique o schema.** Fonte de verdade: [`supabase-schema.sql`](../supabase-schema.sql) (consolidado — já inclui as tabelas de descoberta das Fases 1–4).
+   - **Projeto novo:** SQL Editor → cole `supabase-schema.sql` → Run. (Cria tudo, incl. `search_profiles`, `discovery_runs`, `discovery_signals`, `discovered_jobs.score` e o realtime.)
+   - **Projeto existente:** aplique as migrations pendentes por `supabase db push` (ou cole no SQL Editor, em ordem): `0009` → `0010` → `0011` → `0012` → `0013`. Todas são **idempotentes**.
+3. **Auth:** Authentication › Providers → habilite **Email**. (Confirme a política de confirmação de email conforme sua preferência.)
+4. **Realtime:** garanta que Realtime está ligado no projeto (padrão no Supabase). As migrations já adicionam `discovered_jobs` e `discovery_runs` à publicação `supabase_realtime` com `replica identity full` — é o que faz o **feed incremental** (Fase 1) chegar sozinho.
+5. **RLS:** confirme (Table Editor) que todas as tabelas mostram RLS habilitado. O schema já define as policies `auth.uid() = user_id`.
+
+### B) Provedores de IA
+1. **Gemini** (obrigatória p/ descoberta): crie a chave no AI Studio.
+2. **OpenAI** (reasoning padrão): o app usa `openai/gpt-4o` como provedor de raciocínio (Recruiter Read, Interview Coach, extração de currículo no onboarding, explicação de compatibilidade no client). Crie a chave.
+3. Anthropic/OpenRouter são opcionais (só se você quiser oferecer esses modelos).
+
+### C) Stripe (billing — opcional)
+1. Products → crie o produto **Pro** e uma **Price** recorrente → copie o `price_...` (→ `STRIPE_PRICE_ID`).
+2. Developers › API keys → copie o `sk_...` (→ `STRIPE_SECRET_KEY`).
+3. Developers › Webhooks → **Add endpoint**: `https://<ref>.supabase.co/functions/v1/stripe-webhook`; eventos `customer.subscription.created/updated/deleted` → copie o signing secret (→ `STRIPE_WEBHOOK_SECRET`).
+4. Settings › Billing › Customer portal → **ative** o portal.
+
+### D) Subir os segredos (Supabase CLI)
+```bash
+supabase login
+supabase link --project-ref <SEU_PROJECT_REF>
+
+supabase secrets set \
+  GEMINI_API_KEY=... \
+  OPENAI_API_KEY=... \
+  DISCOVERY_CRON_SECRET=$(openssl rand -hex 32) \
+  ALLOWED_ORIGINS=https://seu-app.netlify.app \
+  APP_URL=https://seu-app.netlify.app
+# opcionais / billing:
+supabase secrets set STRIPE_SECRET_KEY=sk_... STRIPE_WEBHOOK_SECRET=whsec_... STRIPE_PRICE_ID=price_...
+supabase secrets set FREE_TIER_MONTHLY_TOKEN_LIMIT=100000
+```
+
+### E) Deploy das Edge Functions
+```bash
+supabase functions deploy ai-proxy
+supabase functions deploy deep-research
+supabase functions deploy discovery-worker
+supabase functions deploy create-checkout-session
+supabase functions deploy create-portal-session
+supabase functions deploy get-plan-pricing
+supabase functions deploy export-pdf
+# O webhook do Stripe NÃO recebe JWT do Supabase:
+supabase functions deploy stripe-webhook --no-verify-jwt
+```
+**Antes** do deploy do `discovery-worker`, valide localmente que o edge-runtime aceita o import map + sloppy-imports (ele reusa o núcleo puro em `src/` via [deno.json](../supabase/functions/discovery-worker/deno.json)):
+```bash
+supabase functions serve discovery-worker
+# em outro terminal, um POST autenticado (JWT de um usuário logado) deve responder { ok: true, ... }
+```
+> **Fallback** (se o runtime recusar sloppy-imports no deploy): copie os arquivos puros de `src/services/discovery/*`, `src/services/analysis/*`, `src/services/ai/tasks/extractJobs.ts`, `src/constants/skillTaxonomy.ts` para `supabase/functions/_shared/discovery/` com imports `.ts` explícitos e ajuste o import no worker. O contrato (funções puras) não muda.
+
+### F) Frontend na Netlify
+1. Netlify → **Add new site › Import from Git** → selecione o repo. Build já vem do [`netlify.toml`](../netlify.toml) (`yarn build`, publish `dist`, SPA fallback).
+2. Site settings › Environment variables → adicione as **`VITE_*`** da seção 2.1.
+3. Deploy. O `tsc -b && vite build` roda; se faltar `VITE_SUPABASE_*`, o build de produção **falha de propósito** (fail-fast) — corrija as envs e refaça.
+
+### G) Scheduler do agente (Fase 2 — coleta offline)
+Crie `.github/workflows/discovery-tick.yml` (o worker seleciona sozinho os usuários "due" por cadência de plano — free 24h / pro 1h):
+```yaml
+name: discovery-tick
+on:
+  schedule: [{ cron: '0 * * * *' }]   # de hora em hora
+  workflow_dispatch: {}
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -fsS -X POST "$SUPABASE_URL/functions/v1/discovery-worker" \
+            -H "x-discovery-secret: $DISCOVERY_CRON_SECRET" \
+            -H "content-type: application/json" -d '{}'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          DISCOVERY_CRON_SECRET: ${{ secrets.DISCOVERY_CRON_SECRET }}
+```
+Alternativas equivalentes (só mudam "quem chama o endpoint"): **pg_cron + pg_net** (`select net.http_post(...)`), **Trigger.dev**, **Inngest**.
+
+---
+
+## 4. Como cada fase "acende" em produção
+
+- **Fase 1 (Fundação):** com o schema aplicado + realtime, o feed em `/jobs/discovery` já transmite candidatos incrementalmente e mostra o status do agente. Perfil de busca estruturado em **Settings**.
+- **Fase 2 (Agente):** com `discovery-worker` deployado + `DISCOVERY_CRON_SECRET` + scheduler, o banco de oportunidades é mantido **mesmo com o usuário offline**; e o **heartbeat de sessão** dispara um run quando o app abre e o usuário está "due".
+- **Fase 3 (Inteligência):** com `GEMINI_API_KEY` (busca/estratégia) e `OPENAI_API_KEY` (explicação), os top-K candidatos ganham explicação + lacunas + recomendação; o resto tem "Explain fit" sob demanda.
+- **Fase 4 (Aprendizado):** aprovar/dispensar gera sinais → re-rank do feed + viés nas estratégias, automaticamente.
+- **Fase 5 (Agente de carreira):** badge de "novas" no menu, digest no header e toast quando o agente acha algo em background.
+
+---
+
+## 5. Verificação (smoke tests, na ordem)
+
+1. **Auth:** criar conta / login funciona; refresh mantém a sessão.
+2. **DB + RLS + realtime:** adicionar um job manual persiste após refresh.
+3. **Onboarding:** colar um currículo → "Import with AI" popula a Knowledge Base (exige `OPENAI_API_KEY`).
+4. **Descoberta (in-session):** em `/jobs/discovery`, **"Run now"** → `discovery_runs` transita `running → succeeded`, candidatos **entram no feed por streaming**, ranqueados por score; top-K com recomendação/explicação.
+5. **Aprendizado:** dispensar um candidato de uma empresa e aprovar outro; rodar de novo → o ranking/estratégias refletem as preferências.
+6. **Agente offline:** dispare o workflow (`workflow_dispatch`) ou aguarde o cron → novos candidatos aparecem sem ninguém clicar; toast "seu agente encontrou N…".
+7. **Billing (se configurado):** Settings mostra o preço; upgrade abre o Stripe; ao concluir em test mode, `subscriptions.tier` vira `pro`; "Manage subscription" abre o portal.
+8. **Observabilidade:** um evento aparece no PostHog; um erro forçado aparece no Sentry.
+
+---
+
+## 6. Custo e governança
+- **Teto por usuário:** `FREE_TIER_MONTHLY_TOKEN_LIMIT` (default 100k) barra o free-tier acima do limite; **Pro é ilimitado**. Vale tanto no `ai-proxy` quanto no `discovery-worker`.
+- **Cadência:** free 24h / pro 1h ([cadence.ts](../src/services/discovery/cadence.ts)); ajuste os números se o custo real pedir. O cron pode rodar de hora em hora sem problema — o worker só processa quem está "due".
+- **Monitoramento:** a tabela `discovery_runs` é o log (status, `stats`, `tokens_used`); `token_usage_logs` soma o consumo por usuário/mês. Comece **conservador** (cron 1×/dia) e aumente observando essas tabelas.
+- **Deep Research** é caro e permanece **manual** (não entra na coleta contínua).
+
+## 7. Troubleshooting
+| Sintoma | Causa provável | Correção |
+|---|---|---|
+| Build Netlify passa mas auth falha | `VITE_SUPABASE_*` ausentes/mal nomeadas | Use os nomes exatos `VITE_...`; refaça o deploy |
+| Feed não atualiza sozinho | Realtime off ou tabelas fora da publicação | Verifique Realtime no projeto; reaplique `0011` |
+| `discovery-worker` 500 "missing GEMINI_API_KEY" | secret não setado | `supabase secrets set GEMINI_API_KEY=...` |
+| Deploy do worker falha em import `@/...` | edge-runtime sem sloppy-imports | Use o **fallback** da seção E |
+| Chamadas de IA 401 | JWT ausente/expirado | O usuário precisa estar logado (o proxy exige JWT) |
+| CORS bloqueando | `ALLOWED_ORIGINS`/`APP_URL` errados | Aponte para a URL exata do app |
+| Webhook Stripe 400 | deployado sem `--no-verify-jwt` ou secret errado | Redeploy com a flag; confira `STRIPE_WEBHOOK_SECRET` |

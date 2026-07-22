@@ -31,7 +31,7 @@ export interface ExplainMatchResult {
   providerId: string
 }
 
-const SYSTEM_PROMPT = [
+export const EXPLAIN_SYSTEM_PROMPT = [
   'You are a seasoned technical recruiter and career coach for software engineers.',
   'You are reviewing one candidate against one specific role, on the candidate’s behalf.',
   '',
@@ -87,7 +87,7 @@ export async function explainMatch(input: ExplainMatchInput, config: AiRunConfig
     temperature: 0.4,
     maxTokens: 700,
     messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: EXPLAIN_SYSTEM_PROMPT },
       { role: 'user', content: buildUserPrompt(input) },
     ],
   })

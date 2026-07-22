@@ -4,6 +4,7 @@ import { createEmptyKnowledgeBase, initialKnowledgeBase } from '@/constants/seed
 import { projectKnowledgeBase } from '@/services/resume/projection'
 import { nowIso } from '@/utils/dates'
 import { knowledgeBaseRepository } from '@/repositories/KnowledgeBaseRepository'
+import { searchProfileRepository } from '@/repositories/SearchProfileRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
 import { persist } from '@/repositories/persist'
 
@@ -36,10 +37,13 @@ export const useResumeStore = create<ResumeState>()(
 
     /** Applies a new knowledge base to state and schedules a diffed, per-row persist. */
     const commit = (knowledgeBase: CareerKnowledgeBase, context: string) => {
-      set({ knowledgeBase, resume: projectKnowledgeBase(knowledgeBase) })
+      const projection = projectKnowledgeBase(knowledgeBase)
+      set({ knowledgeBase, resume: projection })
       const previous = persistedBaseline
       persistedBaseline = knowledgeBase
       persist(() => knowledgeBaseRepository.applyChanges(previous, knowledgeBase), context)
+      // Publish the scoring snapshot so the offline discovery worker can score without the KB.
+      persist(() => searchProfileRepository.saveScoringSnapshot(projection), 'resume.scoringSnapshot')
     }
 
     const initial = initialKnowledgeBase()

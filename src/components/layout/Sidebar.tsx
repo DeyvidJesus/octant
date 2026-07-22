@@ -4,6 +4,8 @@ import { NAV_ENTRIES } from '@/constants/navigation'
 import { NavItem } from './NavItem'
 import { useAuth } from '@/contexts/AuthContext'
 import { signOut } from '@/services/supabase/auth'
+import { useDiscoveryStore } from '@/stores/discoveryStore'
+import { countUnseen } from '@/services/discovery/proactivity'
 
 /** Two-letter avatar initials derived from the user's name (metadata) or email. */
 function initialsFor(name: string | undefined, email: string | undefined): string {
@@ -23,6 +25,7 @@ interface SidebarProps {
 export function Sidebar({ open = false, onClose }: SidebarProps) {
   const { user } = useAuth()
   const [signingOut, setSigningOut] = useState(false)
+  const unseen = useDiscoveryStore((state) => countUnseen(state.candidates, state.lastSeenAt))
 
   const name = (user?.user_metadata?.name as string | undefined) ?? undefined
   const email = user?.email ?? undefined
@@ -66,7 +69,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         onClick={() => onClose?.()}
       >
         {NAV_ENTRIES.map((entry) => (
-          <NavItem key={entry.path} entry={entry} />
+          <NavItem key={entry.path} entry={entry} badge={entry.path === '/jobs' ? unseen : undefined} />
         ))}
       </nav>
 

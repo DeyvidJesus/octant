@@ -168,8 +168,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
       completion_tokens: usage.completion,
       total_tokens: usage.total,
     })
-  } catch (_err) {
-    // swallow
+  } catch {
+    // Best-effort usage logging must never fail the request.
   }
 
   return json({ text, model })

@@ -1,14 +1,23 @@
 import { useState } from 'react'
-import { Check, ChevronDown, ChevronUp, ExternalLink, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, ExternalLink, Sparkles, Loader2, X } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { IconButton } from '@/components/ui/IconButton'
 import type { DiscoveredCandidate } from '@/types/discovery'
+import { enrichOneCandidate } from '@/services/discovery/executor'
 import { formatDate } from '@/utils/dates'
+
+/** Missing must-have skills from the persisted deterministic analysis. */
+function missingRequired(candidate: DiscoveredCandidate): string[] {
+  return (candidate.analysis?.detectedStack ?? [])
+    .filter((skill) => !skill.inResume && skill.importance === 'required')
+    .map((skill) => skill.canonical)
+}
 
 const ORIGIN_LABELS: Record<DiscoveredCandidate['origin'], string> = {
   paste: 'Pasted report',
   sweep: 'Sweep',
   'deep-research': 'Deep Research',
+  agent: 'Discovery agent',
 }
 
 interface CandidateCardProps {
@@ -21,7 +30,19 @@ interface CandidateCardProps {
 
 export function CandidateCard({ candidate, selected, onToggleSelect, onApprove, onDismiss }: CandidateCardProps) {
   const [expanded, setExpanded] = useState(false)
+  const [enriching, setEnriching] = useState(false)
   const hasDescription = candidate.description.trim().length > 0
+  const gaps = missingRequired(candidate)
+  const canEnrich = Boolean(candidate.analysis) && candidate.enrichmentStatus !== 'done'
+
+  const handleExplain = async () => {
+    setEnriching(true)
+    try {
+      await enrichOneCandidate(candidate)
+    } finally {
+      setEnriching(false)
+    }
+  }
 
   return (
     <div className={`bg-surface border rounded-xl p-4 transition-colors ${selected ? 'border-edge-2' : 'border-edge'}`}>
@@ -78,6 +99,41 @@ export function CandidateCard({ candidate, selected, onToggleSelect, onApprove, 
                 {expanded ? 'Less' : 'More'}
               </button>
             </>
+          )}
+
+          {/* Gaps (deterministic) */}
+          {gaps.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {gaps.slice(0, 5).map((skill) => (
+                <Badge key={skill} tone="red">
+                  Missing: {skill}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* Recommendation + grounded explanation (AI enrichment) */}
+          {candidate.recommendation && (
+            <p className="text-sm text-ink-2 mt-3 flex gap-2 leading-relaxed">
+              <Sparkles size={14} className="text-indigo-400 mt-0.5 shrink-0" aria-hidden />
+              <span>{candidate.recommendation}</span>
+            </p>
+          )}
+          {candidate.explanation && expanded && (
+            <p className="text-sm text-ink-3 whitespace-pre-wrap leading-relaxed mt-2 border-l-2 border-edge-2 pl-3">
+              {candidate.explanation}
+            </p>
+          )}
+          {canEnrich && (
+            <button
+              type="button"
+              onClick={handleExplain}
+              disabled={enriching}
+              className="text-xs text-indigo-400 hover:text-indigo-300 mt-3 inline-flex items-center gap-1 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
+            >
+              {enriching ? <Loader2 size={12} className="animate-spin" aria-hidden /> : <Sparkles size={12} aria-hidden />}
+              {enriching ? 'Analysing…' : 'Explain fit'}
+            </button>
           )}
 
           <div className="text-[11px] text-faint mt-2">
