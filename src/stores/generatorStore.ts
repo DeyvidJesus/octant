@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import type { TailoredResume } from '@/types/generator'
-import { generatorRepository } from '@/repositories/GeneratorRepository'
+import { tailoredResumeRepository } from '@/repositories/TailoredResumeRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
 import { persist } from '@/repositories/persist'
+import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
 
 /**
  * Tailored resumes, one per job. Documents are snapshots — regenerating from
@@ -24,7 +25,9 @@ export const useGeneratorStore = create<GeneratorState>()(
 
     saveTailored: (resume) => {
       set((state) => ({ tailored: { ...state.tailored, [resume.jobId]: resume } }))
-      persist(() => generatorRepository.saveTailored(get().tailored), 'generator.saveTailored')
+      trackEvent(AnalyticsEvent.ResumeGenerated, { jobId: resume.jobId })
+      // One targeted row upsert — not the whole collection.
+      persist(() => tailoredResumeRepository.saveTailored(resume), 'generator.saveTailored')
     },
 
     removeTailored: (jobId) => {
@@ -33,7 +36,7 @@ export const useGeneratorStore = create<GeneratorState>()(
         delete tailored[jobId]
         return { tailored }
       })
-      persist(() => generatorRepository.saveTailored(get().tailored), 'generator.removeTailored')
+      persist(() => tailoredResumeRepository.deleteTailored(jobId), 'generator.removeTailored')
     },
 
     toggleBullet: (jobId, accomplishmentId) => {
@@ -55,7 +58,8 @@ export const useGeneratorStore = create<GeneratorState>()(
           },
         }
       })
-      persist(() => generatorRepository.saveTailored(get().tailored), 'generator.toggleBullet')
+      const doc = get().tailored[jobId]
+      if (doc) persist(() => tailoredResumeRepository.saveTailored(doc), 'generator.toggleBullet')
     },
 
     toggleProject: (jobId, projectId) => {
@@ -74,15 +78,13 @@ export const useGeneratorStore = create<GeneratorState>()(
           },
         }
       })
-      persist(() => generatorRepository.saveTailored(get().tailored), 'generator.toggleProject')
+      const doc = get().tailored[jobId]
+      if (doc) persist(() => tailoredResumeRepository.saveTailored(doc), 'generator.toggleProject')
     },
 
     _fetchFromSupabase: async () => {
       try {
-        const tailored = await generatorRepository.getTailored()
-        if (tailored) {
-          set({ tailored })
-        }
+        set({ tailored: await tailoredResumeRepository.getTailored() })
       } catch (error) {
         if (error instanceof UnauthenticatedError) return
         console.error('[generatorStore] failed to load from Supabase', error)

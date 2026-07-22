@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ScanSearch, Briefcase, ExternalLink, Plus, Pencil, Archive, ArchiveRestore, Trash2, Radar, MessageSquare } from 'lucide-react'
+import { ScanSearch, Briefcase, ExternalLink, Plus, Pencil, Archive, ArchiveRestore, Trash2, Radar, MessageSquare, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { IconButton } from '@/components/ui/IconButton'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useJobsStore } from '@/stores/jobsStore'
+import { useSubscriptionStore } from '@/stores/subscriptionStore'
+import { FREE_LIMITS, jobLimitReached } from '@/constants/plan'
 import { DiscoveryStalenessBanner } from '@/modules/job-discovery/components/DiscoveryStalenessBanner'
 
 export function JobBoardPage() {
@@ -15,19 +17,31 @@ export function JobBoardPage() {
   const updateJob = useJobsStore((state) => state.updateJob)
   const removeJob = useJobsStore((state) => state.removeJob)
   const navigate = useNavigate()
+  const tier = useSubscriptionStore((state) => state.tier)
   const [showArchived, setShowArchived] = useState(false)
 
   const visibleJobs = jobs.filter((job) => job.archived === showArchived)
   const archivedCount = jobs.filter((job) => job.archived).length
+  // RLS counts every row, so the cap is on the total (archived included).
+  const atJobLimit = jobLimitReached(tier, jobs.length)
 
   const addButton = (
     <div className="flex items-center gap-2">
       <Button variant="subtle" onClick={() => navigate('/jobs/discovery')}>
         <Radar size={16} aria-hidden /> Import & Discover
       </Button>
-      <Button onClick={() => navigate('/jobs/new')}>
-        <Plus size={16} aria-hidden /> Add Opportunity
-      </Button>
+      {atJobLimit ? (
+        <Button
+          onClick={() => navigate('/settings')}
+          title={`The Free plan is limited to ${FREE_LIMITS.jobs} opportunities. Upgrade to Pro for unlimited.`}
+        >
+          <Crown size={16} aria-hidden /> Upgrade to add more
+        </Button>
+      ) : (
+        <Button onClick={() => navigate('/jobs/new')}>
+          <Plus size={16} aria-hidden /> Add Opportunity
+        </Button>
+      )}
     </div>
   )
 

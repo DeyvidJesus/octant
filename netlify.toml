@@ -1,0 +1,9 @@
+[build]
+  command = "yarn build"
+  publish = "dist"
+
+# SPA fallback: toda rota serve o index.html (React Router é client-side)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

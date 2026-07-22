@@ -5,6 +5,7 @@ import { appendEvent, changeStage } from '@/services/applications/events'
 import { applicationRepository } from '@/repositories/ApplicationRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
 import { persist } from '@/repositories/persist'
+import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
 
 interface ApplicationsState {
   applications: Application[]
@@ -33,6 +34,8 @@ export const useApplicationsStore = create<ApplicationsState>()(
           ),
         ],
       }))
+      trackEvent(AnalyticsEvent.ApplicationCreated, { stage: application.stage })
+      if (application.stage === 'applied') trackEvent(AnalyticsEvent.JobApplied, { id: application.id })
       persist(() => applicationRepository.upsertApplication(application), 'applications.upsert')
     },
     updateApplication: (id, patch) => {
@@ -60,6 +63,7 @@ export const useApplicationsStore = create<ApplicationsState>()(
         }),
       }))
       const app = get().applications.find((a) => a.id === id)
+      if (toStage === 'applied') trackEvent(AnalyticsEvent.JobApplied, { id })
       if (app) persist(() => applicationRepository.upsertApplication(app), 'applications.moveStage')
     },
     addEvent: (id, event) => {

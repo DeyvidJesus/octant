@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/services/supabase/client'
 import { setSessionUserId } from '@/services/supabase/session'
+import { identifyUser, resetAnalytics } from '@/services/analytics/analytics'
+import { setSentryUser } from '@/services/monitoring/sentry'
 import { useJobsStore } from '@/stores/jobsStore'
 import { useApplicationsStore } from '@/stores/applicationsStore'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -9,6 +11,7 @@ import { useResumeStore } from '@/stores/resumeStore'
 import { useInterviewPrepStore } from '@/stores/interviewPrepStore'
 import { useGeneratorStore } from '@/stores/generatorStore'
 import { useDiscoveryStore } from '@/stores/discoveryStore'
+import { useSubscriptionStore } from '@/stores/subscriptionStore'
 
 interface AuthContextValue {
   session: Session | null
@@ -42,6 +45,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSessionUserId(session?.user?.id ?? null)
       setSession(session)
       setUser(session?.user ?? null)
+      // Attach observability identity (no-ops when analytics/Sentry aren't configured).
+      if (session?.user) {
+        identifyUser(session.user.id)
+        setSentryUser(session.user.id)
+      } else {
+        resetAnalytics()
+        setSentryUser(null)
+      }
       teardownRealtime()
       if (session?.user) {
         await Promise.all([
@@ -52,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           useInterviewPrepStore.getState()._fetchFromSupabase?.(),
           useGeneratorStore.getState()._fetchFromSupabase?.(),
           useDiscoveryStore.getState()._fetchFromSupabase?.(),
+          useSubscriptionStore.getState()._fetchFromSupabase?.(),
         ])
         // Subscribe after the initial load so realtime deltas apply on top of a hydrated store.
         realtimeCleanups = [
