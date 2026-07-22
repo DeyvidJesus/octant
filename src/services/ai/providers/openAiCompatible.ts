@@ -1,6 +1,7 @@
 import { AiError, type CompletionRequest, type CompletionResult } from '../types'
 import type { AiProviderId } from '@/types/ai'
 import { supabase } from '@/services/supabase/client'
+import { providerSupportsWebSearch } from '../registry'
 
 interface OpenAiCompatibleOptions {
   providerId: AiProviderId
@@ -24,8 +25,8 @@ export async function completeViaProxy(
   request: CompletionRequest,
   providerId: AiProviderId,
 ): Promise<CompletionResult> {
-  if (request.webSearch) {
-    // Fail fast, before any network — these providers can't ground on live search.
+  if (request.webSearch && !providerSupportsWebSearch(providerId)) {
+    // Fail fast, before any network — only search-capable providers (Gemini) may ground.
     throw new AiError(`${providerId}: web search grounding is not supported by this provider.`)
   }
 

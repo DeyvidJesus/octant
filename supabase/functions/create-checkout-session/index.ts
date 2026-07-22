@@ -10,17 +10,14 @@
 
 import Stripe from 'npm:stripe@16'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { staticCorsHeaders } from '../_shared/cors.ts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2024-06-20',
   httpClient: Stripe.createFetchHttpClient(),
 })
 
-const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-}
+const CORS_HEADERS = staticCorsHeaders()
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

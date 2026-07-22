@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import {
-  startDeepResearch,
-  awaitDeepResearch,
-  resolveDeepResearchConfig,
-} from './deepResearch'
+import { startDeepResearch, awaitDeepResearch } from './deepResearch'
 import { AiError } from './types'
 
-const config = { apiKey: 'test-key' }
+// Deep Research now runs through the `deep-research` Edge Function, authorized with the user's JWT.
+// The Gemini key lives server-side, so the client only ever sends { action, prompt|interactionId }.
+vi.mock('@/services/supabase/client', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: 'jwt-token' } } }),
+    },
+  },
+}))
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status })
@@ -33,52 +37,37 @@ async function settle<T>(promise: Promise<T>): Promise<T> {
   return result as T
 }
 
-describe('resolveDeepResearchConfig', () => {
-  it('resolves config iff gemini key exists', () => {
-    const original = import.meta.env.VITE_GEMINI_API_KEY
-
-    // No key
-    import.meta.env.VITE_GEMINI_API_KEY = ''
-    expect(resolveDeepResearchConfig()).toBeNull()
-
-    // Key exists
-    import.meta.env.VITE_GEMINI_API_KEY = 'g'
-    expect(resolveDeepResearchConfig()).toEqual({ apiKey: 'g' })
-
-    import.meta.env.VITE_GEMINI_API_KEY = original
-  })
-})
-
 describe('startDeepResearch', () => {
-  it('POSTs the agent request and returns the interaction id', async () => {
+  it('POSTs the start action to the Edge Function with the user JWT and returns the interaction id', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: 'int-1', status: 'queued' }))
     vi.stubGlobal('fetch', fetchMock)
 
-    const { interactionId } = await startDeepResearch('find jobs', config)
+    const { interactionId } = await startDeepResearch('find jobs')
     expect(interactionId).toBe('int-1')
 
     const [url, init] = fetchMock.mock.calls[0]
-    expect(url).toContain('/v1beta/interactions')
-    expect(init.headers['x-goog-api-key']).toBe('test-key')
+    expect(url).toContain('/functions/v1/deep-research')
+    expect(init.headers.authorization).toBe('Bearer jwt-token')
+    // The Gemini key must NOT travel from the client.
+    expect(JSON.stringify(init.headers)).not.toContain('x-goog-api-key')
     const body = JSON.parse(init.body)
-    expect(body.background).toBe(true)
-    expect(body.store).toBe(true)
-    expect(body.agent).toContain('deep-research')
+    expect(body.action).toBe('start')
+    expect(body.prompt).toBe('find jobs')
   })
 
-  it('translates a blocked fetch into the paste-tab fallback message', async () => {
+  it('translates a blocked/offline fetch into a resumable, paste-fallback message', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
-    await expect(startDeepResearch('x', config)).rejects.toThrow(/paste/i)
+    await expect(startDeepResearch('x')).rejects.toThrow(/paste/i)
   })
 
   it('throws on a missing id', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ status: 'queued' })))
-    await expect(startDeepResearch('x', config)).rejects.toThrow(AiError)
+    await expect(startDeepResearch('x')).rejects.toThrow(AiError)
   })
 })
 
 describe('awaitDeepResearch', () => {
-  it('polls until completed and returns the last step text', async () => {
+  it('polls the Edge Function until completed and returns the last step text', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse({ id: 'int-1', status: 'in_progress' }))
@@ -91,9 +80,15 @@ describe('awaitDeepResearch', () => {
       )
     vi.stubGlobal('fetch', fetchMock)
 
-    const report = await settle(awaitDeepResearch('int-1', config))
+    const report = await settle(awaitDeepResearch('int-1'))
     expect(report).toBe('FINAL REPORT')
     expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toContain('/functions/v1/deep-research')
+    const body = JSON.parse(init.body)
+    expect(body.action).toBe('poll')
+    expect(body.interactionId).toBe('int-1')
   })
 
   it('reports progress between polls', async () => {
@@ -104,7 +99,7 @@ describe('awaitDeepResearch', () => {
       .mockResolvedValueOnce(jsonResponse({ status: 'completed', steps: [{ content: [{ text: 'r' }] }] }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await settle(awaitDeepResearch('int-1', config, { onProgress }))
+    await settle(awaitDeepResearch('int-1', { onProgress }))
     expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ status: 'in_progress', polls: 1 }))
   })
 
@@ -115,7 +110,7 @@ describe('awaitDeepResearch', () => {
         Promise.resolve(jsonResponse({ status: 'failed', error: { message: 'quota exceeded' } })),
       ),
     )
-    await expect(settle(awaitDeepResearch('int-1', config))).rejects.toThrow(/quota exceeded/)
+    await expect(settle(awaitDeepResearch('int-1'))).rejects.toThrow(/quota exceeded/)
   })
 
   it('tolerates up to 2 consecutive poll failures, throws on the 3rd', async () => {
@@ -126,12 +121,12 @@ describe('awaitDeepResearch', () => {
       .mockResolvedValueOnce(jsonResponse({ status: 'completed', steps: [{ content: [{ text: 'ok' }] }] }))
     vi.stubGlobal('fetch', fetchMock)
 
-    const report = await settle(awaitDeepResearch('int-1', config))
+    const report = await settle(awaitDeepResearch('int-1'))
     expect(report).toBe('ok')
 
     const alwaysFailing = vi.fn().mockRejectedValue(new TypeError('down'))
     vi.stubGlobal('fetch', alwaysFailing)
-    await expect(settle(awaitDeepResearch('int-2', config))).rejects.toThrow(AiError)
+    await expect(settle(awaitDeepResearch('int-2'))).rejects.toThrow(AiError)
     expect(alwaysFailing).toHaveBeenCalledTimes(3)
   })
 
@@ -139,7 +134,7 @@ describe('awaitDeepResearch', () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({ status: 'in_progress' }))))
     const controller = new AbortController()
 
-    const promise = awaitDeepResearch('int-1', config, { signal: controller.signal })
+    const promise = awaitDeepResearch('int-1', { signal: controller.signal })
     const guarded = promise.catch((err: unknown) => err)
     controller.abort()
     await vi.advanceTimersByTimeAsync(0)
@@ -151,6 +146,6 @@ describe('awaitDeepResearch', () => {
 
   it('gives up after the 60-minute cap with a resumable message', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({ status: 'in_progress' }))))
-    await expect(settle(awaitDeepResearch('int-1', config))).rejects.toThrow(/60 minutes/)
+    await expect(settle(awaitDeepResearch('int-1'))).rejects.toThrow(/60 minutes/)
   })
 })

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { useInterviewPrepStore } from '@/stores/interviewPrepStore'
@@ -30,6 +30,8 @@ export function QuestionCard({ question, job, resume, resumeEvidence, missingSki
 
   const [showDetails, setShowDetails] = useState(false)
   const [showCoach, setShowCoach] = useState(false)
+  const detailsId = useId()
+  const coachId = useId()
 
   const hasDetails =
     Boolean(question.expectedAnswer) ||
@@ -57,6 +59,8 @@ export function QuestionCard({ question, job, resume, resumeEvidence, missingSki
           <button
             type="button"
             onClick={() => setShowDetails((value) => !value)}
+            aria-expanded={showDetails}
+            aria-controls={detailsId}
             className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink-2"
           >
             {showDetails ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
@@ -64,7 +68,7 @@ export function QuestionCard({ question, job, resume, resumeEvidence, missingSki
           </button>
 
           {showDetails && (
-            <div className="mt-3 space-y-3 text-sm">
+            <div id={detailsId} className="mt-3 space-y-3 text-sm">
               {question.expectedAnswer && (
                 <div>
                   <div className="text-xs text-faint font-semibold uppercase tracking-widest mb-1">Model answer</div>
@@ -86,6 +90,8 @@ export function QuestionCard({ question, job, resume, resumeEvidence, missingSki
         <button
           type="button"
           onClick={() => setShowCoach((value) => !value)}
+          aria-expanded={showCoach}
+          aria-controls={coachId}
           className="text-xs text-muted hover:text-ink-2"
         >
           {showCoach ? 'Hide practice' : 'Practice with AI coach'}
@@ -94,6 +100,7 @@ export function QuestionCard({ question, job, resume, resumeEvidence, missingSki
 
       {showCoach && (
         <CoachPanel
+          panelId={coachId}
           job={job}
           resume={resume}
           question={question}

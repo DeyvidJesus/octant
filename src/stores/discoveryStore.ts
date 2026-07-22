@@ -26,6 +26,8 @@ interface DiscoveryState {
   markSweepRan: () => void
   setPendingInteraction: (id: string | null) => void
   _fetchFromSupabase: () => Promise<void>
+  /** Clears in-memory state (sign-out / user switch) so no data bleeds across sessions. */
+  reset: () => void
 }
 
 export const useDiscoveryStore = create<DiscoveryState>()(
@@ -100,6 +102,8 @@ export const useDiscoveryStore = create<DiscoveryState>()(
           console.error('[discoveryStore] failed to load from Supabase', error)
         }
       },
+      reset: () =>
+        set({ candidates: [], dismissedKeys: [], lastSweepAt: null, pendingInteractionId: null }),
     }
   },
 )

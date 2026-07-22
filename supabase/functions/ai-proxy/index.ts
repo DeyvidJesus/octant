@@ -7,13 +7,14 @@
 // client, and the browser talks to a same-trusted origin so CORS is a non-issue.
 //
 // Deploy:  supabase functions deploy ai-proxy
-// Secrets: supabase secrets set OPENAI_API_KEY=... ANTHROPIC_API_KEY=... OPENROUTER_API_KEY=...
+// Secrets: supabase secrets set OPENAI_API_KEY=... ANTHROPIC_API_KEY=... OPENROUTER_API_KEY=... GEMINI_API_KEY=...
 // (SUPABASE_URL and SUPABASE_ANON_KEY are injected automatically.)
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { corsHeaders } from '../_shared/cors.ts'
 
-type ProviderId = 'openai' | 'openrouter' | 'claude'
-type Wire = 'openai' | 'anthropic'
+type ProviderId = 'openai' | 'openrouter' | 'claude' | 'gemini'
+type Wire = 'openai' | 'anthropic' | 'gemini'
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
@@ -56,23 +57,21 @@ const VENDORS: Record<ProviderId, VendorConfig> = {
     keyEnv: 'ANTHROPIC_API_KEY',
     wire: 'anthropic',
   },
-}
-
-const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-}
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
-  })
+  // Gemini's endpoint embeds the model + method; `url` is the fixed base and the target is built in
+  // buildVendorCall. Unlike the OpenAI/Anthropic wires, Gemini can ground on live Google Search.
+  gemini: {
+    url: 'https://generativelanguage.googleapis.com/v1beta',
+    keyEnv: 'GEMINI_API_KEY',
+    wire: 'gemini',
+  },
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
+  const cors = corsHeaders(req)
+  const json = (body: unknown, status = 200): Response =>
+    new Response(JSON.stringify(body), { status, headers: { ...cors, 'content-type': 'application/json' } })
+
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405)
 
   // 1. Verify the caller's Supabase JWT by resolving the user it belongs to.
@@ -100,8 +99,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!Array.isArray(payload.messages) || typeof payload.model !== 'string') {
     return json({ error: 'Request must include messages[] and a model.' }, 400)
   }
-  if (payload.webSearch) {
-    // Matches the frontend guard: these providers cannot ground on live search.
+  if (payload.webSearch && vendor.wire !== 'gemini') {
+    // Matches the frontend guard: only Gemini can ground on live Google Search here.
     return json({ error: `${payload.providerId} does not support web search grounding.` }, 400)
   }
 
@@ -115,9 +114,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
     { auth: { persistSession: false } },
   )
 
-  // Tier-aware rate limit. Enforced only when FREE_TIER_MONTHLY_TOKEN_LIMIT is set (>0); otherwise
-  // we log usage but never block. Pro users are always unlimited.
-  const monthlyLimit = Number(Deno.env.get('FREE_TIER_MONTHLY_TOKEN_LIMIT') ?? '0')
+  // Tier-aware rate limit. Defaults to a protective monthly cap so free-tier AI can't run up
+  // unbounded vendor cost on the operator's keys; set FREE_TIER_MONTHLY_TOKEN_LIMIT explicitly to
+  // tune it, or to 0 to disable entirely. Pro users are always unlimited.
+  const DEFAULT_FREE_TIER_MONTHLY_TOKEN_LIMIT = 100_000
+  const rawLimit = Deno.env.get('FREE_TIER_MONTHLY_TOKEN_LIMIT')
+  const monthlyLimit = rawLimit === undefined || rawLimit === '' ? DEFAULT_FREE_TIER_MONTHLY_TOKEN_LIMIT : Number(rawLimit)
   if (monthlyLimit > 0 && (await freeTierOverBudget(admin, user.id, monthlyLimit))) {
     return json(
       { error: 'Monthly AI usage limit reached on the Free plan. Upgrade to Pro for unlimited AI.' },
@@ -126,10 +128,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // 3. Build and make the vendor call.
-  const { headers, body } = buildVendorCall(vendor, apiKey, payload)
+  const { url, headers, body } = buildVendorCall(vendor, apiKey, payload)
   let vendorResponse: Response
   try {
-    vendorResponse = await fetch(vendor.url, { method: 'POST', headers, body: JSON.stringify(body) })
+    vendorResponse = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
   } catch (err) {
     return json({ error: `Could not reach ${payload.providerId}.`, detail: String(err) }, 502)
   }
@@ -144,7 +146,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   // 4. Normalize the vendor response to { text, model }.
   const data = await vendorResponse.json()
-  const text = vendor.wire === 'anthropic' ? parseAnthropic(data) : parseOpenAi(data)
+  const text =
+    vendor.wire === 'anthropic'
+      ? parseAnthropic(data)
+      : vendor.wire === 'gemini'
+        ? parseGemini(data)
+        : parseOpenAi(data)
   if (typeof text !== 'string' || text.length === 0) {
     return json({ error: `${payload.providerId}: unexpected response shape (no text content).` }, 502)
   }
@@ -177,6 +184,12 @@ interface TokenUsage {
 /** Normalizes the vendor's usage block. OpenAI reports prompt/completion/total; Anthropic input/output. */
 // deno-lint-ignore no-explicit-any
 function extractUsage(data: any, wire: Wire): TokenUsage {
+  if (wire === 'gemini') {
+    const m = data?.usageMetadata ?? {}
+    const prompt = Number(m.promptTokenCount ?? 0)
+    const completion = Number(m.candidatesTokenCount ?? 0)
+    return { prompt, completion, total: Number(m.totalTokenCount ?? prompt + completion) }
+  }
   const u = data?.usage ?? {}
   if (wire === 'anthropic') {
     const prompt = Number(u.input_tokens ?? 0)
@@ -215,7 +228,40 @@ function buildVendorCall(
   vendor: VendorConfig,
   apiKey: string,
   payload: ProxyRequest,
-): { headers: Record<string, string>; body: Record<string, unknown> } {
+): { url: string; headers: Record<string, string>; body: Record<string, unknown> } {
+  if (vendor.wire === 'gemini') {
+    // Google's generateContent: system prompt is `systemInstruction`, roles are user/model, and the
+    // key travels as a header. When webSearch is requested we attach the google_search grounding tool.
+    const system = payload.messages
+      .filter((message) => message.role === 'system')
+      .map((message) => message.content)
+      .join('\n\n')
+    const contents = payload.messages
+      .filter((message) => message.role !== 'system')
+      .map((message) => ({
+        role: message.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: message.content }],
+      }))
+
+    return {
+      url: `${vendor.url}/models/${encodeURIComponent(payload.model)}:generateContent`,
+      headers: {
+        'content-type': 'application/json',
+        'x-goog-api-key': apiKey,
+        ...vendor.extraHeaders,
+      },
+      body: {
+        systemInstruction: system ? { parts: [{ text: system }] } : undefined,
+        contents,
+        tools: payload.webSearch ? [{ google_search: {} }] : undefined,
+        generationConfig: {
+          temperature: payload.temperature,
+          maxOutputTokens: payload.maxTokens,
+        },
+      },
+    }
+  }
+
   if (vendor.wire === 'anthropic') {
     // Anthropic: system prompt is a top-level field, not a message.
     const system = payload.messages
@@ -227,6 +273,7 @@ function buildVendorCall(
       .map((message) => ({ role: message.role, content: message.content }))
 
     return {
+      url: vendor.url,
       headers: {
         'content-type': 'application/json',
         'x-api-key': apiKey,
@@ -245,6 +292,7 @@ function buildVendorCall(
 
   // OpenAI-compatible: system messages are supported natively.
   return {
+    url: vendor.url,
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${apiKey}`,
@@ -262,6 +310,13 @@ function buildVendorCall(
 // deno-lint-ignore no-explicit-any
 function parseOpenAi(data: any): string | undefined {
   return data?.choices?.[0]?.message?.content
+}
+
+// deno-lint-ignore no-explicit-any
+function parseGemini(data: any): string | undefined {
+  const parts = data?.candidates?.[0]?.content?.parts
+  if (!Array.isArray(parts)) return undefined
+  return parts.map((part: { text?: string }) => part?.text ?? '').join('')
 }
 
 // deno-lint-ignore no-explicit-any

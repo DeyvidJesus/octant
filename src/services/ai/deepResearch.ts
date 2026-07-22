@@ -1,25 +1,27 @@
 import { AiError } from './types'
+import { supabase } from '@/services/supabase/client'
 
 /**
- * On-demand Deep Research runner — the exhaustive (and paid) discovery path.
+ * On-demand Deep Research runner — the exhaustive discovery path.
  *
  * This is deliberately NOT an `LLMProvider`: research agents are long-lived
  * background interactions (start → poll → retrieve), a different shape from a
- * chat completion. The vendor wire format stays fully encapsulated here, the
- * one place in the app where that is allowed (services/ai).
+ * chat completion.
  *
- * It is keyed off the Gemini key in the vault, independent of the active
- * provider — you can reason with Claude and still research with Gemini.
- * Extraction of the finished report always runs through the provider-agnostic
- * `extractJobs` seam like every other discovery source.
+ * The Gemini key lives server-side: every call goes through the `deep-research`
+ * Edge Function (which holds GEMINI_API_KEY and forwards to Google), authorized
+ * with the user's Supabase JWT. The key never reaches the browser, and running
+ * server-side also sidesteps the vendor CORS wall that blocked the old
+ * direct-from-browser path. Extraction of the finished report still runs through
+ * the provider-agnostic `extractJobs` seam like every other discovery source.
  */
 
-const BASE = 'https://generativelanguage.googleapis.com/v1beta/interactions'
-const AGENT = 'deep-research-preview-04-2026'
+/** Same-project Edge Function that holds the Gemini key and forwards Deep Research start/poll. */
+const DEEP_RESEARCH_URL = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/deep-research`
 
-/** Runs are long and cost real money — the UI must show this before starting. */
+/** Runs are long — the UI must set expectations before starting. */
 export const DEEP_RESEARCH_HINT =
-  'Runs on your Google Gemini API key. Typical run: 5–20 minutes, roughly $1–3 in API usage.'
+  'Runs an exhaustive Google Gemini research agent server-side. Typical run: 5–20 minutes.'
 
 /** Poll fast at first (some runs finish quickly), then settle into a slow cadence. */
 const FAST_POLL_MS = 10_000
@@ -28,16 +30,6 @@ const SLOW_POLL_MS = 30_000
 const MAX_RUN_MS = 60 * 60 * 1000
 /** Transient network blips shouldn't kill a 20-minute run. */
 const MAX_CONSECUTIVE_POLL_FAILURES = 3
-
-export interface DeepResearchConfig {
-  apiKey: string
-}
-
-/** Available iff a Gemini key exists in the environment — regardless of active provider. */
-export function resolveDeepResearchConfig(): DeepResearchConfig | null {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY
-  return apiKey ? { apiKey } : null
-}
 
 export interface DeepResearchProgress {
   status: 'queued' | 'in_progress'
@@ -52,28 +44,33 @@ interface InteractionResponse {
   error?: { message?: string }
 }
 
-async function callInteractions(
-  path: string,
-  apiKey: string,
-  init: { method: 'GET' | 'POST'; body?: unknown },
+interface DeepResearchCall {
+  action: 'start' | 'poll'
+  prompt?: string
+  interactionId?: string
+}
+
+async function callDeepResearchFn(
+  body: DeepResearchCall,
   signal?: AbortSignal,
 ): Promise<InteractionResponse> {
+  // getSession() reads the session from local storage — no network round-trip.
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) throw new AiError('You must be signed in to run Deep Research.')
+
   let response: Response
   try {
-    response = await fetch(`${BASE}${path}`, {
-      method: init.method,
-      headers: {
-        'content-type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: init.body === undefined ? undefined : JSON.stringify(init.body),
+    response = await fetch(DEEP_RESEARCH_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
       signal,
     })
   } catch (err) {
     if (signal?.aborted) throw err
-    // Browser-blocked (CORS) or offline. The paste path is the designed escape hatch.
     throw new AiError(
-      'Your browser blocked or could not reach the Deep Research API. Run Deep Research in the Gemini app instead — it can even run on a daily schedule — and paste the report into the Paste tab.',
+      'Could not reach the Deep Research service. Check your connection and try again — or run Deep Research in the Gemini app and paste the report into the Paste tab.',
       { cause: err },
     )
   }
@@ -81,8 +78,8 @@ async function callInteractions(
   if (!response.ok) {
     let detail = ''
     try {
-      const body = (await response.json()) as InteractionResponse
-      detail = body?.error?.message ?? ''
+      const errorBody = (await response.json()) as InteractionResponse
+      detail = errorBody?.error?.message ?? ''
     } catch {
       // Non-JSON error body — the status code alone will have to do.
     }
@@ -95,26 +92,9 @@ async function callInteractions(
 /** Starts a background research run and returns its id for polling/resume. */
 export async function startDeepResearch(
   prompt: string,
-  config: DeepResearchConfig,
   signal?: AbortSignal,
 ): Promise<{ interactionId: string }> {
-  const data = await callInteractions(
-    '',
-    config.apiKey,
-    {
-      method: 'POST',
-      body: {
-        agent: AGENT,
-        input: prompt,
-        background: true,
-        // Persist server-side so a page reload can resume polling by id.
-        store: true,
-        agent_config: { type: 'deep-research' },
-        tools: [{ type: 'google_search' }],
-      },
-    },
-    signal,
-  )
+  const data = await callDeepResearchFn({ action: 'start', prompt }, signal)
 
   if (typeof data.id !== 'string' || !data.id) {
     throw new AiError('Deep Research: unexpected response shape (no interaction id).')
@@ -151,7 +131,6 @@ function makeAbortError(): AiError {
  */
 export async function awaitDeepResearch(
   interactionId: string,
-  config: DeepResearchConfig,
   opts: { signal?: AbortSignal; onProgress?: (progress: DeepResearchProgress) => void } = {},
 ): Promise<string> {
   const startedAt = Date.now()
@@ -171,7 +150,7 @@ export async function awaitDeepResearch(
 
     let data: InteractionResponse
     try {
-      data = await callInteractions(`/${interactionId}`, config.apiKey, { method: 'GET' }, opts.signal)
+      data = await callDeepResearchFn({ action: 'poll', interactionId }, opts.signal)
       consecutiveFailures = 0
     } catch (err) {
       if (opts.signal?.aborted) throw err

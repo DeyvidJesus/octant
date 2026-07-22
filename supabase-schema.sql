@@ -2,57 +2,33 @@
 create extension if not exists "uuid-ossp";
 
 -- Table: jobs
+-- Hybrid blob design: a strongly-typed (id, user_id) envelope with the full JobOpportunity domain
+-- object in the `data` jsonb column. This matches the repository layer (JobRepository) and the
+-- normalized tables (tailored_resumes, discovered_jobs, resume_*). Realtime streams `data` directly.
 create table public.jobs (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
-  company text not null,
-  role text not null,
-  description text not null,
-  url text,
-  category text,
-  salary_range text,
-  location text,
-  work_mode text not null,
-  tags text[] default '{}',
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  archived boolean default false,
-  source text not null,
-  status text
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Table: job_analyses
+-- Table: job_analyses — one ATS analysis per (user, job); `data` holds the JobAnalysis domain object.
 create table public.job_analyses (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
   job_id uuid references public.jobs on delete cascade not null,
-  match_score integer not null,
-  analysis_json jsonb not null,
+  match_score integer not null default 0,
+  data jsonb not null default '{}'::jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Table: applications
+-- Table: applications — the Application domain object (incl. denormalized company/role and the
+-- event timeline) lives in `data`; no hard FK to jobs so an application survives job deletion.
 create table public.applications (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
-  job_id uuid references public.jobs on delete set null,
-  company text not null,
-  role text not null,
-  salary text,
-  location text,
-  work_mode text not null,
-  stage text not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  applied_at timestamp with time zone,
-  updated_at timestamp with time zone not null,
-  notes text,
-  feedback text,
-  rejection_reason text,
-  follow_up_at timestamp with time zone,
-  match_score integer,
-  priority boolean default false,
-  recruiter jsonb,
-  links jsonb default '[]'::jsonb,
-  events jsonb default '[]'::jsonb
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- Table: settings
@@ -73,6 +49,12 @@ create policy "Users can only access their own jobs" on public.jobs for all usin
 create policy "Users can only access their own job analyses" on public.job_analyses for all using (auth.uid() = user_id);
 create policy "Users can only access their own applications" on public.applications for all using (auth.uid() = user_id);
 create policy "Users can only access their own settings" on public.settings for all using (auth.uid() = user_id);
+
+-- One analysis per (user, job): lets upsert(onConflict user_id,job_id) replace instead of duplicating.
+create unique index if not exists uq_job_analyses_user_job on public.job_analyses (user_id, job_id);
+create index if not exists idx_jobs_user_id on public.jobs (user_id);
+create index if not exists idx_applications_user_id on public.applications (user_id);
+create index if not exists idx_job_analyses_user_id on public.job_analyses (user_id);
 
 -- Table: resumes
 create table public.resumes (

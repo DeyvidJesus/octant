@@ -1,48 +1,81 @@
-import { Routes, Route } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
+import { Routes, Route, Outlet } from 'react-router-dom'
 import { AppLayout } from './AppLayout'
 import { LoginPage } from '@/modules/auth/LoginPage'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { DashboardPage } from '@/modules/dashboard/DashboardPage'
 import { JobBoardPage } from '@/modules/job-opportunities/JobBoardPage'
 import { JobFormPage } from '@/modules/job-opportunities/JobFormPage'
-import { JobAnalysisPage } from '@/modules/job-opportunities/JobAnalysisPage'
-import { JobDiscoveryPage } from '@/modules/job-discovery/JobDiscoveryPage'
-import { GeneratorPage } from '@/modules/resume-generator/GeneratorPage'
-import { GeneratorEditorPage } from '@/modules/resume-generator/GeneratorEditorPage'
 import { ApplicationsPage } from '@/modules/application-tracker/ApplicationsPage'
 import { ApplicationFormPage } from '@/modules/application-tracker/ApplicationFormPage'
-import { InterviewPrepPage } from '@/modules/interview-prep/InterviewPrepPage'
-import { MetricsPage } from '@/modules/metrics/MetricsPage'
-import { KnowledgeBasePage } from '@/modules/knowledge-base/KnowledgeBasePage'
 import { SettingsPage } from '@/modules/settings/SettingsPage'
+import { GeneratorPage } from '@/modules/resume-generator/GeneratorPage'
 import { PlaceholderPage } from '@/modules/PlaceholderPage'
+
+// Heavy / secondary routes are split out of the initial bundle (recharts, the résumé paper + PDF
+// export, the 13-section Knowledge Base, the AI interview coach). The landing Dashboard stays eager.
+const JobAnalysisPage = lazy(() =>
+  import('@/modules/job-opportunities/JobAnalysisPage').then((m) => ({ default: m.JobAnalysisPage })),
+)
+const JobDiscoveryPage = lazy(() =>
+  import('@/modules/job-discovery/JobDiscoveryPage').then((m) => ({ default: m.JobDiscoveryPage })),
+)
+const GeneratorEditorPage = lazy(() =>
+  import('@/modules/resume-generator/GeneratorEditorPage').then((m) => ({ default: m.GeneratorEditorPage })),
+)
+const InterviewPrepPage = lazy(() =>
+  import('@/modules/interview-prep/InterviewPrepPage').then((m) => ({ default: m.InterviewPrepPage })),
+)
+const MetricsPage = lazy(() =>
+  import('@/modules/metrics/MetricsPage').then((m) => ({ default: m.MetricsPage })),
+)
+const KnowledgeBasePage = lazy(() =>
+  import('@/modules/knowledge-base/KnowledgeBasePage').then((m) => ({ default: m.KnowledgeBasePage })),
+)
+
+function RouteFallback() {
+  return (
+    <div className="min-h-[50vh] flex items-center justify-center" role="status" aria-label="Loading">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white" />
+    </div>
+  )
+}
 
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      
+
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/jobs" element={<JobBoardPage />} />
-          <Route path="/jobs/new" element={<JobFormPage />} />
-          <Route path="/jobs/discovery" element={<JobDiscoveryPage />} />
-          <Route path="/jobs/:jobId/edit" element={<JobFormPage />} />
-          <Route path="/jobs/:jobId/analysis" element={<JobAnalysisPage />} />
-          <Route path="/applications" element={<ApplicationsPage />} />
-          <Route path="/applications/new" element={<ApplicationFormPage />} />
-          <Route path="/applications/:applicationId/edit" element={<ApplicationFormPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/generator" element={<GeneratorPage />} />
-          <Route path="/generator/:jobId" element={<GeneratorEditorPage />} />
-          <Route path="/interviews" element={<InterviewPrepPage />} />
-          <Route path="/knowledge" element={<KnowledgeBasePage />} />
-          <Route path="/metrics" element={<MetricsPage />} />
           <Route
-            path="*"
-            element={<PlaceholderPage title="Not found" description="This page does not exist." />}
-          />
+            element={
+              // A single Suspense boundary for all lazily-loaded pages under the app shell.
+              <Suspense fallback={<RouteFallback />}>
+                <Outlet />
+              </Suspense>
+            }
+          >
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/jobs" element={<JobBoardPage />} />
+            <Route path="/jobs/new" element={<JobFormPage />} />
+            <Route path="/jobs/discovery" element={<JobDiscoveryPage />} />
+            <Route path="/jobs/:jobId/edit" element={<JobFormPage />} />
+            <Route path="/jobs/:jobId/analysis" element={<JobAnalysisPage />} />
+            <Route path="/applications" element={<ApplicationsPage />} />
+            <Route path="/applications/new" element={<ApplicationFormPage />} />
+            <Route path="/applications/:applicationId/edit" element={<ApplicationFormPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/generator" element={<GeneratorPage />} />
+            <Route path="/generator/:jobId" element={<GeneratorEditorPage />} />
+            <Route path="/interviews" element={<InterviewPrepPage />} />
+            <Route path="/knowledge" element={<KnowledgeBasePage />} />
+            <Route path="/metrics" element={<MetricsPage />} />
+            <Route
+              path="*"
+              element={<PlaceholderPage title="Not found" description="This page does not exist." />}
+            />
+          </Route>
         </Route>
       </Route>
     </Routes>

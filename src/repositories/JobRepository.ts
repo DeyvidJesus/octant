@@ -86,16 +86,18 @@ export class JobRepository extends BaseRepository {
 
   async upsertAnalysis(analysis: JobAnalysis): Promise<void> {
     const userId = this.requireUserId()
-    // NOTE: `job_analyses` has no unique (job_id, user_id) constraint in the current schema, so
-    // this upsert effectively inserts. A proper conflict target / dedup belongs to the schema-
-    // reconciliation phase; behavior is preserved verbatim here.
+    // One analysis per (user, job): the `uq_job_analyses_user_job` unique index (migration 0009)
+    // lets this replace an existing analysis instead of accumulating duplicate rows.
     this.unwrap(
-      await supabase.from('job_analyses').upsert({
-        job_id: analysis.jobId,
-        user_id: userId,
-        match_score: analysis.match.atsScore,
-        data: analysis,
-      }),
+      await supabase.from('job_analyses').upsert(
+        {
+          job_id: analysis.jobId,
+          user_id: userId,
+          match_score: analysis.match.atsScore,
+          data: analysis,
+        },
+        { onConflict: 'user_id,job_id' },
+      ),
       'save the job analysis',
     )
   }

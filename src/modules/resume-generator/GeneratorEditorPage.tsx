@@ -124,9 +124,9 @@ export function GeneratorEditorPage() {
   }
 
   return (
-    <div className="flex h-full animate-fade-in print:h-auto print:block">
+    <div className="flex flex-col lg:flex-row lg:h-full animate-fade-in print:h-auto print:block">
       {/* Controls — never printed */}
-      <div className="w-80 border-r border-edge bg-base overflow-y-auto custom-scrollbar p-6 shrink-0 space-y-8 print:hidden">
+      <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-edge bg-base lg:overflow-y-auto custom-scrollbar p-6 shrink-0 space-y-8 print:hidden">
         <div>
           <button
             onClick={() => navigate('/generator')}

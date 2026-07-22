@@ -7,6 +7,8 @@ interface SubscriptionState {
   /** Current plan tier. Defaults to 'free' until hydrated from Supabase. */
   tier: PlanTier
   _fetchFromSupabase: () => Promise<void>
+  /** Clears in-memory state (sign-out / user switch) so no data bleeds across sessions. */
+  reset: () => void
 }
 
 export const useSubscriptionStore = create<SubscriptionState>()((set) => ({
@@ -19,4 +21,5 @@ export const useSubscriptionStore = create<SubscriptionState>()((set) => ({
       console.error('[subscriptionStore] failed to load subscription', error)
     }
   },
+  reset: () => set({ tier: 'free' }),
 }))

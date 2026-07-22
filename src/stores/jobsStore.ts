@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { JobOpportunity } from '@/types/job'
 import type { JobAnalysis } from '@/types/analysis'
-import { createSeedJobs } from '@/constants/seedData'
+import { initialJobs } from '@/constants/seedData'
 import { jobRepository } from '@/repositories/JobRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
 import { persist } from '@/repositories/persist'
@@ -20,20 +20,27 @@ interface JobsState {
   _fetchFromSupabase: () => Promise<void>
   /** Subscribes to cross-device changes; returns an unsubscribe function. */
   _subscribeRealtime: () => () => void
+  /** Clears in-memory state (sign-out / user switch) so no data bleeds across sessions. */
+  reset: () => void
 }
 
 export const useJobsStore = create<JobsState>()(
   (set, get) => ({
-    jobs: createSeedJobs(),
+    jobs: initialJobs(),
     analyses: {},
     addJob: (job) => {
       set((state) => ({ jobs: [job, ...state.jobs] }))
       trackEvent(AnalyticsEvent.JobAdded, { source: job.source })
-      persist(() => jobRepository.upsertJob(job), 'jobs.addJob')
+      // Reconcile on failure: a free-tier cap (RLS) rejects the insert; re-fetch drops the phantom.
+      persist(() => jobRepository.upsertJob(job), 'jobs.addJob', {
+        reconcile: () => void get()._fetchFromSupabase(),
+      })
     },
     addJobs: (jobs) => {
       set((state) => ({ jobs: [...jobs, ...state.jobs] }))
-      persist(() => jobRepository.upsertJobs(jobs), 'jobs.addJobs')
+      persist(() => jobRepository.upsertJobs(jobs), 'jobs.addJobs', {
+        reconcile: () => void get()._fetchFromSupabase(),
+      })
     },
     updateJob: (id, patch) => {
       set((state) => ({
@@ -86,5 +93,6 @@ export const useJobsStore = create<JobsState>()(
             return { jobs: state.jobs.filter((job) => job.id !== id), analyses }
           }),
       }),
+    reset: () => set({ jobs: [], analyses: {} }),
   }),
 )
