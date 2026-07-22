@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ClipboardCopy, Download, FileText, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ClipboardCopy, Crown, Download, FileText, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useJobsStore } from '@/stores/jobsStore'
 import { useResumeStore } from '@/stores/resumeStore'
 import { useGeneratorStore } from '@/stores/generatorStore'
+import { useSubscriptionStore } from '@/stores/subscriptionStore'
+import { tailoredResumeLimitReached } from '@/constants/plan'
 import { getAnalyzer } from '@/services/analysis/localHeuristicAnalyzer'
 import { generateTailoredResume } from '@/services/generator/generate'
 import { computeCoverage } from '@/services/generator/coverage'
@@ -26,6 +28,8 @@ export function GeneratorEditorPage() {
   const saveTailored = useGeneratorStore((state) => state.saveTailored)
   const toggleBullet = useGeneratorStore((state) => state.toggleBullet)
   const toggleProject = useGeneratorStore((state) => state.toggleProject)
+  const tier = useSubscriptionStore((state) => state.tier)
+  const tailoredCount = useGeneratorStore((state) => Object.keys(state.tailored).length)
 
   const [copied, setCopied] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
@@ -43,7 +47,9 @@ export function GeneratorEditorPage() {
         current = await getAnalyzer().analyze({ job, resume })
         saveAnalysis(current)
       }
-      if (!tailored) {
+      // Don't auto-generate a NEW tailored resume for a free user already at the cap — the DB would
+      // reject the insert. An existing one (this job already tailored) is always editable.
+      if (!tailored && !tailoredResumeLimitReached(tier, tailoredCount)) {
         saveTailored(generateTailoredResume(resume, current))
       }
     })()
@@ -84,6 +90,20 @@ export function GeneratorEditorPage() {
   }
 
   if (!tailored) {
+    if (tailoredResumeLimitReached(tier, tailoredCount)) {
+      return (
+        <EmptyState
+          icon={Crown}
+          title="Tailored resume limit reached"
+          description="The Free plan includes 1 tailored resume. Upgrade to Pro for unlimited tailored resumes."
+          action={
+            <Button onClick={() => navigate('/settings')}>
+              <Crown size={16} aria-hidden /> Upgrade to Pro
+            </Button>
+          }
+        />
+      )
+    }
     return (
       <div className="flex items-center justify-center h-full text-muted text-sm animate-fade-in">
         Generating from your Master Resume…

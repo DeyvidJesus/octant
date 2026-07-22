@@ -5,6 +5,7 @@ import { createSeedJobs } from '@/constants/seedData'
 import { jobRepository } from '@/repositories/JobRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
 import { persist } from '@/repositories/persist'
+import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
 
 interface JobsState {
   jobs: JobOpportunity[]
@@ -27,6 +28,7 @@ export const useJobsStore = create<JobsState>()(
     analyses: {},
     addJob: (job) => {
       set((state) => ({ jobs: [job, ...state.jobs] }))
+      trackEvent(AnalyticsEvent.JobAdded, { source: job.source })
       persist(() => jobRepository.upsertJob(job), 'jobs.addJob')
     },
     addJobs: (jobs) => {
@@ -52,6 +54,7 @@ export const useJobsStore = create<JobsState>()(
       set((state) => ({
         analyses: { ...state.analyses, [analysis.jobId]: analysis },
       }))
+      trackEvent(AnalyticsEvent.JobAnalyzed, { atsScore: analysis.match.atsScore })
       persist(() => jobRepository.upsertAnalysis(analysis), 'jobs.saveAnalysis')
     },
     _fetchFromSupabase: async () => {

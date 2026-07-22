@@ -108,6 +108,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const apiKey = Deno.env.get(vendor.keyEnv)
   if (!apiKey) return json({ error: `Server is missing ${vendor.keyEnv}.` }, 500)
 
+  // Service-role client for budget checks + usage logging. Bypasses RLS; never exposed to clients.
+  const admin = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    { auth: { persistSession: false } },
+  )
+
+  // Tier-aware rate limit. Enforced only when FREE_TIER_MONTHLY_TOKEN_LIMIT is set (>0); otherwise
+  // we log usage but never block. Pro users are always unlimited.
+  const monthlyLimit = Number(Deno.env.get('FREE_TIER_MONTHLY_TOKEN_LIMIT') ?? '0')
+  if (monthlyLimit > 0 && (await freeTierOverBudget(admin, user.id, monthlyLimit))) {
+    return json(
+      { error: 'Monthly AI usage limit reached on the Free plan. Upgrade to Pro for unlimited AI.' },
+      429,
+    )
+  }
+
   // 3. Build and make the vendor call.
   const { headers, body } = buildVendorCall(vendor, apiKey, payload)
   let vendorResponse: Response
@@ -132,8 +149,67 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: `${payload.providerId}: unexpected response shape (no text content).` }, 502)
   }
   const model = typeof data?.model === 'string' ? data.model : payload.model
+
+  // Log token usage for budget monitoring. Best-effort — monitoring must never fail the request.
+  const usage = extractUsage(data, vendor.wire)
+  try {
+    await admin.from('token_usage_logs').insert({
+      user_id: user.id,
+      provider: payload.providerId,
+      model,
+      prompt_tokens: usage.prompt,
+      completion_tokens: usage.completion,
+      total_tokens: usage.total,
+    })
+  } catch (_err) {
+    // swallow
+  }
+
   return json({ text, model })
 })
+
+interface TokenUsage {
+  prompt: number
+  completion: number
+  total: number
+}
+
+/** Normalizes the vendor's usage block. OpenAI reports prompt/completion/total; Anthropic input/output. */
+// deno-lint-ignore no-explicit-any
+function extractUsage(data: any, wire: Wire): TokenUsage {
+  const u = data?.usage ?? {}
+  if (wire === 'anthropic') {
+    const prompt = Number(u.input_tokens ?? 0)
+    const completion = Number(u.output_tokens ?? 0)
+    return { prompt, completion, total: prompt + completion }
+  }
+  const prompt = Number(u.prompt_tokens ?? 0)
+  const completion = Number(u.completion_tokens ?? 0)
+  return { prompt, completion, total: Number(u.total_tokens ?? prompt + completion) }
+}
+
+/** True when a non-pro user has consumed at least `monthlyLimit` total tokens this calendar month. */
+// deno-lint-ignore no-explicit-any
+async function freeTierOverBudget(admin: any, userId: string, monthlyLimit: number): Promise<boolean> {
+  const { data: sub } = await admin.from('subscriptions').select('tier').eq('user_id', userId).maybeSingle()
+  if (sub?.tier === 'pro') return false
+
+  const monthStart = new Date()
+  monthStart.setUTCDate(1)
+  monthStart.setUTCHours(0, 0, 0, 0)
+
+  const { data: rows } = await admin
+    .from('token_usage_logs')
+    .select('total_tokens')
+    .eq('user_id', userId)
+    .gte('created_at', monthStart.toISOString())
+
+  const used = (rows ?? []).reduce(
+    (sum: number, row: { total_tokens?: number }) => sum + (row.total_tokens ?? 0),
+    0,
+  )
+  return used >= monthlyLimit
+}
 
 function buildVendorCall(
   vendor: VendorConfig,
