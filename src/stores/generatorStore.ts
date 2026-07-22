@@ -17,6 +17,8 @@ interface GeneratorState {
   toggleBullet: (jobId: string, accomplishmentId: string) => void
   toggleProject: (jobId: string, projectId: string) => void
   _fetchFromSupabase: () => Promise<void>
+  /** Clears in-memory state (sign-out / user switch) so no data bleeds across sessions. */
+  reset: () => void
 }
 
 export const useGeneratorStore = create<GeneratorState>()(
@@ -90,5 +92,6 @@ export const useGeneratorStore = create<GeneratorState>()(
         console.error('[generatorStore] failed to load from Supabase', error)
       }
     },
+    reset: () => set({ tailored: {} }),
   }),
 )

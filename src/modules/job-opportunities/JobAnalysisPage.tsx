@@ -135,21 +135,21 @@ export function JobAnalysisPage() {
   }
 
   return (
-    <div className="flex h-full animate-fade-in">
-      <div className="w-64 border-r border-edge bg-base overflow-y-auto custom-scrollbar py-6 shrink-0">
+    <div className="flex flex-col lg:flex-row lg:h-full animate-fade-in">
+      <div className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-edge bg-base lg:overflow-y-auto custom-scrollbar py-6 shrink-0">
         <div className="px-6 mb-6">
           <div className="text-xs text-faint font-semibold uppercase tracking-widest mb-1">Target</div>
           <div className="text-white font-medium truncate">{job.company}</div>
           <div className="text-muted text-xs truncate">{job.role}</div>
         </div>
 
-        <nav aria-label="Analysis sections" className="space-y-1 px-3">
+        <nav aria-label="Analysis sections" className="flex lg:flex-col gap-1 px-3 overflow-x-auto custom-scrollbar">
           {SECTIONS.map((section) => (
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
               aria-current={activeSection === section.id}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition border ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left whitespace-nowrap shrink-0 lg:w-full transition border ${
                 activeSection === section.id
                   ? 'bg-surface-2 text-white border-edge-2'
                   : 'text-muted hover:text-ink-2 border-transparent'
@@ -177,7 +177,7 @@ export function JobAnalysisPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-base">
+      <div className="flex-1 lg:overflow-y-auto custom-scrollbar p-6 lg:p-10 bg-base">
         <div className="max-w-3xl animate-rise-in" key={activeSection}>
           <h2 className="text-2xl font-semibold text-white mb-6">
             {SECTIONS.find((section) => section.id === activeSection)?.title}

@@ -149,7 +149,6 @@ export function InterviewPrepPage() {
 
   const generate = async () => {
     const config = resolveAiRunConfig()
-    if (!config) return
     setGenerating(true)
     setGenError(null)
     try {

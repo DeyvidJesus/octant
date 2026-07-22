@@ -1,9 +1,11 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, Sparkles } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useApplicationsStore } from '@/stores/applicationsStore'
+import { useJobsStore } from '@/stores/jobsStore'
+import { useResumeStore } from '@/stores/resumeStore'
 import { useInterviewPrepStore } from '@/stores/interviewPrepStore'
 import type { InterviewQuestionCategory, UserSkill } from '@/types/interviewPrep'
 import { MASTERY_THRESHOLD } from '@/services/interviewPrep/mastery'
@@ -35,8 +37,18 @@ function InterviewPrepStatLink({ label, value, accent = false }: { label: string
   )
 }
 
+interface NextStep {
+  id: string
+  text: string
+  to: string
+  primary?: boolean
+}
+
 export function DashboardPage() {
   const applications = useApplicationsStore((state) => state.applications)
+  const jobs = useJobsStore((state) => state.jobs)
+  const analyses = useJobsStore((state) => state.analyses)
+  const knowledgeBase = useResumeStore((state) => state.knowledgeBase)
   const skills = useInterviewPrepStore((state) => state.skills)
   const interviewSkills = useMemo(() => Object.values(skills), [skills])
 
@@ -58,6 +70,29 @@ export function DashboardPage() {
   const funnelSteps = useMemo(() => funnel(applications), [applications])
   const activity = useMemo(() => activityByWeek(applications), [applications])
 
+  // Recommended next steps derived from the user's ACTUAL state — replaces the old hardcoded advice.
+  const nextSteps = useMemo<NextStep[]>(() => {
+    const steps: NextStep[] = []
+    const hasKnowledge = knowledgeBase.facts.length > 0 || knowledgeBase.roles.length > 0
+    if (!hasKnowledge) {
+      steps.push({ id: 'kb', text: 'Build your Knowledge Base — it powers resumes, matching, and interview prep.', to: '/knowledge', primary: true })
+    }
+    if (followUpsDue > 0) {
+      steps.push({ id: 'followups', text: `Follow up on ${followUpsDue} application${followUpsDue === 1 ? '' : 's'} due now.`, to: '/applications', primary: true })
+    }
+    if (jobs.length === 0) {
+      steps.push({ id: 'jobs', text: 'Add or discover job opportunities to analyze and track.', to: '/jobs/discovery' })
+    } else if (Object.keys(analyses).length === 0) {
+      steps.push({ id: 'analyze', text: 'Run the Analyzer on your opportunities to see match scores.', to: '/jobs' })
+    }
+    if (trackedSkillsCount === 0) {
+      steps.push({ id: 'prep', text: 'Start an interview prep session to build your readiness.', to: '/interviews' })
+    } else if (weakTopicsCount > 0) {
+      steps.push({ id: 'weak', text: `Drill ${weakTopicsCount} weak topic${weakTopicsCount === 1 ? '' : 's'} before your next interview.`, to: '/interviews' })
+    }
+    return steps.slice(0, 4)
+  }, [knowledgeBase, jobs, analyses, followUpsDue, trackedSkillsCount, weakTopicsCount])
+
   return (
     <div className="p-8 max-w-6xl mx-auto animate-fade-in">
       <PageHeader title="Command Center" />
@@ -69,8 +104,18 @@ export function DashboardPage() {
         >
           <StatCard label="Total Opportunities Tracked" value={applications.length} />
         </Link>
-        <StatCard label="Active Applications" value={appliedCount} />
-        <StatCard label="Interview Pipeline" value={interviewingCount} accent />
+        <Link
+          to="/applications"
+          className="block transition hover:-translate-y-0.5 hover:border-ghost/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ghost rounded-xl"
+        >
+          <StatCard label="Active Applications" value={appliedCount} />
+        </Link>
+        <Link
+          to="/applications"
+          className="block transition hover:-translate-y-0.5 hover:border-ghost/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ghost rounded-xl"
+        >
+          <StatCard label="Interview Pipeline" value={interviewingCount} accent />
+        </Link>
         <Link
           to="/applications"
           className="block transition hover:-translate-y-0.5 hover:border-ghost/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ghost rounded-xl"
@@ -112,21 +157,32 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <h3 className="text-sm font-medium text-white mb-4">Strategic Directives</h3>
-          <ul className="space-y-4">
-            <li className="flex gap-3 text-sm text-ink-3">
-              <CheckCircle2 size={16} className="text-ghost mt-0.5 shrink-0" aria-hidden />
-              <span>Keep focusing on React/Node/Java roles to maximize existing architecture experience.</span>
-            </li>
-            <li className="flex gap-3 text-sm text-ink-3">
-              <CheckCircle2 size={16} className="text-ghost mt-0.5 shrink-0" aria-hidden />
-              <span>Update GoMech portfolio to highlight the specific AI models integrated.</span>
-            </li>
-            <li className="flex gap-3 text-sm text-ink-3">
-              <Sparkles size={16} className="text-indigo-400 mt-0.5 shrink-0" aria-hidden />
-              <span className="text-ink-2">Run the Analyzer on high-match opportunities in the board.</span>
-            </li>
-          </ul>
+          <h3 className="text-sm font-medium text-white mb-4">Recommended next steps</h3>
+          {nextSteps.length > 0 ? (
+            <ul className="space-y-3">
+              {nextSteps.map((step) => (
+                <li key={step.id}>
+                  <Link
+                    to={step.to}
+                    className="group flex items-start gap-3 text-sm text-ink-3 hover:text-ink transition-colors rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  >
+                    {step.primary ? (
+                      <Sparkles size={16} className="text-indigo-400 mt-0.5 shrink-0" aria-hidden />
+                    ) : (
+                      <CheckCircle2 size={16} className="text-ghost mt-0.5 shrink-0" aria-hidden />
+                    )}
+                    <span className={step.primary ? 'text-ink-2' : undefined}>{step.text}</span>
+                    <ArrowRight size={14} className="ml-auto mt-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="flex items-center gap-2 text-sm text-muted">
+              <CheckCircle2 size={16} className="text-emerald-400 shrink-0" aria-hidden />
+              You're all caught up — nothing needs your attention right now.
+            </p>
+          )}
         </Card>
       </div>
     </div>

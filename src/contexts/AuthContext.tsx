@@ -12,6 +12,7 @@ import { useInterviewPrepStore } from '@/stores/interviewPrepStore'
 import { useGeneratorStore } from '@/stores/generatorStore'
 import { useDiscoveryStore } from '@/stores/discoveryStore'
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
+import { resetAllStores } from '@/stores/reset'
 
 interface AuthContextValue {
   session: Session | null
@@ -39,10 +40,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       realtimeCleanups = []
     }
 
+    // The user id we've already hydrated for. `undefined` = not yet initialized. Keyed on user id
+    // (not the access token) so a TOKEN_REFRESHED event for the same user does NOT re-run the eight
+    // fetches or re-subscribe — and so both getSession() and onAuthStateChange's INITIAL_SESSION
+    // (which fire on load) only hydrate once. Set synchronously before any await to win that race.
+    let currentUserId: string | null | undefined = undefined
+
     const syncData = async (session: Session | null) => {
+      const nextUserId = session?.user?.id ?? null
       // Mirror the user id into the module-level session holder BEFORE any repository call, so the
       // repository layer resolves it synchronously (no per-write `auth.getUser()` network round-trip).
-      setSessionUserId(session?.user?.id ?? null)
+      setSessionUserId(nextUserId)
       setSession(session)
       setUser(session?.user ?? null)
       // Attach observability identity (no-ops when analytics/Sentry aren't configured).
@@ -53,8 +61,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resetAnalytics()
         setSentryUser(null)
       }
+
+      // Only (re)hydrate when the user actually changes — skip token refreshes and duplicate events.
+      if (nextUserId === currentUserId) {
+        setIsLoading(false)
+        return
+      }
+      currentUserId = nextUserId
       teardownRealtime()
-      if (session?.user) {
+      // Wipe the previous user's in-memory data on every transition (sign-out AND user switch) so
+      // nothing bleeds across sessions on a shared browser.
+      resetAllStores()
+
+      if (nextUserId) {
         await Promise.all([
           useJobsStore.getState()._fetchFromSupabase?.(),
           useApplicationsStore.getState()._fetchFromSupabase?.(),

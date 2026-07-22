@@ -20,6 +20,8 @@ interface ApplicationsState {
   _fetchFromSupabase: () => Promise<void>
   /** Subscribes to cross-device changes; returns an unsubscribe function. */
   _subscribeRealtime: () => () => void
+  /** Clears in-memory state (sign-out / user switch) so no data bleeds across sessions. */
+  reset: () => void
 }
 
 export const useApplicationsStore = create<ApplicationsState>()(
@@ -36,7 +38,9 @@ export const useApplicationsStore = create<ApplicationsState>()(
       }))
       trackEvent(AnalyticsEvent.ApplicationCreated, { stage: application.stage })
       if (application.stage === 'applied') trackEvent(AnalyticsEvent.JobApplied, { id: application.id })
-      persist(() => applicationRepository.upsertApplication(application), 'applications.upsert')
+      persist(() => applicationRepository.upsertApplication(application), 'applications.upsert', {
+        reconcile: () => void get()._fetchFromSupabase(),
+      })
     },
     updateApplication: (id, patch) => {
       set((state) => ({
@@ -101,5 +105,6 @@ export const useApplicationsStore = create<ApplicationsState>()(
             applications: state.applications.filter((application) => application.id !== id),
           })),
       }),
+    reset: () => set({ applications: [] }),
   }),
 )

@@ -26,6 +26,8 @@ interface InterviewPrepState {
   /** Persists a coached answer and blends its score into the skill's mastery. */
   recordAnswer: (input: RecordAnswerInput) => Promise<UserSkill | null>
   _fetchFromSupabase: () => Promise<void>
+  /** Clears in-memory state (sign-out / user switch) so no data bleeds across sessions. */
+  reset: () => void
 }
 
 export const useInterviewPrepStore = create<InterviewPrepState>()((set, get) => {
@@ -90,6 +92,10 @@ export const useInterviewPrepStore = create<InterviewPrepState>()((set, get) => 
         if (error instanceof UnauthenticatedError) return
         console.error('[interviewPrepStore] failed to load from Supabase', error)
       }
+    },
+    reset: () => {
+      activeInterview = null
+      set({ skills: {} })
     },
   }
 })

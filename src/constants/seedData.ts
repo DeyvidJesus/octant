@@ -105,6 +105,51 @@ export function createSeedResume() {
   return projectKnowledgeBase(createSeedKnowledgeBase())
 }
 
+/** A truly empty knowledge base — the real starting point for a new account. */
+export function createEmptyKnowledgeBase(): CareerKnowledgeBase {
+  return {
+    schemaVersion: 3,
+    profile: {
+      personal: { name: '', role: '', location: '' },
+      summary: '',
+      careerDirection: '',
+      values: [],
+      workPreferences: [],
+      languages: [],
+    },
+    organizations: [],
+    roles: [],
+    initiatives: [],
+    skills: [],
+    facts: [],
+    metrics: [],
+    technicalDecisions: [],
+    stories: [],
+    credentials: [],
+    portfolioAssets: [],
+    publications: [],
+    learning: [],
+    unclassifiedFacts: [],
+    updatedAt: nowIso(),
+  }
+}
+
+/**
+ * Whether to preload the demo persona instead of a blank slate. OFF by default: real users start
+ * empty and populate via onboarding / the Knowledge Base. Opt in with VITE_DEMO_SEED=true for demos.
+ */
+export const DEMO_SEED_ENABLED = import.meta.env.VITE_DEMO_SEED === 'true'
+
+/** Initial knowledge base for a fresh store — persona only in demo mode, otherwise empty. */
+export function initialKnowledgeBase(): CareerKnowledgeBase {
+  return DEMO_SEED_ENABLED ? createSeedKnowledgeBase() : createEmptyKnowledgeBase()
+}
+
+/** Initial jobs for a fresh store — persona only in demo mode, otherwise empty. */
+export function initialJobs(): JobOpportunity[] {
+  return DEMO_SEED_ENABLED ? createSeedJobs() : []
+}
+
 interface SeedJobInput { company: string; role: string; category: string; stack: string; exp: string; salary: string; link: string }
 const SEED_JOBS: SeedJobInput[] = [
   { company: 'Tempo', role: 'Full-Stack Engineer', category: 'AI/SaaS', stack: 'TypeScript, React, Tailwind, Supabase', exp: '2+ years', salary: '$40k-$60k', link: 'https://jobs.ashbyhq.com/tempo/374cb123-0dde-427f-a907-e59b66d14624' },

@@ -22,10 +22,13 @@ export function BoardView({ applications }: { applications: Application[] }) {
 
   return (
     <div className="flex gap-4 overflow-x-auto pb-4">
-      {BOARD_COLUMNS.map((column) => {
+      {BOARD_COLUMNS.map((column, columnIndex) => {
         const cards = column.stages.flatMap((stage) => byStage[stage] ?? [])
         // Dropping onto an aggregate column targets its first (primary) stage.
         const dropStage = column.stages[0]
+        // Keyboard move targets: the primary stage of the adjacent columns (mirrors drag-and-drop).
+        const leftStage = columnIndex > 0 ? BOARD_COLUMNS[columnIndex - 1].stages[0] : null
+        const rightStage = columnIndex < BOARD_COLUMNS.length - 1 ? BOARD_COLUMNS[columnIndex + 1].stages[0] : null
         return (
           <div
             key={column.key}
@@ -50,6 +53,8 @@ export function BoardView({ applications }: { applications: Application[] }) {
                   application={application}
                   compact
                   onDragStart={(e) => e.dataTransfer.setData(DRAG_TYPE, application.id)}
+                  onMoveLeft={leftStage ? () => moveStage(application.id, leftStage) : undefined}
+                  onMoveRight={rightStage ? () => moveStage(application.id, rightStage) : undefined}
                 />
               ))}
             </div>

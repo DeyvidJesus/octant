@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { FlaskConical, KeyRound, Loader2, Square } from 'lucide-react'
+import { FlaskConical, Loader2, Square } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import type { AiRunConfig } from '@/services/ai/types'
 import {
   startDeepResearch,
   awaitDeepResearch,
-  resolveDeepResearchConfig,
   DEEP_RESEARCH_HINT,
   type DeepResearchProgress,
 } from '@/services/ai/deepResearch'
@@ -37,24 +35,6 @@ export function DeepResearchPanel({ config }: { config: AiRunConfig | null }) {
   // Cancel polling (not the server-side run) when the panel unmounts.
   useEffect(() => () => abortRef.current?.abort(), [])
 
-  const drConfig = resolveDeepResearchConfig()
-
-  if (!drConfig) {
-    return (
-      <Card className="text-center py-12">
-        <KeyRound size={28} className="text-edge-2 mx-auto mb-4" aria-hidden />
-        <h3 className="text-white font-medium mb-2">Deep Research needs a Google Gemini API key</h3>
-        <p className="text-sm text-muted max-w-md mx-auto mb-6 leading-relaxed">
-          In-app Deep Research runs on your Gemini key (independent of your reasoning provider).
-          Add one in Settings — or run Deep Research free in the Gemini app and use the Paste tab.
-        </p>
-        <Link to="/settings">
-          <Button variant="subtle">Configure in Settings</Button>
-        </Link>
-      </Card>
-    )
-  }
-
   const waitAndIngest = async (interactionId: string) => {
     const controller = new AbortController()
     abortRef.current = controller
@@ -62,7 +42,7 @@ export function DeepResearchPanel({ config }: { config: AiRunConfig | null }) {
     setError(null)
     setSummary(null)
     try {
-      const report = await awaitDeepResearch(interactionId, drConfig, {
+      const report = await awaitDeepResearch(interactionId, {
         signal: controller.signal,
         onProgress: setProgress,
       })
@@ -92,7 +72,7 @@ export function DeepResearchPanel({ config }: { config: AiRunConfig | null }) {
     setSummary(null)
     try {
       const prompt = buildResearchPrompt({ prefs, resumeFacts: buildResumeFacts(resume) })
-      const { interactionId } = await startDeepResearch(prompt, drConfig)
+      const { interactionId } = await startDeepResearch(prompt)
       setPendingInteraction(interactionId)
       await waitAndIngest(interactionId)
     } catch (err) {

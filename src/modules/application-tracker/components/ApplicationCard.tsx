@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { CalendarClock, Star } from 'lucide-react'
 import type { Application } from '@/types/application'
+import { APPLICATION_STAGE_LABELS } from '@/constants/applicationStages'
 import { formatRelative, isOverdue } from '@/utils/dates'
 import { StagePill } from './StagePill'
 
@@ -9,22 +10,43 @@ interface ApplicationCardProps {
   /** When true, renders a compact, draggable board card; otherwise a wider row. */
   compact?: boolean
   onDragStart?: (event: React.DragEvent) => void
+  /** Keyboard stage movement on the board (←/→). Provided only in the board view. */
+  onMoveLeft?: () => void
+  onMoveRight?: () => void
 }
 
-export function ApplicationCard({ application, compact = false, onDragStart }: ApplicationCardProps) {
+export function ApplicationCard({ application, compact = false, onDragStart, onMoveLeft, onMoveRight }: ApplicationCardProps) {
   const navigate = useNavigate()
   const open = () => navigate(`/applications/${application.id}/edit`)
   const overdue = isOverdue(application.followUpAt)
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      open()
+    } else if (e.key === 'ArrowRight' && onMoveRight) {
+      e.preventDefault()
+      onMoveRight()
+    } else if (e.key === 'ArrowLeft' && onMoveLeft) {
+      e.preventDefault()
+      onMoveLeft()
+    }
+  }
+
+  const movable = Boolean(onMoveLeft || onMoveRight)
 
   return (
     <div
       draggable={compact}
       onDragStart={onDragStart}
       onClick={open}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), open())}
+      onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
-      className={`bg-[#0d0d0d] border border-edge rounded-xl hover:bg-surface transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ghost ${
+      aria-label={`${application.company} — ${application.role}, stage ${APPLICATION_STAGE_LABELS[application.stage]}.${
+        movable ? ' Press Enter to open; use left and right arrow keys to change stage.' : ' Press Enter to open.'
+      }`}
+      className={`bg-surface border border-edge rounded-xl hover:bg-surface-2 transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ghost ${
         compact ? 'p-3' : 'p-4'
       }`}
     >

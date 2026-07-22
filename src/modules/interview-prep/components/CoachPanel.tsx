@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { AlertTriangle, ShieldCheck, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -19,9 +18,11 @@ interface CoachPanelProps {
   question: PrepQuestion
   resumeEvidence: string[]
   missingSkills: string[]
+  /** Ties this panel to the disclosure button that toggles it (aria-controls). */
+  panelId?: string
 }
 
-export function CoachPanel({ job, resume, question, resumeEvidence, missingSkills }: CoachPanelProps) {
+export function CoachPanel({ job, resume, question, resumeEvidence, missingSkills, panelId }: CoachPanelProps) {
   const config = useMemo(() => resolveAiRunConfig(), [])
 
   const recordAnswer = useInterviewPrepStore((state) => state.recordAnswer)
@@ -31,23 +32,8 @@ export function CoachPanel({ job, resume, question, resumeEvidence, missingSkill
   const [error, setError] = useState<string | null>(null)
   const [masteryNote, setMasteryNote] = useState<string | null>(null)
 
-  if (!config) {
-    return (
-      <div className="rounded-lg border border-edge bg-base/40 p-4 text-center">
-        <Sparkles size={22} className="text-edge-2 mx-auto mb-2" aria-hidden />
-        <p className="text-sm text-muted mb-3 leading-relaxed">
-          Connect an AI provider to have a senior-engineer coach grade a practice answer against this
-          job and your Master Resume.
-        </p>
-        <Link to="/settings">
-          <Button variant="subtle">Configure in Settings</Button>
-        </Link>
-      </div>
-    )
-  }
-
   const run = async () => {
-    if (!config || !answer.trim()) return
+    if (!answer.trim()) return
     setLoading(true)
     setError(null)
     try {
@@ -85,7 +71,7 @@ export function CoachPanel({ job, resume, question, resumeEvidence, missingSkill
   const providerLabel = getProviderDescriptor(config.providerId)?.label ?? config.providerId
 
   return (
-    <div className="rounded-lg border border-edge bg-base/40 p-4 space-y-3">
+    <div id={panelId} className="rounded-lg border border-edge bg-base/40 p-4 space-y-3">
       <div className="flex items-center justify-between gap-3">
         <SectionLabel>Practice answer</SectionLabel>
         <Button onClick={run} disabled={loading || !answer.trim()}>

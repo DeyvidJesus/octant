@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { CareerKnowledgeBase, MasterResume } from '@/types/resume'
-import { createSeedKnowledgeBase } from '@/constants/seedData'
+import { createEmptyKnowledgeBase, initialKnowledgeBase } from '@/constants/seedData'
 import { projectKnowledgeBase } from '@/services/resume/projection'
 import { nowIso } from '@/utils/dates'
 import { knowledgeBaseRepository } from '@/repositories/KnowledgeBaseRepository'
@@ -16,6 +16,8 @@ interface ResumeState {
   /** Patches specific knowledge-base collections (used by the Knowledge Base editor). */
   patchKnowledgeBase: (patch: Partial<CareerKnowledgeBase>) => void
   _fetchFromSupabase: () => Promise<void>
+  /** Clears in-memory state (sign-out / user switch) so no data bleeds across sessions. */
+  reset: () => void
 }
 
 function withTimestamp(knowledgeBase: CareerKnowledgeBase): CareerKnowledgeBase {
@@ -40,10 +42,10 @@ export const useResumeStore = create<ResumeState>()(
       persist(() => knowledgeBaseRepository.applyChanges(previous, knowledgeBase), context)
     }
 
-    const seed = createSeedKnowledgeBase()
+    const initial = initialKnowledgeBase()
     return {
-      knowledgeBase: seed,
-      resume: projectKnowledgeBase(seed),
+      knowledgeBase: initial,
+      resume: projectKnowledgeBase(initial),
       updateKnowledgeBase: (next) => {
         commit(withTimestamp(next), 'resume.updateKnowledgeBase')
       },
@@ -61,6 +63,11 @@ export const useResumeStore = create<ResumeState>()(
           if (error instanceof UnauthenticatedError) return
           console.error('[resumeStore] failed to load from Supabase', error)
         }
+      },
+      reset: () => {
+        persistedBaseline = null
+        const empty = createEmptyKnowledgeBase()
+        set({ knowledgeBase: empty, resume: projectKnowledgeBase(empty) })
       },
     }
   },
