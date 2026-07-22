@@ -48,7 +48,8 @@ export interface LLMProvider {
   complete(request: CompletionRequest): Promise<CompletionResult>
 }
 
-/** Everything a task needs to reach a provider — resolved from settings + vault. */
+/** Everything a task needs to reach a provider. Hosted-vendor keys live server-side in the ai-proxy
+ * Edge Function; `apiKey` is only ever set for a local (offline) model with a custom config. */
 export interface AiRunConfig {
   providerId: AiProviderId
   model: string

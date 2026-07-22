@@ -176,7 +176,7 @@ export function GeneratorEditorPage() {
       </div>
 
       {/* Paper preview — the only thing that prints */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-[#0a0a0a] print:overflow-visible print:p-0 print:bg-white">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-base print:overflow-visible print:p-0 print:bg-white">
         <ResumePaper tailored={tailored} onToggleBullet={handleToggle} onToggleProject={handleToggleProject} />
       </div>
     </div>

@@ -91,12 +91,14 @@ create policy "Users can only access their own discoveries" on public.discoverie
 create index if not exists idx_tailored_resumes_user_id on public.tailored_resumes (user_id);
 create index if not exists idx_tailored_resumes_job_id on public.tailored_resumes (job_id);
 
--- Table: discovered_jobs (Phase 4 — relational review queue; one row per scraped candidate)
+-- Table: discovered_jobs (relational review queue; one row per discovered candidate). `score` is the
+-- top-level ranking column; the full DiscoveredCandidate (incl. its JobAnalysis) lives in `data`.
 create table public.discovered_jobs (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
   url text,
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  score integer,
   data jsonb not null default '{}'::jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -106,6 +108,7 @@ alter table public.discovered_jobs enable row level security;
 create policy "Users can only access their own discovered jobs" on public.discovered_jobs for all using (auth.uid() = user_id);
 
 create index if not exists idx_discovered_jobs_user_status_created on public.discovered_jobs (user_id, status, created_at);
+create index if not exists idx_discovered_jobs_user_status_score on public.discovered_jobs (user_id, status, score desc);
 
 -- Knowledge-base normalization (Phase 5). The four structural/high-churn collections become rows;
 -- the remaining collections stay in resumes.knowledge_base as a slim residual document.
@@ -273,3 +276,98 @@ create table public.token_usage_logs (
 alter table public.token_usage_logs enable row level security;
 create policy "Users can read their own token usage" on public.token_usage_logs for select using (auth.uid() = user_id);
 create index if not exists idx_token_usage_user_created on public.token_usage_logs (user_id, created_at);
+
+-- Account deletion hygiene (Phase 13): every user_id FK cascades so deleting an auth user removes
+-- all of their rows instead of failing on the constraint. Discovers each FK by name (idempotent).
+do $$
+declare
+  t text;
+  fk_name text;
+  owned_tables text[] := array[
+    'jobs', 'job_analyses', 'applications', 'settings', 'resumes', 'tailored_resumes',
+    'discoveries', 'discovered_jobs', 'resume_organizations', 'resume_roles', 'resume_skills',
+    'resume_facts', 'user_skills', 'mock_interviews', 'mock_answers', 'subscriptions',
+    'token_usage_logs'
+  ];
+begin
+  foreach t in array owned_tables loop
+    if to_regclass('public.' || t) is null then
+      continue;
+    end if;
+    select tc.constraint_name into fk_name
+    from information_schema.table_constraints tc
+    join information_schema.key_column_usage kcu
+      on tc.constraint_name = kcu.constraint_name and tc.table_schema = kcu.table_schema
+    where tc.table_schema = 'public' and tc.table_name = t
+      and tc.constraint_type = 'FOREIGN KEY' and kcu.column_name = 'user_id'
+    limit 1;
+    if fk_name is not null then
+      execute format('alter table public.%I drop constraint %I', t, fk_name);
+    end if;
+    execute format(
+      'alter table public.%I add constraint %I foreign key (user_id) references auth.users(id) on delete cascade',
+      t, t || '_user_id_fkey'
+    );
+  end loop;
+end $$;
+
+-- Continuous discovery pipeline (Phase 14). Structured search profile + per-run status log; the
+-- discovered_jobs feed streams to the client via realtime.
+create table public.search_profiles (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users on delete cascade not null unique,
+  data jsonb not null default '{}'::jsonb,
+  -- Projected Master Resume snapshot so the offline worker can score without assembling the KB.
+  scoring_snapshot jsonb,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create table public.discovery_runs (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users on delete cascade not null,
+  status text not null default 'queued' check (status in ('queued', 'running', 'succeeded', 'partial', 'failed')),
+  trigger text not null default 'manual' check (trigger in ('manual', 'session', 'scheduled')),
+  stats jsonb not null default '{}'::jsonb,
+  tokens_used integer not null default 0,
+  error text,
+  started_at timestamp with time zone,
+  finished_at timestamp with time zone,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.search_profiles enable row level security;
+alter table public.discovery_runs enable row level security;
+
+create policy "Users can only access their own search profile" on public.search_profiles for all using (auth.uid() = user_id);
+-- Owners read + write their own in-session runs; the offline worker writes via the service-role.
+create policy "Users can access their own discovery runs" on public.discovery_runs for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create index if not exists idx_discovery_runs_user_created on public.discovery_runs (user_id, created_at desc);
+
+-- Learning signals (Phase 14): the user's reactions to discovered jobs, aggregated into learned
+-- preferences that re-rank the feed and bias future strategies.
+create table public.discovery_signals (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users on delete cascade not null,
+  action text not null check (action in ('approved', 'dismissed', 'saved', 'applied', 'interested')),
+  features jsonb not null default '{}'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+alter table public.discovery_signals enable row level security;
+create policy "Users can access their own discovery signals" on public.discovery_signals for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create index if not exists idx_discovery_signals_user_created on public.discovery_signals (user_id, created_at desc);
+
+-- Realtime for the discovery feed + run status (FULL replica identity for DELETE user_id filtering).
+alter table public.discovered_jobs replica identity full;
+alter table public.discovery_runs replica identity full;
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='discovered_jobs') then
+      alter publication supabase_realtime add table public.discovered_jobs;
+    end if;
+    if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='discovery_runs') then
+      alter publication supabase_realtime add table public.discovery_runs;
+    end if;
+  end if;
+end $$;

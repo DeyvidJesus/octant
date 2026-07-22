@@ -155,7 +155,7 @@ export function JobAnalysisPage() {
                   : 'text-muted hover:text-ink-2 border-transparent'
               }`}
             >
-              <section.icon size={14} className={activeSection === section.id ? 'text-white' : 'text-[#555]'} aria-hidden />
+              <section.icon size={14} className={activeSection === section.id ? 'text-white' : 'text-edge-3'} aria-hidden />
               <span className="truncate">{section.title}</span>
             </button>
           ))}

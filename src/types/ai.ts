@@ -32,7 +32,7 @@ export interface AiProviderDescriptor {
   hint?: string
 }
 
-/** The user's persisted, non-secret AI selection. The API key lives in the vault. */
+/** The user's persisted, non-secret AI selection. Hosted-vendor keys live server-side (ai-proxy). */
 export interface AiSettings {
   providerId: AiProviderId | null
   model: string

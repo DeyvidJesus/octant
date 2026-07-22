@@ -35,7 +35,7 @@ export function projectKnowledgeBase(knowledgeBase: CareerKnowledgeBase): Resume
   const organizationById = new Map(knowledgeBase.organizations.map((organization) => [organization.id, organization]))
   const experience = knowledgeBase.roles.map((role) => ({
     id: role.id,
-    company: organizationById.get(role.organizationId)?.name ?? 'TODO: organization',
+    company: organizationById.get(role.organizationId)?.name ?? '',
     role: role.title,
     duration: role.period,
     location: role.location,

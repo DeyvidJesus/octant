@@ -115,7 +115,7 @@ export function OnboardingModal() {
                   disabled={phase === 'extracting'}
                   rows={9}
                   placeholder="Paste the full text of your résumé here…"
-                  className="w-full rounded-lg bg-surface border border-edge px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-[#555] focus:outline-none resize-none disabled:opacity-50"
+                  className="w-full rounded-lg bg-surface border border-edge px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-edge-3 focus:outline-none resize-none disabled:opacity-50"
                 />
 
                 {error && (

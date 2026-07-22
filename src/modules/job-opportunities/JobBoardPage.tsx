@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useJobsStore } from '@/stores/jobsStore'
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
+import { confirm } from '@/stores/confirmStore'
 import { FREE_LIMITS, jobLimitReached } from '@/constants/plan'
 import { DiscoveryStalenessBanner } from '@/modules/job-discovery/components/DiscoveryStalenessBanner'
 
@@ -159,10 +160,14 @@ export function JobBoardPage() {
                           icon={Trash2}
                           label="Delete"
                           tone="danger"
-                          onClick={() => {
-                            if (window.confirm(`Delete ${job.company} — ${job.role}? This also removes its analysis.`)) {
-                              removeJob(job.id)
-                            }
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: 'Delete opportunity?',
+                              message: `Delete ${job.company} — ${job.role}? This also removes its analysis.`,
+                              confirmLabel: 'Delete',
+                              tone: 'danger',
+                            })
+                            if (ok) removeJob(job.id)
                           }}
                         />
                       </div>

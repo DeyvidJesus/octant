@@ -6,6 +6,7 @@ import { useInterviewPrepStore } from './interviewPrepStore'
 import { useGeneratorStore } from './generatorStore'
 import { useDiscoveryStore } from './discoveryStore'
 import { useSubscriptionStore } from './subscriptionStore'
+import { useSearchProfileStore } from './searchProfileStore'
 
 /**
  * Wipes every store back to its empty initial state. Called on sign-out and on a user switch so one
@@ -20,4 +21,5 @@ export function resetAllStores(): void {
   useGeneratorStore.getState().reset()
   useDiscoveryStore.getState().reset()
   useSubscriptionStore.getState().reset()
+  useSearchProfileStore.getState().reset()
 }
