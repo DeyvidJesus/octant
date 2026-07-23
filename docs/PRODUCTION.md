@@ -57,7 +57,8 @@ Supabase, Netlify (ou similar), Google AI Studio (Gemini). Opcionais: OpenAI, St
 | `STRIPE_SECRET_KEY` | billing + webhook | ⬜ (se billing) | Stripe › Developers › API keys (`sk_...`) |
 | `STRIPE_WEBHOOK_SECRET` | stripe-webhook | ⬜ (se billing) | Stripe › Webhooks › signing secret (`whsec_...`) |
 | `STRIPE_PRICE_ID` | checkout + pricing | ⬜ (se billing) | Stripe › Products › Price (`price_...`) |
-| `FREE_TIER_MONTHLY_TOKEN_LIMIT` | ai-proxy + discovery-worker | ⬜ | número (default `100000`; `0` desliga o teto) |
+| `FREE_TIER_MONTHLY_TOKEN_LIMIT` | ai-proxy + discovery-worker | ⬜ | teto mensal do Free (default `100000`; `0` = ilimitado) |
+| `PRO_TIER_MONTHLY_TOKEN_LIMIT` | ai-proxy + discovery-worker | ⬜ | teto mensal do Pro (default `2000000`; `0` = ilimitado) |
 | `BROWSER_PDF_WS_ENDPOINT` | export-pdf | ⬜ | endpoint WS do Chromium headless (ex.: Browserless) |
 
 > `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` são **injetados automaticamente** nas Edge Functions — **não** os configure como secret.
@@ -113,7 +114,9 @@ supabase secrets set FREE_TIER_MONTHLY_TOKEN_LIMIT=100000
 ```bash
 supabase functions deploy ai-proxy
 supabase functions deploy deep-research
-supabase functions deploy discovery-worker
+# O worker é chamado pelo scheduler via header `x-discovery-secret` (não um JWT do Supabase); ele
+# valida a segurança por dentro, então precisa de --no-verify-jwt (mesmo padrão do stripe-webhook):
+supabase functions deploy discovery-worker --no-verify-jwt
 supabase functions deploy create-checkout-session
 supabase functions deploy create-portal-session
 supabase functions deploy get-plan-pricing
@@ -121,12 +124,13 @@ supabase functions deploy export-pdf
 # O webhook do Stripe NÃO recebe JWT do Supabase:
 supabase functions deploy stripe-webhook --no-verify-jwt
 ```
-**Antes** do deploy do `discovery-worker`, valide localmente que o edge-runtime aceita o import map + sloppy-imports (ele reusa o núcleo puro em `src/` via [deno.json](../supabase/functions/discovery-worker/deno.json)):
-```bash
-supabase functions serve discovery-worker
-# em outro terminal, um POST autenticado (JWT de um usuário logado) deve responder { ok: true, ... }
-```
-> **Fallback** (se o runtime recusar sloppy-imports no deploy): copie os arquivos puros de `src/services/discovery/*`, `src/services/analysis/*`, `src/services/ai/tasks/extractJobs.ts`, `src/constants/skillTaxonomy.ts` para `supabase/functions/_shared/discovery/` com imports `.ts` explícitos e ajuste o import no worker. O contrato (funções puras) não muda.
+> ⚠️ **O `discovery-worker` é empacotado (bundle) antes do deploy.** O edge-runtime da Supabase (Deno) NÃO resolve imports sem extensão em runtime, então o worker reusa o núcleo puro do `src/` via um bundle de arquivo único. A fonte editável é [`worker.ts`](../supabase/functions/discovery-worker/worker.ts); o `esbuild` inlina tudo em `index.ts` (o entry deployado, gerado — não edite à mão), deixando só os specifiers `jsr:`/`npm:` externos.
+>
+> **Sempre rode `yarn build:functions` depois de editar `worker.ts` (ou o núcleo em `src/`) e antes do deploy:**
+> ```bash
+> yarn build:functions   # regenera supabase/functions/discovery-worker/index.ts
+> supabase functions deploy discovery-worker --no-verify-jwt
+> ```
 
 ### F) Frontend na Netlify
 1. Netlify → **Add new site › Import from Git** → selecione o repo. Build já vem do [`netlify.toml`](../netlify.toml) (`yarn build`, publish `dist`, SPA fallback).
@@ -180,7 +184,7 @@ Alternativas equivalentes (só mudam "quem chama o endpoint"): **pg_cron + pg_ne
 ---
 
 ## 6. Custo e governança
-- **Teto por usuário:** `FREE_TIER_MONTHLY_TOKEN_LIMIT` (default 100k) barra o free-tier acima do limite; **Pro é ilimitado**. Vale tanto no `ai-proxy` quanto no `discovery-worker`.
+- **Teto por usuário/mês:** Free `FREE_TIER_MONTHLY_TOKEN_LIMIT` (default 100k) e Pro `PRO_TIER_MONTHLY_TOKEN_LIMIT` (default 2M); `0` em qualquer um = ilimitado. Vale no `ai-proxy` e no `discovery-worker`.
 - **Cadência:** free 24h / pro 1h ([cadence.ts](../src/services/discovery/cadence.ts)); ajuste os números se o custo real pedir. O cron pode rodar de hora em hora sem problema — o worker só processa quem está "due".
 - **Monitoramento:** a tabela `discovery_runs` é o log (status, `stats`, `tokens_used`); `token_usage_logs` soma o consumo por usuário/mês. Comece **conservador** (cron 1×/dia) e aumente observando essas tabelas.
 - **Deep Research** é caro e permanece **manual** (não entra na coleta contínua).
@@ -188,6 +192,9 @@ Alternativas equivalentes (só mudam "quem chama o endpoint"): **pg_cron + pg_ne
 ## 7. Troubleshooting
 | Sintoma | Causa provável | Correção |
 |---|---|---|
+| Scheduler/curl → **404** no `discovery-worker` | função **não deployada** nesse projeto | `supabase functions deploy discovery-worker --no-verify-jwt`; confira com `supabase functions list` |
+| Scheduler → **401** (worker existe) | deployado **sem** `--no-verify-jwt` (o gateway barra o header de secret) | redeploy com `--no-verify-jwt` |
+| `discovery-worker` → **503** + log `worker boot error: Module not found: .../pipeline` | deployado a fonte com imports `@/` sem extensão (edge-runtime não resolve) | rode `yarn build:functions` (gera o bundle) e redeploy — o entry `index.ts` é o bundle, não a fonte |
 | Build Netlify passa mas auth falha | `VITE_SUPABASE_*` ausentes/mal nomeadas | Use os nomes exatos `VITE_...`; refaça o deploy |
 | Feed não atualiza sozinho | Realtime off ou tabelas fora da publicação | Verifique Realtime no projeto; reaplique `0011` |
 | `discovery-worker` 500 "missing GEMINI_API_KEY" | secret não setado | `supabase secrets set GEMINI_API_KEY=...` |

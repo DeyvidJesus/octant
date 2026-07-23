@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:functions": "node scripts/bundle-worker.mjs",
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -33,6 +34,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "esbuild": "^0.28.1",
     "happy-dom": "^20.11.1",
     "oxlint": "^1.71.0",
     "tailwindcss": "^4.3.2",
