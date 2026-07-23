@@ -138,7 +138,12 @@ export function createEmptyKnowledgeBase(): CareerKnowledgeBase {
  * Whether to preload the demo persona instead of a blank slate. OFF by default: real users start
  * empty and populate via onboarding / the Knowledge Base. Opt in with VITE_DEMO_SEED=true for demos.
  */
-export const DEMO_SEED_ENABLED = import.meta.env.VITE_DEMO_SEED === 'true'
+// Read defensively: `import.meta.env` is a Vite-only global. This module is also imported by the
+// Deno discovery worker (for createEmptyKnowledgeBase), where `import.meta.env` is undefined —
+// accessing `.VITE_DEMO_SEED` directly would throw at module load and crash the function. The
+// optional-chained cast reads the flag in the browser and safely yields `false` in Deno.
+export const DEMO_SEED_ENABLED =
+  (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_DEMO_SEED === 'true'
 
 /** Initial knowledge base for a fresh store — persona only in demo mode, otherwise empty. */
 export function initialKnowledgeBase(): CareerKnowledgeBase {

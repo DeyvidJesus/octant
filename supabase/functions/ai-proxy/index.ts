@@ -114,17 +114,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     { auth: { persistSession: false } },
   )
 
-  // Tier-aware rate limit. Defaults to a protective monthly cap so free-tier AI can't run up
-  // unbounded vendor cost on the operator's keys; set FREE_TIER_MONTHLY_TOKEN_LIMIT explicitly to
-  // tune it, or to 0 to disable entirely. Pro users are always unlimited.
-  const DEFAULT_FREE_TIER_MONTHLY_TOKEN_LIMIT = 100_000
-  const rawLimit = Deno.env.get('FREE_TIER_MONTHLY_TOKEN_LIMIT')
-  const monthlyLimit = rawLimit === undefined || rawLimit === '' ? DEFAULT_FREE_TIER_MONTHLY_TOKEN_LIMIT : Number(rawLimit)
-  if (monthlyLimit > 0 && (await freeTierOverBudget(admin, user.id, monthlyLimit))) {
-    return json(
-      { error: 'Monthly AI usage limit reached on the Free plan. Upgrade to Pro for unlimited AI.' },
-      429,
-    )
+  // Tier-aware monthly token cap protecting the operator's vendor cost. Defaults: Free 100k, Pro 2M.
+  // Tune with FREE_TIER_MONTHLY_TOKEN_LIMIT / PRO_TIER_MONTHLY_TOKEN_LIMIT; set a tier's value to 0
+  // to make it unlimited.
+  if (await tierOverBudget(admin, user.id)) {
+    return json({ error: 'Monthly AI usage limit reached for your plan.' }, 429)
   }
 
   // 3. Build and make the vendor call.
@@ -202,10 +196,22 @@ function extractUsage(data: any, wire: Wire): TokenUsage {
 }
 
 /** True when a non-pro user has consumed at least `monthlyLimit` total tokens this calendar month. */
+/** Monthly token cap for a tier: Free 100k, Pro 2M by default; env-overridable; 0 = unlimited. */
+function monthlyLimitFor(tier: 'free' | 'pro'): number {
+  const raw = tier === 'pro'
+    ? Deno.env.get('PRO_TIER_MONTHLY_TOKEN_LIMIT')
+    : Deno.env.get('FREE_TIER_MONTHLY_TOKEN_LIMIT')
+  const fallback = tier === 'pro' ? 2_000_000 : 100_000
+  return raw === undefined || raw === '' ? fallback : Number(raw)
+}
+
+/** True when the user has consumed at least their tier's monthly cap this calendar month. */
 // deno-lint-ignore no-explicit-any
-async function freeTierOverBudget(admin: any, userId: string, monthlyLimit: number): Promise<boolean> {
+async function tierOverBudget(admin: any, userId: string): Promise<boolean> {
   const { data: sub } = await admin.from('subscriptions').select('tier').eq('user_id', userId).maybeSingle()
-  if (sub?.tier === 'pro') return false
+  const tier: 'free' | 'pro' = sub?.tier === 'pro' ? 'pro' : 'free'
+  const limit = monthlyLimitFor(tier)
+  if (limit <= 0) return false // unlimited for this tier
 
   const monthStart = new Date()
   monthStart.setUTCDate(1)
@@ -221,7 +227,7 @@ async function freeTierOverBudget(admin: any, userId: string, monthlyLimit: numb
     (sum: number, row: { total_tokens?: number }) => sum + (row.total_tokens ?? 0),
     0,
   )
-  return used >= monthlyLimit
+  return used >= limit
 }
 
 function buildVendorCall(

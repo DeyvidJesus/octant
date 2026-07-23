@@ -4,9 +4,12 @@
 # a busca de vagas em segundo plano para os usuários "due" (mesmo com eles offline). O worker NÃO
 # tem relógio próprio — este workflow é o "tique" que o aciona.
 #
-# Pré-requisitos (uma vez): no GitHub, em Settings › Secrets and variables › Actions, crie:
-#   - SUPABASE_URL          = https://SEU_PROJECT_REF.supabase.co
-#   - DISCOVERY_CRON_SECRET = o mesmo valor que você setou em `supabase secrets set DISCOVERY_CRON_SECRET=...`
+# Pré-requisitos (uma vez):
+#   1) O worker precisa estar publicado: `supabase functions deploy discovery-worker --no-verify-jwt`
+#      (sem a flag, este workflow recebe 401; se a função não existir, recebe 404).
+#   2) No GitHub, em Settings › Secrets and variables › Actions, crie:
+#        - SUPABASE_URL          = https://SEU_PROJECT_REF.supabase.co
+#        - DISCOVERY_CRON_SECRET = o mesmo valor que você setou em `supabase secrets set DISCOVERY_CRON_SECRET=...`
 #
 # Você pode rodar manualmente em Actions › discovery-tick › Run workflow (workflow_dispatch).
 

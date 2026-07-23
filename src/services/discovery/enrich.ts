@@ -1,6 +1,6 @@
 import type { DiscoveredCandidate } from '@/types/discovery'
 import type { MasterResume } from '@/types/resume'
-import { buildUserPrompt, EXPLAIN_SYSTEM_PROMPT } from '@/services/ai/tasks/explainMatch'
+import { buildUserPrompt, EXPLAIN_SYSTEM_PROMPT } from '@/services/ai/tasks/explainMatchCore'
 import { checkGrounding } from '@/services/ai/guardrails/grounding'
 import { collectResumeSkills } from '@/services/analysis/match'
 import { candidateToEphemeralJob } from './pipeline'

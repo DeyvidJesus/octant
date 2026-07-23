@@ -3,8 +3,7 @@ import type { JobAnalysis } from '@/types/analysis'
 import type { DiscoveredCandidate } from '@/types/discovery'
 import type { MasterResume } from '@/types/resume'
 import type { SearchProfile } from '@/types/searchProfile'
-import type { ExtractedJob } from '@/services/ai/tasks/extractJobs'
-import { toCandidates } from '@/services/ai/tasks/extractJobs'
+import { toCandidates, type ExtractedJob } from '@/services/ai/tasks/extractJobsCore'
 import { dedupeCandidates, type DedupeContext } from './dedupe'
 
 /**
