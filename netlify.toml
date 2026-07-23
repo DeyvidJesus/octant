@@ -2,6 +2,12 @@
   command = "yarn build"
   publish = "dist"
 
+# PostHog analytics — public ingestion key/host shipped to the client bundle.
+# Safe to commit (PostHog project API key is designed to be public-facing).
+[env]
+  VITE_POSTHOG_KEY = "phc_AXqC3q87rPUgK9j6XVn7Q3qUJtNCs7dHrUSv9bygWy2b"
+  VITE_POSTHOG_HOST = "https://us.i.posthog.com"
+
 # SPA fallback: toda rota serve o index.html (React Router é client-side)
 [[redirects]]
   from = "/*"
