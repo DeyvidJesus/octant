@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { useSettingsStore, resolveAiRunConfig } from '@/stores/settingsStore'
 import { useResumeStore } from '@/stores/resumeStore'
 import { extractProfile, type ExtractProfileResult } from '@/services/ai/tasks/extractProfile'
+import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
 
 type Step = 'welcome' | 'import' | 'done'
 
@@ -31,7 +32,7 @@ export function OnboardingModal() {
   useEffect(() => {
     if (onboardingCompleted) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && phase !== 'extracting') finish()
+      if (e.key === 'Escape' && phase !== 'extracting') finish(undefined, true)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -40,8 +41,9 @@ export function OnboardingModal() {
 
   if (onboardingCompleted) return null
 
-  function finish(destination?: string) {
+  function finish(destination?: string, skipped = false) {
     completeOnboarding()
+    if (skipped) trackEvent(AnalyticsEvent.OnboardingSkipped)
     if (destination) navigate(destination)
   }
 
@@ -54,6 +56,12 @@ export function OnboardingModal() {
       updateKnowledgeBase(extracted.knowledgeBase)
       setResult(extracted.counts)
       setStep('done')
+      trackEvent(AnalyticsEvent.OnboardingCompleted, {
+        roles: extracted.counts.roles,
+        skills: extracted.counts.skills,
+        facts: extracted.counts.facts,
+        credentials: extracted.counts.credentials,
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not import your résumé. Try again, or add it manually.')
     } finally {
@@ -86,7 +94,7 @@ export function OnboardingModal() {
                   interviews. First, let's build your Knowledge Base — everything else is powered by it.
                 </p>
                 <div className="flex items-center gap-3 w-full">
-                  <Button variant="ghost" className="flex-1" onClick={() => finish('/knowledge')}>
+                  <Button variant="ghost" className="flex-1" onClick={() => finish('/knowledge', true)}>
                     I'll do this later
                   </Button>
                   <Button className="flex-1" onClick={() => setStep('import')}>
@@ -128,7 +136,7 @@ export function OnboardingModal() {
                   <Button
                     variant="ghost"
                     className="flex-1"
-                    onClick={() => finish('/knowledge')}
+                    onClick={() => finish('/knowledge', true)}
                     disabled={phase === 'extracting'}
                   >
                     <PenLine size={16} aria-hidden /> Add manually

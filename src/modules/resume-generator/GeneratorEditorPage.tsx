@@ -15,6 +15,7 @@ import { toMarkdown, toPlainText } from '@/services/generator/markdown'
 import { exportResumePdf } from '@/services/generator/exportPdf'
 import { CoverageMeter } from './components/CoverageMeter'
 import { ResumePaper } from './components/ResumePaper'
+import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
 
 export function GeneratorEditorPage() {
   const { jobId } = useParams<{ jobId: string }>()
@@ -67,6 +68,7 @@ export function GeneratorEditorPage() {
     setExportError(null)
     try {
       await exportResumePdf(tailored, `${tailored.header.name || 'resume'} - ${job.company}`)
+      trackEvent(AnalyticsEvent.ResumeExported, { format: 'pdf' })
     } catch (error) {
       setExportError(error instanceof Error ? error.message : 'PDF export failed.')
     } finally {

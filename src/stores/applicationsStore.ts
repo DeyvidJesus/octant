@@ -68,6 +68,7 @@ export const useApplicationsStore = create<ApplicationsState>()(
       }))
       const app = get().applications.find((a) => a.id === id)
       if (toStage === 'applied') trackEvent(AnalyticsEvent.JobApplied, { id })
+      trackEvent(AnalyticsEvent.ApplicationStageChanged, { to_stage: toStage })
       if (app) persist(() => applicationRepository.upsertApplication(app), 'applications.moveStage')
     },
     addEvent: (id, event) => {

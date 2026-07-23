@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null)
       // Attach observability identity (no-ops when analytics/Sentry aren't configured).
       if (session?.user) {
-        identifyUser(session.user.id)
+        identifyUser(session.user.id, session.user.email ? { email: session.user.email } : undefined)
         setSentryUser(session.user.id)
       } else {
         resetAnalytics()

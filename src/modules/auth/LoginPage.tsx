@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Field } from '@/components/ui/Field'
+import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
 
 export function LoginPage() {
   const { session, isLoading } = useAuth()
@@ -29,6 +30,7 @@ export function LoginPage() {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
+        trackEvent(AnalyticsEvent.UserSignedIn)
       } else {
         const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
@@ -37,6 +39,7 @@ export function LoginPage() {
           setNotice('Account created. Check your email to confirm your address, then sign in.')
           setIsLogin(true)
         }
+        trackEvent(AnalyticsEvent.UserSignedUp)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')

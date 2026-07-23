@@ -16,6 +16,13 @@ export const AnalyticsEvent = {
   UpgradeStarted: 'upgrade_started',
   DiscoveryRunStarted: 'discovery_run_started',
   DiscoveryRunCompleted: 'discovery_run_completed',
+  UserSignedIn: 'user_signed_in',
+  UserSignedUp: 'user_signed_up',
+  OnboardingCompleted: 'onboarding_completed',
+  OnboardingSkipped: 'onboarding_skipped',
+  ResumeExported: 'resume_exported',
+  InterviewPrepQuestionsGenerated: 'interview_prep_questions_generated',
+  ApplicationStageChanged: 'application_stage_changed',
 } as const
 
 export type AnalyticsEventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent]

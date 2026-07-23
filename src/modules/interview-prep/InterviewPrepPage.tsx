@@ -14,6 +14,7 @@ import { skillKeyFor } from '@/services/interviewPrep/mastery'
 import type { InterviewQuestionCategory, PrepQuestion, UserSkill } from '@/types/interviewPrep'
 import type { MasterResume } from '@/types/resume'
 import { QuestionCard } from './components/QuestionCard'
+import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
 
 const CATEGORY_ORDER: InterviewQuestionCategory[] = ['technical', 'behavioral', 'architecture']
 
@@ -157,6 +158,9 @@ export function InterviewPrepPage() {
         config,
       )
       setAiQuestions(generated)
+      trackEvent(AnalyticsEvent.InterviewPrepQuestionsGenerated, {
+        question_count: generated.length,
+      })
     } catch (error) {
       setGenError(error instanceof Error ? error.message : 'Question generation failed.')
     } finally {
