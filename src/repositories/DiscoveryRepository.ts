@@ -179,11 +179,10 @@ export class DiscoveryRepository extends BaseRepository {
   /** Persists the small review-metadata blob. Bounded in size (no candidate arrays). */
   async saveMeta(meta: DiscoveryMeta): Promise<void> {
     const userId = this.requireUserId()
-    // NOTE: `discoveries.user_id` is UNIQUE; the correct upsert conflict target is `user_id`.
-    // Kept as a plain upsert to match existing behavior; conflict-target wiring is deferred to the
-    // schema-reconciliation phase (consistent with resume/generator repos).
+    // `discoveries.user_id` is UNIQUE — upsert on that conflict target so repeated saves UPDATE the
+    // single row instead of trying to INSERT a duplicate (which errored with 23505).
     this.unwrap(
-      await supabase.from('discoveries').upsert({ user_id: userId, state: meta }),
+      await supabase.from('discoveries').upsert({ user_id: userId, state: meta }, { onConflict: 'user_id' }),
       'save your discovery settings',
     )
   }

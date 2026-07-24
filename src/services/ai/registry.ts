@@ -38,8 +38,8 @@ export const AI_PROVIDERS: AiProviderDescriptor[] = [
     allowsCustomBaseUrl: false,
     supportsWebSearch: true,
     models: [
-      { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-      { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+      { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
     ],
     docsUrl: 'https://aistudio.google.com/apikey',
   },
@@ -52,7 +52,7 @@ export const AI_PROVIDERS: AiProviderDescriptor[] = [
     models: [
       { id: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
       { id: 'openai/gpt-4o', label: 'GPT-4o' },
-      { id: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash' },
+      { id: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
     ],
     docsUrl: 'https://openrouter.ai/keys',
     hint: 'One key, hundreds of models.',

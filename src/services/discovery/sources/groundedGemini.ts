@@ -9,8 +9,11 @@ import type { DiscoveryStrategy, JobSource } from '../pipeline'
  * the "predictable/efficient" collection path — Deep Research is reserved for analysis/strategy.
  */
 
+/** Current Gemini model used for discovery (search + strategy). One place to bump on deprecations. */
+export const GEMINI_DISCOVERY_MODEL = 'gemini-2.5-flash'
+
 /** Gemini is the only web-search-grounding provider; the operator's key is injected by ai-proxy. */
-const SEARCH_CONFIG: AiRunConfig = { providerId: 'gemini', model: 'gemini-2.0-flash' }
+const SEARCH_CONFIG: AiRunConfig = { providerId: 'gemini', model: GEMINI_DISCOVERY_MODEL }
 
 function buildStrategyPrompt(strategy: DiscoveryStrategy): string {
   return [
