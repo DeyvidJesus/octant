@@ -893,7 +893,7 @@ function createEmptyKnowledgeBase() {
 var DEMO_SEED_ENABLED = import.meta.env?.VITE_DEMO_SEED === "true";
 
 // supabase/functions/discovery-worker/worker.ts
-var GEMINI_MODEL = "gemini-2.0-flash";
+var GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash";
 var GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 var MAX_CANDIDATES_PER_RUN = 30;
 var MAX_USERS_PER_TICK = 25;

@@ -17,7 +17,7 @@ import { runDiscovery } from './pipeline'
 import { generateStrategiesWithAi } from './strategies'
 import { applyLearnedToProfile } from './signals'
 import { enrichCandidate, type EnrichCompleteFn } from './enrich'
-import { createGroundedGeminiSource } from './sources/groundedGemini'
+import { createGroundedGeminiSource, GEMINI_DISCOVERY_MODEL } from './sources/groundedGemini'
 
 /** Only the top-K new candidates per run get an AI explanation — controls cost (rest are on-demand). */
 const ENRICH_TOP_K = 5
@@ -62,7 +62,7 @@ async function enrichTopK(candidates: DiscoveredCandidate[], resume: MasterResum
 /** Gemini strategy-generation completion (via ai-proxy). Falls back deterministically on failure. */
 async function geminiComplete(prompt: string, opts?: { temperature?: number; maxTokens?: number }): Promise<string> {
   const result = await getProvider('gemini').complete({
-    model: 'gemini-2.0-flash',
+    model: GEMINI_DISCOVERY_MODEL,
     messages: [{ role: 'user', content: prompt }],
     temperature: opts?.temperature,
     maxTokens: opts?.maxTokens,

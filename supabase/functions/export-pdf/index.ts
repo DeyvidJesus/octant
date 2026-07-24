@@ -230,7 +230,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const browser = await puppeteer.connect({ browserWSEndpoint: endpoint })
   try {
     const page = await browser.newPage()
-    await page.setContent(html, { waitUntil: 'networkidle0' })
+    // The template is fully self-contained (inline CSS, no external fonts/images/scripts), so wait for
+    // 'load' rather than 'networkidle0' — network-idle detection can hang on remote browsers and time
+    // out even though there is no network activity to wait for.
+    await page.setContent(html, { waitUntil: 'load', timeout: 20_000 })
     pdf = await page.pdf({
       format: 'Letter',
       printBackground: false,
