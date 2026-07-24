@@ -10,7 +10,7 @@ import type { DiscoveryStrategy, JobSource } from '../pipeline'
  */
 
 /** Current Gemini model used for discovery (search + strategy). One place to bump on deprecations. */
-export const GEMINI_DISCOVERY_MODEL = 'gemini-2.5-flash'
+export const GEMINI_DISCOVERY_MODEL = 'gemini-3.5-flash'
 
 /** Gemini is the only web-search-grounding provider; the operator's key is injected by ai-proxy. */
 const SEARCH_CONFIG: AiRunConfig = { providerId: 'gemini', model: GEMINI_DISCOVERY_MODEL }
