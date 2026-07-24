@@ -33,7 +33,7 @@ import type { DiscoveredCandidate } from '@/types/discovery'
 import type { PlanTier } from '@/constants/plan'
 
 // Overridable so a future Google model deprecation is a secret change, not a redeploy of code.
-const GEMINI_MODEL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-2.5-flash'
+const GEMINI_MODEL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta'
 const MAX_CANDIDATES_PER_RUN = 30
 const MAX_USERS_PER_TICK = 25
