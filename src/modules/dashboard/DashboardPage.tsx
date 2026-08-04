@@ -81,7 +81,7 @@ export function DashboardPage() {
       steps.push({ id: 'followups', text: `Follow up on ${followUpsDue} application${followUpsDue === 1 ? '' : 's'} due now.`, to: '/applications', primary: true })
     }
     if (jobs.length === 0) {
-      steps.push({ id: 'jobs', text: 'Add or discover job opportunities to analyze and track.', to: '/jobs/discovery' })
+      steps.push({ id: 'jobs', text: 'Let your agent find job opportunities to analyze and track.', to: '/jobs' })
     } else if (Object.keys(analyses).length === 0) {
       steps.push({ id: 'analyze', text: 'Run the Analyzer on your opportunities to see match scores.', to: '/jobs' })
     }

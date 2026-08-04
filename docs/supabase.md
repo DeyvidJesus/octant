@@ -1,6 +1,6 @@
 # Supabase Architecture
 
-CareerOS relies on Supabase as its primary Backend-as-a-Service (BaaS). This document covers the current Supabase implementation footprint, identified security and architectural debt, and the roadmap for evolving into a fully server-backed SaaS.
+Octant relies on Supabase as its primary Backend-as-a-Service (BaaS). This document covers the current Supabase implementation footprint, identified security and architectural debt, and the roadmap for evolving into a fully server-backed SaaS.
 
 ---
 
@@ -30,10 +30,10 @@ CareerOS relies on Supabase as its primary Backend-as-a-Service (BaaS). This doc
 
 ## 2. Missing Implementations
 
-CareerOS currently ignores several core Supabase features that are critical for a modern SaaS:
+Octant currently ignores several core Supabase features that are critical for a modern SaaS:
 
 * **Realtime**: 
-  * *Current*: If a user has CareerOS open on a laptop and a desktop, changes do not sync automatically. The client must be hard-refreshed to trigger a fetch.
+  * *Current*: If a user has Octant open on a laptop and a desktop, changes do not sync automatically. The client must be hard-refreshed to trigger a fetch.
   * *Required*: Subscribe to Postgres changes on `jobs` and `applications` to update the local Zustand cache seamlessly via websockets.
 * **Storage**:
   * *Current*: Not used. Generated resumes are strictly Markdown in memory.
@@ -58,7 +58,7 @@ CareerOS currently ignores several core Supabase features that are critical for 
 
 ## 4. Evolution: Migrating to a Fully Server-Backed SaaS
 
-CareerOS is currently operating as a "Fat Client" — it downloads the entire database into memory (Zustand) on load, does all processing locally, and backs it up to the cloud.
+Octant is currently operating as a "Fat Client" — it downloads the entire database into memory (Zustand) on load, does all processing locally, and backs it up to the cloud.
 
 To scale into a true enterprise SaaS, the architecture must evolve:
 

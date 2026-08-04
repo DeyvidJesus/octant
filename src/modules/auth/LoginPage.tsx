@@ -1,15 +1,36 @@
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
-import { supabase } from '@/services/supabase/client'
+import { Link, Navigate } from 'react-router-dom'
+import { APP_NAME } from '@/constants/brand'
 import { useAuth } from '@/contexts/AuthContext'
+import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
+import { sendMagicLink, signIn, signUp } from '@/services/supabase/auth'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Field } from '@/components/ui/Field'
 
+/**
+ * Sign in / sign up / magic link.
+ *
+ * Auth calls now go through `src/services/supabase/auth.ts` rather than touching `supabase.auth` inline,
+ * because each one has to pass an explicit redirect URL for the email links to land on the right route.
+ * Keeping those destinations in the service means this component can't get them subtly wrong.
+ *
+ * Signup also captures a name — nothing did before, so every transactional email opened with the
+ * anonymous "Hi there,".
+ */
+type Mode = 'signin' | 'signup' | 'magic'
+
+const MODE_COPY: Record<Mode, { subtitle: string; submit: string; pending: string }> = {
+  signin: { subtitle: 'Sign in to your account', submit: 'Sign in', pending: 'Signing in…' },
+  signup: { subtitle: 'Create a new account', submit: 'Sign up', pending: 'Creating account…' },
+  magic: { subtitle: 'Sign in without a password', submit: 'Email me a link', pending: 'Sending…' },
+}
+
 export function LoginPage() {
   const { session, isLoading } = useAuth()
-  const [isLogin, setIsLogin] = useState(true)
+  const [mode, setMode] = useState<Mode>('signin')
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,6 +40,14 @@ export function LoginPage() {
   // Already signed in → no reason to show the login form.
   if (!isLoading && session) return <Navigate to="/" replace />
 
+  const copy = MODE_COPY[mode]
+
+  const switchTo = (next: Mode) => {
+    setMode(next)
+    setError(null)
+    setNotice(null)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -26,17 +55,19 @@ export function LoginPage() {
     setNotice(null)
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-      } else {
-        const { data, error } = await supabase.auth.signUp({ email, password })
-        if (error) throw error
+      if (mode === 'signin') {
+        await signIn(email, password)
+      } else if (mode === 'signup') {
+        const { hasSession } = await signUp(email, password, name)
         // Email-confirmation projects return a user with no active session yet.
-        if (!data.session) {
+        if (!hasSession) {
           setNotice('Account created. Check your email to confirm your address, then sign in.')
-          setIsLogin(true)
+          setMode('signin')
         }
+      } else {
+        await sendMagicLink(email)
+        trackEvent(AnalyticsEvent.MagicLinkRequested)
+        setNotice(`If an account exists for ${email}, a sign-in link is on its way.`)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
@@ -50,13 +81,24 @@ export function LoginPage() {
       <div className="max-w-md w-full">
         <Card className="p-8 bg-surface border-edge-2">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-semibold tracking-tight text-ink">Career OS</h1>
-            <p className="mt-2 text-sm text-muted">
-              {isLogin ? 'Sign in to your account' : 'Create a new account'}
-            </p>
+            <h1 className="text-3xl font-semibold tracking-tight text-ink">{APP_NAME}</h1>
+            <p className="mt-2 text-sm text-muted">{copy.subtitle}</p>
           </div>
 
           <form className="space-y-5" onSubmit={handleSubmit}>
+            {mode === 'signup' && (
+              <Field label="Your name" htmlFor="name">
+                <Input
+                  id="name"
+                  type="text"
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ana Souza"
+                />
+              </Field>
+            )}
+
             <Field label="Email address" htmlFor="email">
               <Input
                 id="email"
@@ -68,20 +110,26 @@ export function LoginPage() {
                 placeholder="you@example.com"
               />
             </Field>
-            <Field label="Password" htmlFor="password">
-              <Input
-                id="password"
-                type="password"
-                autoComplete={isLogin ? 'current-password' : 'new-password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-            </Field>
+
+            {mode !== 'magic' && (
+              <Field label="Password" htmlFor="password">
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+              </Field>
+            )}
 
             {error && (
-              <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-lg" role="alert">
+              <p
+                className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-lg"
+                role="alert"
+              >
                 {error}
               </p>
             )}
@@ -92,22 +140,35 @@ export function LoginPage() {
             )}
 
             <Button type="submit" variant="primary" className="w-full" disabled={loading}>
-              {loading ? 'Processing…' : isLogin ? 'Sign in' : 'Sign up'}
+              {loading ? copy.pending : copy.submit}
             </Button>
           </form>
 
-          <div className="text-center mt-6">
+          <div className="mt-6 space-y-3 text-center">
             <button
               type="button"
-              className="text-sm text-ink-3 hover:text-ink font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
-              onClick={() => {
-                setIsLogin(!isLogin)
-                setError(null)
-                setNotice(null)
-              }}
+              className="block w-full text-sm text-ink-3 hover:text-ink font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
+              onClick={() => switchTo(mode === 'signup' ? 'signin' : 'signup')}
             >
-              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+              {mode === 'signup' ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
             </button>
+
+            <button
+              type="button"
+              className="block w-full text-sm text-muted hover:text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
+              onClick={() => switchTo(mode === 'magic' ? 'signin' : 'magic')}
+            >
+              {mode === 'magic' ? 'Use a password instead' : 'Email me a sign-in link instead'}
+            </button>
+
+            {mode === 'signin' && (
+              <Link
+                to="/forgot-password"
+                className="block text-sm text-muted hover:text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
+              >
+                Forgot your password?
+              </Link>
+            )}
           </div>
         </Card>
       </div>

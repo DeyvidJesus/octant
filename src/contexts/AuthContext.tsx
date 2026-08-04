@@ -4,6 +4,7 @@ import { supabase } from '@/services/supabase/client'
 import { setSessionUserId } from '@/services/supabase/session'
 import { identifyUser, resetAnalytics } from '@/services/analytics/analytics'
 import { setSentryUser } from '@/services/monitoring/sentry'
+import { sendWelcomeEmail } from '@/services/email/notifications'
 import { useJobsStore } from '@/stores/jobsStore'
 import { useApplicationsStore } from '@/stores/applicationsStore'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -69,6 +70,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
       currentUserId = nextUserId
+
+      // Welcome email. There is no server-side trigger for it: GoTrue's Send Email Hook only fires for
+      // outbound AUTH mail, and a database trigger on auth.users would mean putting a service-role
+      // secret inside Postgres. So the client nudges it on the first authenticated render after the
+      // address is confirmed, and the `send-email` function makes it exactly-once via
+      // `email_log.idempotency_key`. Fire-and-forget: it must never delay or block hydration.
+      if (session?.user?.email_confirmed_at != null) {
+        void sendWelcomeEmail()
+      }
+
       teardownRealtime()
       // Wipe the previous user's in-memory data on every transition (sign-out AND user switch) so
       // nothing bleeds across sessions on a shared browser.

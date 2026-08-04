@@ -1,9 +1,13 @@
 @import 'tailwindcss';
 
 /*
- * CareerOS design tokens — the visual identity extracted from the original
+ * Octant design tokens — the visual identity extracted from the original
  * prototype. Dark, minimal, terminal-inspired. These are the ONLY places the
  * palette hex values live; components use the semantic utility names.
+ *
+ * Mirrored (by hand, deliberately) in packages/email/src/brand/tokens.ts. Email
+ * clients strip CSS variables, so the email layer needs literal hex values and
+ * cannot import from here — and it is server-only besides.
  */
 @theme {
   --color-base: #0a0a0a; /* app background */
@@ -18,6 +22,14 @@
   --color-muted: #888888; /* muted text / labels */
   --color-faint: #666666; /* faint text */
   --color-ghost: #444444; /* decorative marks */
+
+  /* Brand accent. Taken from public/favicon.svg, which was previously the only
+   * brand-coloured asset in the repo and referenced nowhere in the theme. Used
+   * by the email templates; available to the UI but not yet applied anywhere, so
+   * adding it changes nothing visually. */
+  --color-accent: #863bff;
+  --color-accent-deep: #7e14ff;
+  --color-accent-ink: #ffffff;
 
   --animate-fade-in: fade-in 0.5s ease both;
   --animate-rise-in: rise-in 0.3s ease both;

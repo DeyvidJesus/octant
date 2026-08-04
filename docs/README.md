@@ -1,20 +1,20 @@
-# CareerOS Engineering Documentation
+# Octant Engineering Documentation
 
-Welcome to the CareerOS engineering docs. If you are a new software engineer joining the team, **start here**.
+Welcome to the Octant engineering docs. If you are a new software engineer joining the team, **start here**.
 
 This document explains what we are building, how it is built, and where the project stands today.
 
 ---
 
-## What is CareerOS?
+## What is Octant?
 
-CareerOS is a personal Career Operating System designed to orchestrate the entire job-hunting lifecycle. Rather than managing scattered documents and spreadsheets, CareerOS centralizes everything around a single source of truth.
+Octant is a personal Career Operating System designed to orchestrate the entire job-hunting lifecycle. Rather than managing scattered documents and spreadsheets, Octant centralizes everything around a single source of truth.
 
 ## Product Vision
 
 The vision is simple: **The Master Resume (Knowledge Base) is the definitive source of truth.** 
 
-Everything else—job analysis, tailored resumes, interview preparation, application tracking, and career metrics—automatically derives from this central repository. By combining deterministic matching algorithms with pluggable AI capabilities, CareerOS helps users apply smarter and faster without hallucinations or invented experiences.
+Everything else—job analysis, tailored resumes, interview preparation, application tracking, and career metrics—automatically derives from this central repository. By combining deterministic matching algorithms with pluggable AI capabilities, Octant helps users apply smarter and faster without hallucinations or invented experiences.
 
 ## Current Maturity Level
 
@@ -37,7 +37,7 @@ While all core features are shipped and functional, the codebase retains signifi
 
 ## High-Level Architecture
 
-CareerOS uses an **optimistic-UI, store-driven architecture**.
+Octant uses an **optimistic-UI, store-driven architecture**.
 
 The user interface (`modules`) never directly fetches data from the backend. Instead, UI components subscribe to global Zustand `stores`. When a user takes an action, the store instantly mutates local memory (providing immediate UI feedback) and then blindly fires an asynchronous request to our `services` layer (Supabase) to persist the change in the cloud.
 
@@ -106,6 +106,6 @@ To understand how AI connects to the platform without breaking things:
 
 ## Reading Order
 
-Now that you understand what CareerOS is, your next required reading is the architectural deep-dive to see exactly how these pieces communicate:
+Now that you understand what Octant is, your next required reading is the architectural deep-dive to see exactly how these pieces communicate:
 
 **Next:** Read `docs/architecture.md`

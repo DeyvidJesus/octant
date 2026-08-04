@@ -44,7 +44,6 @@ describe('deriveSearchProfile', () => {
       regions: 'Remote — US, Europe',
       seniority: 'staff',
       extraInstructions: 'Avoid crypto.',
-      staleReminder: true,
     }
     const p = deriveSearchProfile(kb, legacy)
     expect(p.targetRoles).toEqual(['Staff Engineer', 'Principal Engineer'])

@@ -14,7 +14,7 @@ export interface GroundingReport {
  * The anti-hallucination guardrail, enforced in deterministic code — not by
  * trusting the prompt.
  *
- * CareerOS's rule is that the LLM may rephrase and prioritize real facts but
+ * Octant's rule is that the LLM may rephrase and prioritize real facts but
  * never introduce new ones. This runs the same taxonomy extractor used for
  * analysis over the generated text and flags any skill it names that isn't in
  * the set of known facts (resume skills ∪ job-description skills). The

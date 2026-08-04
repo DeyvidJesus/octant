@@ -1,12 +1,12 @@
-# CareerOS Frontend Architecture
+# Octant Frontend Architecture
 
-This document breaks down how the React frontend of CareerOS is structured, how data flows through it, and where the boundaries between presentation and business logic lie.
+This document breaks down how the React frontend of Octant is structured, how data flows through it, and where the boundaries between presentation and business logic lie.
 
 ---
 
 ## Component Hierarchy & Layout Structure
 
-CareerOS follows a strict compositional hierarchy to ensure scalability. At the root, the UI is orchestrated by the `AppLayout` component.
+Octant follows a strict compositional hierarchy to ensure scalability. At the root, the UI is orchestrated by the `AppLayout` component.
 
 ```text
 <AppRoutes> (src/app/routes.tsx)

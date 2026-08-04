@@ -1,5 +1,5 @@
 /**
- * CareerKnowledgeBase is the persisted source of truth for CareerOS. A
+ * CareerKnowledgeBase is the persisted source of truth for Octant. A
  * ResumeProjection is a deterministic, read-only view used by legacy resume
  * consumers while they transition to the knowledge-base collections.
  */

@@ -1,6 +1,6 @@
 # Zustand Stores Architecture
 
-CareerOS relies heavily on [Zustand](https://github.com/pmndrs/zustand) for global state management. The stores act as an in-memory representation of the database, providing instantaneous UI updates while asynchronously persisting to Supabase.
+Octant relies heavily on [Zustand](https://github.com/pmndrs/zustand) for global state management. The stores act as an in-memory representation of the database, providing instantaneous UI updates while asynchronously persisting to Supabase.
 
 Below is an exhaustive breakdown of every store in the application.
 

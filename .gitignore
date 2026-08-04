@@ -25,3 +25,5 @@ dist-ssr
 .env
 # Supabase CLI local state
 supabase/.temp
+# Rendered email output from `yarn email:export`
+.email-preview

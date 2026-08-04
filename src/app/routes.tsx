@@ -2,6 +2,9 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Outlet } from 'react-router-dom'
 import { AppLayout } from './AppLayout'
 import { LoginPage } from '@/modules/auth/LoginPage'
+import { AuthCallbackPage } from '@/modules/auth/AuthCallbackPage'
+import { ForgotPasswordPage } from '@/modules/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/modules/auth/ResetPasswordPage'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { DashboardPage } from '@/modules/dashboard/DashboardPage'
 import { JobBoardPage } from '@/modules/job-opportunities/JobBoardPage'
@@ -16,9 +19,6 @@ import { PlaceholderPage } from '@/modules/PlaceholderPage'
 // export, the 13-section Knowledge Base, the AI interview coach). The landing Dashboard stays eager.
 const JobAnalysisPage = lazy(() =>
   import('@/modules/job-opportunities/JobAnalysisPage').then((m) => ({ default: m.JobAnalysisPage })),
-)
-const JobDiscoveryPage = lazy(() =>
-  import('@/modules/job-discovery/JobDiscoveryPage').then((m) => ({ default: m.JobDiscoveryPage })),
 )
 const GeneratorEditorPage = lazy(() =>
   import('@/modules/resume-generator/GeneratorEditorPage').then((m) => ({ default: m.GeneratorEditorPage })),
@@ -44,7 +44,14 @@ function RouteFallback() {
 export function AppRoutes() {
   return (
     <Routes>
+      {/* Public auth routes. `/auth/callback` and `/reset-password` are where the transactional email
+          links land; without them a verification or recovery link has nowhere to go. `/reset-password`
+          must stay OUTSIDE ProtectedRoute — the recovery session exists, but sending the user through
+          the app shell first would drop them on the dashboard with the reset unfinished. */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
@@ -59,7 +66,6 @@ export function AppRoutes() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/jobs" element={<JobBoardPage />} />
             <Route path="/jobs/new" element={<JobFormPage />} />
-            <Route path="/jobs/discovery" element={<JobDiscoveryPage />} />
             <Route path="/jobs/:jobId/edit" element={<JobFormPage />} />
             <Route path="/jobs/:jobId/analysis" element={<JobAnalysisPage />} />
             <Route path="/applications" element={<ApplicationsPage />} />

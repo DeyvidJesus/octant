@@ -1,7 +1,7 @@
 import type { AiProviderId } from '@/types/ai'
 
 /**
- * The AI seam of CareerOS. Every provider (Claude, OpenAI, Gemini, OpenRouter,
+ * The AI seam of Octant. Every provider (Claude, OpenAI, Gemini, OpenRouter,
  * local models, future vendors) implements this one interface; the rest of the
  * app talks only in normalized messages and never sees a vendor wire format.
  *

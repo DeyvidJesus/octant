@@ -1,12 +1,12 @@
-# CareerOS AI Architecture
+# Octant AI Architecture
 
-This document outlines how CareerOS interacts with Large Language Models (LLMs). The architecture is designed to be highly pluggable, vendor-agnostic, and fiercely protective of deterministic truth.
+This document outlines how Octant interacts with Large Language Models (LLMs). The architecture is designed to be highly pluggable, vendor-agnostic, and fiercely protective of deterministic truth.
 
 ---
 
 ## 1. Provider Abstraction
 
-CareerOS does not hardcode itself to OpenAI or Anthropic. All LLM interactions flow through a unified `LLMProvider` interface (`src/services/ai/types.ts`).
+Octant does not hardcode itself to OpenAI or Anthropic. All LLM interactions flow through a unified `LLMProvider` interface (`src/services/ai/types.ts`).
 
 Every provider must implement a `complete` function that takes a standard `CompletionRequest` (messages, model, temperature) and returns a `CompletionResult` containing the raw text response.
 
@@ -42,7 +42,7 @@ Instead of relying purely on the model formatting perfectly, the parsing logic (
 ## 5. Domain Implementations
 
 ### Resume Generation
-**CRITICAL NOTE**: Resume generation is **NOT** driven by AI. CareerOS intentionally keeps resume generation 100% deterministic (`src/services/generator/`). The generator selects, ranks, and reorders existing bullets based on ATS keyword frequency. It never hallucinates text. The LLM is structurally prevented from writing resume bullets.
+**CRITICAL NOTE**: Resume generation is **NOT** driven by AI. Octant intentionally keeps resume generation 100% deterministic (`src/services/generator/`). The generator selects, ranks, and reorders existing bullets based on ATS keyword frequency. It never hallucinates text. The LLM is structurally prevented from writing resume bullets.
 
 ### Interview Generation & Coaching
 (`src/services/ai/tasks/interviewCoach.ts`)
@@ -69,7 +69,7 @@ Takes the deterministic output of the local ATS heuristic (Missing Skills, Match
 
 ## 8. Future Improvements & Enterprise Architecture Proposal
 
-To elevate CareerOS AI to an enterprise-ready posture, we propose migrating the AI execution layer to **Edge Functions** (e.g., Supabase Edge Functions or Vercel Edge).
+To elevate Octant AI to an enterprise-ready posture, we propose migrating the AI execution layer to **Edge Functions** (e.g., Supabase Edge Functions or Vercel Edge).
 
 ### Proposed Enterprise Architecture
 

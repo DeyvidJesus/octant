@@ -1,8 +1,8 @@
 # Technical Debt Audit
 
-This document is a brutally honest Staff Engineer audit of the CareerOS codebase. It categorizes the most severe technical debt accumulated during the platform's transition from a local-first prototype (Dexie) to a cloud-native architecture (Supabase). 
+This document is a brutally honest Staff Engineer audit of the Octant codebase. It categorizes the most severe technical debt accumulated during the platform's transition from a local-first prototype (Dexie) to a cloud-native architecture (Supabase). 
 
-Nothing is sugarcoated. These are the barriers preventing CareerOS from scaling securely and sustainably.
+Nothing is sugarcoated. These are the barriers preventing Octant from scaling securely and sustainably.
 
 ---
 

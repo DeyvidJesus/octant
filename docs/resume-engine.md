@@ -1,6 +1,6 @@
-# CareerOS Resume Engine
+# Octant Resume Engine
 
-The core value proposition of CareerOS is the ability to maintain a single source of truth and instantly project tailored resumes for different jobs. This document outlines exactly how the "Resume Engine" achieves this, differentiating deterministic ranking from AI abstraction.
+The core value proposition of Octant is the ability to maintain a single source of truth and instantly project tailored resumes for different jobs. This document outlines exactly how the "Resume Engine" achieves this, differentiating deterministic ranking from AI abstraction.
 
 ---
 
@@ -37,7 +37,7 @@ When a user applies to a specific job, the engine dynamically assembles a one-pa
 
 ## 2. AI vs. Deterministic Responsibilities
 
-A massive architectural decision in CareerOS is **excluding AI from resume generation**.
+A massive architectural decision in Octant is **excluding AI from resume generation**.
 
 ### Deterministic Responsibilities (The Generator)
 The tailoring engine (`src/services/generator/generate.ts`) is 100% pure TypeScript.

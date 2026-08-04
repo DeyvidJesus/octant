@@ -1,4 +1,4 @@
-# CareerOS — Staff Engineer Design Review
+# Octant — Staff Engineer Design Review
 
 _Reviewed at the end of Increment #1 (foundation). Scope: the whole codebase, judged against the stated ambition — a tool used daily for years, scaling to thousands of records, many AI providers, and eventually a SaaS._
 

@@ -1,4 +1,4 @@
-# CareerOS Database Architecture
+# Octant Database Architecture
 
 This document outlines the current data model in Supabase, identifies technical debt stemming from the recent local-first migration, and proposes a production-ready relational schema.
 

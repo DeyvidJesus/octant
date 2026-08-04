@@ -1,6 +1,6 @@
-# CareerOS Future Roadmap
+# Octant Future Roadmap
 
-As the Lead Engineer stepping into CareerOS, the goal is clear: evolve the platform from a local-first, JSON-heavy prototype into a robust, server-backed, enterprise-ready Interview & Career Operating System.
+As the Lead Engineer stepping into Octant, the goal is clear: evolve the platform from a local-first, JSON-heavy prototype into a robust, server-backed, enterprise-ready Interview & Career Operating System.
 
 This 10-Phase roadmap outlines exactly how we get to a public launch safely.
 
