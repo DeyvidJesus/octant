@@ -21,8 +21,8 @@
 //          (Resend sends a Svix/Standard-Webhooks signature, not a Supabase JWT.)
 // Secrets: supabase secrets set RESEND_WEBHOOK_SECRET=whsec_... RESEND_API_KEY=re_...
 
-import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { createResendSuppressions, createResendWebhookVerifier } from '@octant/email'
+import { createAdminClient } from '../_shared/admin.ts'
 
 /**
  * Resend event type → the `email_log.status` it implies.
@@ -110,11 +110,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const messageId = event.data?.email_id
   const recipient = firstRecipient(event.data?.to)
-  const admin = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    { auth: { persistSession: false } },
-  )
+
+  let admin
+  try {
+    admin = createAdminClient()
+  } catch (err) {
+    // 500 so Resend redelivers once the credential is set — otherwise the delivery status is lost.
+    const detail = err instanceof Error ? err.message : String(err)
+    console.error(`[resend-webhook] ${detail}`)
+    return json({ error: detail }, 500)
+  }
 
   if (messageId !== undefined) {
     const { data: existing } = await admin

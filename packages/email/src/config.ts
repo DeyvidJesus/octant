@@ -93,7 +93,12 @@ export function loadEmailConfig(readEnv: EnvReader): LoadedEmailConfig {
   const warnings: string[] = []
   const read = (key: string): string | undefined => {
     const value = readEnv(key)
-    return value === undefined || value.trim() === '' ? undefined : value.trim()
+    if (value === undefined) return undefined
+    // Strip one layer of surrounding quotes. `EMAIL_FROM="Octant <noreply@…>"` needs quotes in a shell,
+    // and they routinely survive into the stored secret when it is pasted into a dashboard field instead.
+    // Rejecting that spelling meant a whole auth flow failing over two characters.
+    const unquoted = value.trim().replace(/^(['"])([\s\S]*)\1$/, '$2').trim()
+    return unquoted === '' ? undefined : unquoted
   }
 
   const from = read('EMAIL_FROM') ?? DEFAULTS.from

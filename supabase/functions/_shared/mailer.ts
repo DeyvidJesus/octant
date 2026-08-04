@@ -82,16 +82,29 @@ export async function sendLogged<N extends TemplateName>(
   admin: Admin,
   input: SendLoggedInput<N>,
 ): Promise<SendLoggedOutcome> {
-  const mailer = getEmailService()
   const options = {
     userId: input.userId,
     dedupeKey: input.dedupeKey,
     preferencesUrl: input.preferencesUrl,
   }
 
-  const idempotencyKey = mailer.buildIdempotencyKey(input.template, input.to, options)
-  // Computed without rendering, so the claim row can carry a real subject.
-  const subject = mailer.subjectFor(input.template, input.props, options)
+  // Inside the guard, not above it: `loadEmailConfig` throws on a malformed EMAIL_FROM, and
+  // `subjectFor` runs a template's subject builder. Both were previously outside any try/catch, so a
+  // config typo escaped as an opaque 500 from the caller — breaking the documented "never throws"
+  // contract at the one moment it mattered most.
+  let mailer: EmailService
+  let idempotencyKey: string
+  let subject: string
+  try {
+    mailer = getEmailService()
+    idempotencyKey = mailer.buildIdempotencyKey(input.template, input.to, options)
+    // Computed without rendering, so the claim row can carry a real subject.
+    subject = mailer.subjectFor(input.template, input.props, options)
+  } catch (error) {
+    const described = describeEmailError(error)
+    console.error(`[email] could not prepare ${input.template}: ${described.code} ${described.message}`)
+    return { status: 'failed', ...described }
+  }
 
   const { error: claimError } = await admin.from('email_log').insert({
     user_id: input.userId ?? null,

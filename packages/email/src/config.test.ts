@@ -43,6 +43,39 @@ describe('loadEmailConfig', () => {
     expect(config.from).toBe('Octant <noreply@useoctant.com>')
   })
 
+  it('tolerates surrounding quotes, which survive being pasted into a dashboard field', () => {
+    // This exact input used to throw, and the throw was uncaught in the auth hook — a whole signup flow
+    // failing over two quote characters, reported only as "Unexpected status code returned from hook: 500".
+    expect(loadEmailConfig(env({ EMAIL_FROM: '"Octant <noreply@useoctant.com>"' })).config.from).toBe(
+      'Octant <noreply@useoctant.com>',
+    )
+    expect(loadEmailConfig(env({ EMAIL_FROM: "'Octant <noreply@useoctant.com>'" })).config.from).toBe(
+      'Octant <noreply@useoctant.com>',
+    )
+    expect(loadEmailConfig(env({ EMAIL_SUPPORT: '"help@useoctant.com"' })).config.supportEmail).toBe(
+      'help@useoctant.com',
+    )
+    expect(loadEmailConfig(env({ APP_URL: '"https://app.useoctant.com"' })).config.appUrl).toBe(
+      'https://app.useoctant.com',
+    )
+  })
+
+  it('preserves an RFC 5322 quoted display name', () => {
+    // `"Display Name" <addr>` is the canonical form, so the quote-stripping above must not eat these.
+    // It doesn't, because the value ends in `>` rather than a matching quote.
+    expect(loadEmailConfig(env({ EMAIL_FROM: '"Octant" <noreply@useoctant.com>' })).config.from).toBe(
+      '"Octant" <noreply@useoctant.com>',
+    )
+  })
+
+  it('leaves an unmatched quote alone rather than half-fixing it', () => {
+    // Only a matched pair wrapping the whole value is removed. A stray quote stays in the display name,
+    // where it is legal — so this is accepted rather than rejected over a cosmetic slip.
+    expect(loadEmailConfig(env({ EMAIL_FROM: '"Octant <noreply@useoctant.com>' })).config.from).toBe(
+      '"Octant <noreply@useoctant.com>',
+    )
+  })
+
   it('accepts both a bare address and a display-name sender', () => {
     expect(loadEmailConfig(env({ EMAIL_FROM: 'noreply@useoctant.com' })).config.from).toBe(
       'noreply@useoctant.com',

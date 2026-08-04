@@ -72,23 +72,59 @@ export async function requestPasswordReset(email: string): Promise<void> {
   if (error) throw error
 }
 
-/** Sends a passwordless sign-in link. `shouldCreateUser: false` keeps it a sign-in, not a back-door signup. */
+/**
+ * GoTrue error codes that mean "that address has no account here".
+ *
+ * `otp_disabled` is the confusingly-named one: GoTrue returns it (message "Signups not allowed for otp")
+ * when a magic link is requested with `shouldCreateUser: false` for an address it doesn't know. It is not
+ * about OTP being switched off.
+ */
+const ADDRESS_UNKNOWN_CODES = new Set(['otp_disabled', 'user_not_found'])
+
+/**
+ * True when the failure only tells us the address is unknown.
+ *
+ * Swallowing these is what keeps the operation non-enumerable. If it were left to each caller, the first
+ * one that forgot would turn the form into an account-enumeration oracle — and the UI can't hardcode the
+ * check either, because the whole point is that callers cannot distinguish the two outcomes.
+ */
+function isAddressUnknown(error: { code?: string; message?: string } | null): boolean {
+  if (error === null) return false
+  if (error.code !== undefined && ADDRESS_UNKNOWN_CODES.has(error.code)) return true
+  // Older GoTrue builds send the message without a machine-readable code.
+  return /signups not allowed for otp|user not found/i.test(error.message ?? '')
+}
+
+/**
+ * Sends a passwordless sign-in link.
+ *
+ * `shouldCreateUser: false` keeps this a sign-in rather than a back-door signup — but that makes GoTrue
+ * reject unknown addresses, and surfacing that rejection would reveal exactly which addresses have
+ * accounts. So an unknown address resolves successfully and sends nothing: from the outside, requesting a
+ * link for a known and an unknown address are indistinguishable.
+ *
+ * Real failures (rate limits, provider outages, misconfiguration) still throw.
+ */
 export async function sendMagicLink(email: string): Promise<void> {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: { emailRedirectTo: authCallbackUrl(), shouldCreateUser: false },
   })
-  if (error) throw error
+  if (error && !isAddressUnknown(error)) throw error
 }
 
-/** Re-sends the signup confirmation, for when the first one was lost or expired. */
+/**
+ * Re-sends the signup confirmation, for when the first one was lost or expired.
+ *
+ * Same non-enumeration rule as `sendMagicLink`: an unknown address is a silent success.
+ */
 export async function resendVerification(email: string): Promise<void> {
   const { error } = await supabase.auth.resend({
     type: 'signup',
     email,
     options: { emailRedirectTo: authCallbackUrl() },
   })
-  if (error) throw error
+  if (error && !isAddressUnknown(error)) throw error
 }
 
 /**

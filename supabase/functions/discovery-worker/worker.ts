@@ -16,7 +16,7 @@
 // Secrets: supabase secrets set DISCOVERY_CRON_SECRET=... GEMINI_API_KEY=...
 //          FREE_TIER_MONTHLY_TOKEN_LIMIT optional (default 100000; 0 disables).
 
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { createAdminClient, createUserClient } from '../_shared/admin.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import { runDiscovery, type DiscoveryStrategy, type JobSource } from '@/services/discovery/pipeline'
 import { generateStrategiesWithAi } from '@/services/discovery/strategies'
@@ -282,8 +282,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const apiKey = Deno.env.get('GEMINI_API_KEY')
   if (!apiKey) return json({ error: 'Server is missing GEMINI_API_KEY.' }, 500)
 
-  const url = Deno.env.get('SUPABASE_URL') ?? ''
-  const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } })
+  // Resolved through the shared helper rather than reading SUPABASE_SERVICE_ROLE_KEY directly: on a
+  // project using the new API key system that variable can be absent, and an empty key makes
+  // `createClient` throw an opaque "supabaseKey is required".
+  let admin
+  try {
+    admin = createAdminClient()
+  } catch (err) {
+    return json({ error: err instanceof Error ? err.message : String(err) }, 500)
+  }
 
   const cronSecret = Deno.env.get('DISCOVERY_CRON_SECRET')
   const providedSecret = req.headers.get('x-discovery-secret')
@@ -299,10 +306,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
       : await selectDueUsers(admin)
     trigger = 'scheduled'
   } else if (authHeader) {
-    const asUser = createClient(url, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
-      global: { headers: { Authorization: authHeader } },
-      auth: { persistSession: false },
-    })
+    let asUser
+    try {
+      asUser = createUserClient(authHeader)
+    } catch (err) {
+      return json({ error: err instanceof Error ? err.message : String(err) }, 500)
+    }
     const { data: { user }, error } = await asUser.auth.getUser()
     if (error || !user) return json({ error: 'Invalid or expired session.' }, 401)
     userIds = [user.id]

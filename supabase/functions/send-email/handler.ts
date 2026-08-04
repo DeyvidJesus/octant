@@ -22,8 +22,9 @@
 //          (JWT verification stays ON — the caller must be a signed-in user.)
 // Secrets: RESEND_API_KEY, EMAIL_FROM, APP_URL (shared with the other email functions).
 
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+
 import { SecurityAlertKind, displayNameFrom, formatDateTime } from '@octant/email'
+import { createAdminClient, createUserClient } from '../_shared/admin.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import { preferencesUrlFor, sendLogged } from '../_shared/mailer.ts'
 
@@ -71,16 +72,19 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const authHeader = req.headers.get('Authorization')
   if (authHeader === null) return json({ error: 'Missing authorization header.' }, 401)
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-  const supabase = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
-    global: { headers: { Authorization: authHeader } },
-    auth: { persistSession: false },
-  })
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-  if (authError !== null || user === null) return json({ error: 'Invalid or expired session.' }, 401)
+  let user
+  try {
+    const supabase = createUserClient(authHeader)
+    const { data, error: authError } = await supabase.auth.getUser()
+    if (authError !== null || data.user === null) {
+      return json({ error: 'Invalid or expired session.' }, 401)
+    }
+    user = data.user
+  } catch (err) {
+    // A missing public key is server misconfiguration, not a bad token — don't report it as a 401.
+    console.error(`[send-email] ${err instanceof Error ? err.message : String(err)}`)
+    return json({ error: 'Email is not configured on the server.' }, 500)
+  }
 
   const recipient = user.email ?? ''
   if (recipient === '') return json({ error: 'Your account has no email address.' }, 400)
@@ -97,9 +101,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: `Unsupported intent "${intent}".` }, 400)
   }
 
-  const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', {
-    auth: { persistSession: false },
-  })
+  let admin
+  try {
+    admin = createAdminClient()
+  } catch (err) {
+    console.error(`[send-email] ${err instanceof Error ? err.message : String(err)}`)
+    return json({ error: 'Email is not configured on the server.' }, 500)
+  }
 
   const appUrl = (Deno.env.get('APP_URL') ?? '').replace(/\/+$/, '')
   const name = displayNameFrom(user.user_metadata as Record<string, unknown> | null)
