@@ -1,7 +1,7 @@
 /**
  * AI provider configuration — the *what*, kept provider-agnostic.
  *
- * CareerOS never couples to a single AI vendor. Providers are plugins behind
+ * Octant never couples to a single AI vendor. Providers are plugins behind
  * the `LLMProvider` adapter (`services/ai`); nothing in the app knows or cares
  * which one is active. These types describe the user's selection, not any
  * provider's wire format.

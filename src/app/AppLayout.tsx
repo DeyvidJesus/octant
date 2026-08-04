@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Menu } from 'lucide-react'
+import { APP_NAME } from '@/constants/brand'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal'
 import { Toaster } from '@/components/ui/Toaster'
@@ -50,7 +51,7 @@ export function AppLayout() {
           >
             <Menu size={22} aria-hidden />
           </button>
-          <span className="font-semibold tracking-tight">Career OS</span>
+          <span className="font-semibold tracking-tight">{APP_NAME}</span>
         </header>
 
         <main className="flex-1 overflow-y-auto custom-scrollbar relative print:overflow-visible">

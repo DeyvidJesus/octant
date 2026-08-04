@@ -8,7 +8,7 @@ export interface AnalyzerContext {
 }
 
 /**
- * The AI-ready seam of CareerOS. The UI only ever talks to this interface;
+ * The AI-ready seam of Octant. The UI only ever talks to this interface;
  * today the implementation is a deterministic local heuristic, later an
  * LLM-backed analyzer can be added without touching any module.
  *

@@ -4,7 +4,7 @@ import { projectKnowledgeBase } from '@/services/resume/projection'
 import { createId } from '@/utils/id'
 import { nowIso } from '@/utils/dates'
 
-const SOURCE = 'src/constants/seedData.ts (CareerOS v2 Master Resume seed)'
+const SOURCE = 'src/constants/seedData.ts (Octant v2 Master Resume seed)'
 const provenance = (excerpt: string, notes?: string): Provenance => ({ source: SOURCE, excerpt, notes })
 
 function fact(
@@ -18,7 +18,7 @@ function skill(canonical: string, category: string, proficiency: 1 | 2 | 3 | 4 |
   return { id: `skill-${canonical.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}`, canonical, category, proficiency, favorite, evidenceFactIds: [], provenance: provenance(`${canonical} (${category}, self-assessed level ${proficiency})`) }
 }
 
-/** The only persisted starting point for a new CareerOS installation. */
+/** The only persisted starting point for a new Octant installation. */
 export function createSeedKnowledgeBase(): CareerKnowledgeBase {
   const skills = [
     skill('React', 'Frontend', 5, true), skill('Next.js', 'Frontend', 5, true), skill('TypeScript', 'Frontend', 5, true),

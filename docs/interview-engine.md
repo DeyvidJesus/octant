@@ -1,6 +1,6 @@
-# CareerOS Interview Engine
+# Octant Interview Engine
 
-This document outlines the architecture of the Interview Prep module, analyzing its current deterministic implementation and proposing an ideal architecture for evolving CareerOS into a fully-fledged "Interview Operating System."
+This document outlines the architecture of the Interview Prep module, analyzing its current deterministic implementation and proposing an ideal architecture for evolving Octant into a fully-fledged "Interview Operating System."
 
 ---
 
@@ -38,7 +38,7 @@ While the deterministic foundation is solid for a study checklist, it falls shor
 
 ## 3. Future Architecture: The Interview Operating System
 
-To evolve from a static resume builder into an **Interview Operating System**, CareerOS must shift from "Study Planning" to "Active Simulation."
+To evolve from a static resume builder into an **Interview Operating System**, Octant must shift from "Study Planning" to "Active Simulation."
 
 ### The Ideal Implementation
 
@@ -78,4 +78,4 @@ The `interview_preps` JSON blob must be dissolved. Progress must be tracked in n
 * `mock_interviews` (records a session)
 * `mock_answers` (stores the prompt, the user's audio/text, and the AI's grading rubric).
 
-This allows CareerOS to provide analytics: *"You are consistently failing system design questions related to caching."*
+This allows Octant to provide analytics: *"You are consistently failing system design questions related to caching."*

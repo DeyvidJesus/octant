@@ -88,7 +88,7 @@ export function generateStrategies(profile: SearchProfile): DiscoveryStrategy[] 
   }))
 }
 
-/** Builds the ephemeral JobOpportunity the analyzer/enrichment reason over (mirrors scoreCandidates). */
+/** Builds the ephemeral JobOpportunity the analyzer/enrichment reason over. */
 export function candidateToEphemeralJob(candidate: DiscoveredCandidate): JobOpportunity {
   return {
     id: candidate.id,

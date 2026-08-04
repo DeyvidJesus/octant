@@ -1,6 +1,6 @@
-# Guia de Deploy — CareerOS
+# Guia de Deploy — Octant
 
-Este documento lista **tudo** que você precisa provisionar e configurar para colocar o CareerOS em produção, partindo apenas do código (nenhum serviço externo criado ainda).
+Este documento lista **tudo** que você precisa provisionar e configurar para colocar o Octant em produção, partindo apenas do código (nenhum serviço externo criado ainda).
 
 Nada aqui é executado automaticamente — é um passo a passo para você seguir.
 
@@ -313,7 +313,7 @@ Após o deploy, valide na URL de produção:
 Pipeline assíncrono e **scheduler-agnóstico**. O worker é apenas um endpoint HTTP; qualquer agendador o chama.
 
 1. **Migrations:** aplique `0011_discovery_pipeline.sql` e `0012_scoring_snapshot.sql` (SQL Editor ou `supabase db push`). Elas criam `search_profiles`, `discovery_runs`, adicionam `discovered_jobs.score` e habilitam realtime.
-2. **Deploy do worker:** primeiro **`yarn build:functions`** (empacota o worker num único `index.ts` — o edge-runtime não resolve os imports `@/` sem extensão em runtime), depois `supabase functions deploy discovery-worker --no-verify-jwt`. A fonte editável é `worker.ts`; `index.ts` é gerado.
+2. **Deploy do worker:** primeiro **`yarn build:functions`** (empacota o worker e as funções de email em `index.ts` únicos — o edge-runtime não resolve os imports `@/` sem extensão nem `@octant/email` em runtime), depois `supabase functions deploy discovery-worker --no-verify-jwt`. A fonte editável é `worker.ts` (ou `handler.ts` nas funções de email); `index.ts` é gerado.
    - **404** = função não deployada nesse projeto; **401** = faltou `--no-verify-jwt`; **503 + "Module not found"** no log = deployou a fonte em vez do bundle (rode `yarn build:functions`).
    - Secrets: `supabase secrets set DISCOVERY_CRON_SECRET=<aleatório> GEMINI_API_KEY=<chave>` (opcional `FREE_TIER_MONTHLY_TOKEN_LIMIT`).
    - O `deno.json` do worker usa import map (`@/` → `src/`) + `sloppy-imports` para reusar o núcleo puro do app. Se o edge-runtime rejeitar sloppy-imports no deploy, o fallback é mover os arquivos puros para `_shared/discovery/` com extensões `.ts`.

@@ -1,6 +1,6 @@
-# CareerOS Services Architecture
+# Octant Services Architecture
 
-The `src/services/` directory is the engine room of CareerOS. Unlike `modules` or `stores`, this layer is strictly **React-free**. It isolates business logic, external API integrations, and heavy data transformations. 
+The `src/services/` directory is the engine room of Octant. Unlike `modules` or `stores`, this layer is strictly **React-free**. It isolates business logic, external API integrations, and heavy data transformations. 
 
 This document breaks down every service cluster, its responsibilities, dependencies, purity, and identified technical debt.
 

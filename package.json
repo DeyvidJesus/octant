@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:functions": "node scripts/bundle-worker.mjs",
+    "build:functions": "node scripts/bundle-functions.mjs",
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "email:dev": "email dev --dir ./packages/email/src/templates/transactional --port 3010",
+    "email:export": "node scripts/export-email-html.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.67.0",
@@ -26,6 +28,8 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.1.0",
     "@tailwindcss/vite": "^4.3.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",
@@ -37,6 +41,9 @@
     "esbuild": "^0.28.1",
     "happy-dom": "^20.11.1",
     "oxlint": "^1.71.0",
+    "react-email": "^6.9.1",
+    "resend": "^6.18.1",
+    "standardwebhooks": "^1.0.0",
     "tailwindcss": "^4.3.2",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",

@@ -1,12 +1,12 @@
-# CareerOS Architecture
+# Octant Architecture
 
 ## Overview
 
-Welcome to CareerOS. This document serves as the technical blueprint of our platform, reverse-engineered directly from the codebase. It details how data flows, how boundaries are drawn, and highlights the technical debt present in the system today. 
+Welcome to Octant. This document serves as the technical blueprint of our platform, reverse-engineered directly from the codebase. It details how data flows, how boundaries are drawn, and highlights the technical debt present in the system today. 
 
 ## Why this architecture exists
 
-CareerOS employs an **optimistic-UI, store-driven architecture** running on React and Supabase. 
+Octant employs an **optimistic-UI, store-driven architecture** running on React and Supabase. 
 Historically, the application utilized local-first `Dexie` persistence. It has recently migrated to a fully cloud-native Supabase PostgreSQL backend. However, it retains its "local-first" roots: instead of adopting traditional asynchronous data fetching layers (like React Query), the application uses Zustand stores as the singular source of truth for UI, aggressively updating local state before blindly flushing those changes to the Supabase backend asynchronously. 
 
 The AI configuration is designed to be highly pluggable, extracting the specific vendor API mechanics into a service layer to easily swap between Anthropic, OpenAI, Google, and local models.
@@ -83,7 +83,7 @@ graph TD
 
 ## Data and State Flow
 
-CareerOS treats Zustand stores as an in-memory replica of the database. 
+Octant treats Zustand stores as an in-memory replica of the database. 
 
 1. **Read Flow**: Upon authentication, a store calls `_fetchFromSupabase()` to hydrate its initial state in memory. 
 2. **Write Flow**: When a user acts, the UI calls a store action (e.g., `updateApplication`).

@@ -1,6 +1,6 @@
 # Supabase Implementation Guide
 
-This document outlines the exact steps to finalize your Supabase setup for the **CareerOS** project. Since the app relies on Supabase for Auth and a simplified cloud-native state synchronization (where Zustand stores persist directly to JSONB columns), setting up your database is straightforward.
+This document outlines the exact steps to finalize your Supabase setup for the **Octant** project. Since the app relies on Supabase for Auth and a simplified cloud-native state synchronization (where Zustand stores persist directly to JSONB columns), setting up your database is straightforward.
 
 ## 1. Environment Variables
 

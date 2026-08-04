@@ -1,4 +1,4 @@
-# CareerOS — Runbook de Produção (Go-Live)
+# Octant — Runbook de Produção (Go-Live)
 
 Guia único e ordenado para colocar todo o projeto no ar, **incluindo as 5 fases do agente de descoberta**. Complementa o [DEPLOY.md](../DEPLOY.md) (base do app) com o passo a passo completo: quais chaves, onde obter, onde subir, e a ordem que faz tudo fluir.
 
@@ -60,6 +60,13 @@ Supabase, Netlify (ou similar), Google AI Studio (Gemini). Opcionais: OpenAI, St
 | `FREE_TIER_MONTHLY_TOKEN_LIMIT` | ai-proxy + discovery-worker | ⬜ | teto mensal do Free (default `100000`; `0` = ilimitado) |
 | `PRO_TIER_MONTHLY_TOKEN_LIMIT` | ai-proxy + discovery-worker | ⬜ | teto mensal do Pro (default `2000000`; `0` = ilimitado) |
 | `BROWSER_PDF_WS_ENDPOINT` | export-pdf | ⬜ | endpoint WS do Chromium headless (ex.: Browserless) |
+| `RESEND_API_KEY` | auth-email-hook, send-email, resend-webhook, stripe-webhook | ✅ (email) | Resend › API Keys (`re_...`, com *Sending access*) |
+| `EMAIL_FROM` | idem | ✅ (email) | remetente num domínio **verificado** no Resend (ex.: `Octant <noreply@useoctant.com>`) |
+| `EMAIL_SUPPORT` | idem | ⬜ | endereço mostrado no rodapé (default `support@useoctant.com`) |
+| `EMAIL_APP_NAME` / `EMAIL_LOCALE` | idem | ⬜ | nome do produto (default `Octant`) e locale de datas/valores (default `en-US`) |
+| `SEND_EMAIL_HOOK_SECRET` | auth-email-hook | ✅ (email de auth) | Supabase › Authentication › Hooks › Send Email (`v1,whsec_...`) |
+| `RESEND_WEBHOOK_SECRET` | resend-webhook | ✅ (status de entrega) | Resend › Webhooks › endpoint (`whsec_...`) |
+| `BILLING_PLAN_NAME` / `BILLING_GRACE_PERIOD_DAYS` | stripe-webhook | ⬜ | texto dos emails de billing (defaults `Pro` / `7`) |
 
 > `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` são **injetados automaticamente** nas Edge Functions — **não** os configure como secret.
 
@@ -91,7 +98,8 @@ Supabase, Netlify (ou similar), Google AI Studio (Gemini). Opcionais: OpenAI, St
 ### C) Stripe (billing — opcional)
 1. Products → crie o produto **Pro** e uma **Price** recorrente → copie o `price_...` (→ `STRIPE_PRICE_ID`).
 2. Developers › API keys → copie o `sk_...` (→ `STRIPE_SECRET_KEY`).
-3. Developers › Webhooks → **Add endpoint**: `https://<ref>.supabase.co/functions/v1/stripe-webhook`; eventos `customer.subscription.created/updated/deleted` → copie o signing secret (→ `STRIPE_WEBHOOK_SECRET`).
+3. Developers › Webhooks → **Add endpoint**: `https://<ref>.supabase.co/functions/v1/stripe-webhook`; eventos `customer.subscription.created/updated/deleted`, `customer.subscription.trial_will_end`, `invoice.payment_succeeded` e `invoice.payment_failed` → copie o signing secret (→ `STRIPE_WEBHOOK_SECRET`).
+   - Os três primeiros definem o tier; os três últimos são o que dispara os emails de billing (recibo, falha de pagamento, fim de trial). Sem habilitá-los, esses emails simplesmente nunca saem — a lista canônica é `BILLING_EVENT_TYPES` em `packages/email/src/integrations/stripeBilling.ts`.
 4. Settings › Billing › Customer portal → **ative** o portal.
 
 ### D) Subir os segredos (Supabase CLI)
@@ -108,6 +116,13 @@ supabase secrets set \
 # opcionais / billing:
 supabase secrets set STRIPE_SECRET_KEY=sk_... STRIPE_WEBHOOK_SECRET=whsec_... STRIPE_PRICE_ID=price_...
 supabase secrets set FREE_TIER_MONTHLY_TOKEN_LIMIT=100000
+# email (Fase 15) — sem RESEND_API_KEY toda a camada de email vira no-op silencioso:
+supabase secrets set \
+  RESEND_API_KEY=re_... \
+  EMAIL_FROM="Octant <noreply@useoctant.com>" \
+  EMAIL_SUPPORT=support@useoctant.com \
+  SEND_EMAIL_HOOK_SECRET='v1,whsec_...' \
+  RESEND_WEBHOOK_SECRET=whsec_...
 ```
 
 ### E) Deploy das Edge Functions
@@ -123,13 +138,29 @@ supabase functions deploy get-plan-pricing
 supabase functions deploy export-pdf
 # O webhook do Stripe NÃO recebe JWT do Supabase:
 supabase functions deploy stripe-webhook --no-verify-jwt
+# Email (Fase 15). O hook do Auth e o webhook do Resend também não recebem JWT do Supabase —
+# ambos autenticam por assinatura (Standard Webhooks) dentro da própria função:
+supabase functions deploy auth-email-hook --no-verify-jwt
+supabase functions deploy resend-webhook --no-verify-jwt
+# Este é chamado pelo browser com o JWT do usuário, então a verificação fica LIGADA:
+supabase functions deploy send-email
 ```
-> ⚠️ **O `discovery-worker` é empacotado (bundle) antes do deploy.** O edge-runtime da Supabase (Deno) NÃO resolve imports sem extensão em runtime, então o worker reusa o núcleo puro do `src/` via um bundle de arquivo único. A fonte editável é [`worker.ts`](../supabase/functions/discovery-worker/worker.ts); o `esbuild` inlina tudo em `index.ts` (o entry deployado, gerado — não edite à mão), deixando só os specifiers `jsr:`/`npm:` externos.
+> ⚠️ **Cinco funções são empacotadas (bundle) antes do deploy:** `discovery-worker`, `auth-email-hook`,
+> `send-email`, `resend-webhook` e `stripe-webhook`. O edge-runtime da Supabase (Deno) NÃO resolve
+> imports sem extensão em runtime, nem o alias interno `@octant/email`, então essas funções
+> reusam o núcleo puro do `src/` e o pacote de email via um bundle de arquivo único. A fonte editável é
+> `worker.ts` / `handler.ts`; o `esbuild` inlina tudo em `index.ts` (o entry deployado, gerado — não
+> edite à mão), deixando externos só os specifiers `jsr:`/`npm:`.
 >
-> **Sempre rode `yarn build:functions` depois de editar `worker.ts` (ou o núcleo em `src/`) e antes do deploy:**
+> As dependências npm do pacote de email ficam **externas** de propósito: o `@react-email/render`
+> declara uma condição de export `deno` que aponta para um build edge-safe (usa `react-dom/server.browser`).
+> Inlinar traria o build de Node e quebraria no isolate.
+>
+> **Sempre rode `yarn build:functions` depois de editar qualquer `worker.ts` / `handler.ts` (ou o núcleo
+> em `src/` ou `packages/email/`) e antes do deploy:**
 > ```bash
-> yarn build:functions   # regenera supabase/functions/discovery-worker/index.ts
-> supabase functions deploy discovery-worker --no-verify-jwt
+> yarn build:functions   # regenera os cinco index.ts
+> supabase functions deploy <nome> [--no-verify-jwt]
 > ```
 
 ### F) Frontend na Netlify

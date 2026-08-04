@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.email.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "esnext",
+    "skipLibCheck": true,
+
+    /* Bundler mode — this module is never emitted on its own; esbuild inlines it into the
+       Edge Functions (see scripts/bundle-functions.mjs).
+
+       No `paths` for `@octant/email` here on purpose: everything inside `src` imports relatively, and
+       the only consumers of that alias are the Edge Function handlers, which no tsconfig includes. The
+       alias is resolved by vitest and by the esbuild bundler instead. */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting — same strictness as the app. `erasableSyntaxOnly` forbids enums and constructor
+       parameter properties, so classes assign their fields in the constructor body. */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
+}

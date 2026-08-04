@@ -1,7 +1,15 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["react", "typescript", "oxc"],
-  "ignorePatterns": ["docs/**", "supabase/functions/discovery-worker/index.ts"],
+  "ignorePatterns": [
+    "docs/**",
+    "dist/**",
+    "supabase/functions/discovery-worker/index.ts",
+    "supabase/functions/auth-email-hook/index.ts",
+    "supabase/functions/send-email/index.ts",
+    "supabase/functions/resend-webhook/index.ts",
+    "supabase/functions/stripe-webhook/index.ts"
+  ],
   "rules": {
     "react/rules-of-hooks": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }]

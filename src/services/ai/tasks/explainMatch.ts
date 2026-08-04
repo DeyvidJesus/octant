@@ -5,7 +5,7 @@ import type { AiRunConfig } from '../types'
 import { EXPLAIN_SYSTEM_PROMPT, buildUserPrompt, type ExplainMatchInput } from './explainMatchCore'
 
 /**
- * "Recruiter Read" — CareerOS's first AI task and the proof of the whole
+ * "Recruiter Read" — Octant's first AI task and the proof of the whole
  * pipeline (provider adapter + guardrail).
  *
  * The deterministic analyzer already produced the *truth*: the match score,

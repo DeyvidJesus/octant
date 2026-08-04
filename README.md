@@ -1,4 +1,4 @@
-# Career OS
+# Octant
 
 A local-first personal Career Operating System. The **Master Resume** is the single source of
 truth; job analysis, tailored resumes, interview preparation, application tracking, and career

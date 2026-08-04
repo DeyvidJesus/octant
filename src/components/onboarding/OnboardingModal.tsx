@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Rocket, Sparkles, Loader2, CheckCircle, PenLine } from 'lucide-react'
+import { APP_NAME } from '@/constants/brand'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useSettingsStore, resolveAiRunConfig } from '@/stores/settingsStore'
@@ -79,7 +80,7 @@ export function OnboardingModal() {
                   <Rocket size={44} className="text-indigo-400" strokeWidth={1.5} />
                 </div>
                 <h2 id="onboarding-title" className="text-2xl font-semibold text-white mb-3">
-                  Welcome to CareerOS
+                  Welcome to {APP_NAME}
                 </h2>
                 <p className="text-ink-2 mb-8 leading-relaxed max-w-md">
                   Your command center for tracking applications, tailoring resumes, and preparing for

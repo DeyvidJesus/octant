@@ -1,6 +1,6 @@
 # AI Refactoring Playbook
 
-This document contains a structured, copy-pasteable playbook of prompts designed to guide an AI agent (like Claude, ChatGPT, or Cursor) through fixing the entirety of CareerOS's technical debt and executing the full 90-day roadmap to a production-ready public launch.
+This document contains a structured, copy-pasteable playbook of prompts designed to guide an AI agent (like Claude, ChatGPT, or Cursor) through fixing the entirety of Octant's technical debt and executing the full 90-day roadmap to a production-ready public launch.
 
 Do not dump all these prompts into the AI at once. AI models perform best with focused, scoped context. Start a new chat, paste the **Global Context**, and then execute the phases one by one.
 
@@ -11,8 +11,8 @@ Do not dump all these prompts into the AI at once. AI models perform best with f
 *Paste this into the system prompt, project context, or as the very first message in your AI chat.*
 
 ```markdown
-### Project Context: CareerOS
-CareerOS is an AI-powered Career Operating System.
+### Project Context: Octant
+Octant is an AI-powered Career Operating System.
 - **Tech Stack**: React 19, TypeScript, Vite, Tailwind CSS v4, Zustand (state), Supabase (Postgres & GoTrue Auth).
 - **Current State**: The platform recently migrated from local-first (Dexie.js) to cloud-first (Supabase). However, it carried over severe technical debt: it operates as a "Fat Client", syncing massive JSON blobs (like the entire resume graph) into single database rows via Zustand `.upsert()` calls. AI queries are executed directly from the browser, exposing API keys. UI state is tightly coupled to raw database queries.
 
@@ -114,7 +114,7 @@ Currently, `src/services/ai/providers/` executes `fetch` requests to OpenAI and 
 ```markdown
 **PHASE 7: Cross-Device Synchronization**
 
-Currently, CareerOS requires a hard refresh to sync data across devices. 
+Currently, Octant requires a hard refresh to sync data across devices. 
 
 1. Update the Repositories (`JobRepository.ts` and `ApplicationRepository.ts`) to implement Supabase Realtime subscriptions.
 2. When the `jobs` or `applications` table changes (INSERT, UPDATE, DELETE) for the authenticated `user_id`, the Repository should dispatch an event.
@@ -170,7 +170,7 @@ Currently, Interview Prep uses hardcoded question banks (`behavioralBank.ts`) an
 ```markdown
 **PHASE 11: Monetization via Stripe & Row Level Security**
 
-CareerOS needs to become a paid SaaS.
+Octant needs to become a paid SaaS.
 
 1. Implement Stripe Checkout in the frontend. 
 2. Create a Supabase Edge Function (`supabase/functions/stripe-webhook/index.ts`) to listen for `customer.subscription.created` and `deleted` events.

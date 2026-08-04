@@ -60,8 +60,6 @@ export interface DiscoveryPrefs {
   seniority: string
   /** Free text appended to every discovery prompt. */
   extraInstructions: string
-  /** Show a banner on the board when the last sweep is older than a day. */
-  staleReminder: boolean
 }
 
 export const DEFAULT_DISCOVERY_PREFS: DiscoveryPrefs = {
@@ -69,7 +67,6 @@ export const DEFAULT_DISCOVERY_PREFS: DiscoveryPrefs = {
   regions: '',
   seniority: '',
   extraInstructions: '',
-  staleReminder: false,
 }
 
 /** A single execution of the discovery pipeline — drives the "agent working" status + observability. */

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { LogOut, X } from 'lucide-react'
+import { APP_NAME } from '@/constants/brand'
 import { NAV_ENTRIES } from '@/constants/navigation'
 import { NavItem } from './NavItem'
 import { useAuth } from '@/contexts/AuthContext'
@@ -51,7 +52,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           <div className="w-8 h-8 rounded-md bg-white text-black flex items-center justify-center font-bold text-sm">
             {initials}
           </div>
-          <h1 className="font-semibold text-lg tracking-tight">Career OS</h1>
+          <h1 className="font-semibold text-lg tracking-tight">{APP_NAME}</h1>
         </div>
         <button
           type="button"

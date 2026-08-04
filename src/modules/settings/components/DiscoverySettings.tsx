@@ -54,16 +54,6 @@ export function DiscoverySettings() {
             onChange={(event) => setDiscoveryPrefs({ extraInstructions: event.target.value })}
           />
         </Field>
-
-        <label className="flex items-center gap-3 text-sm text-ink-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={discovery.staleReminder}
-            onChange={(event) => setDiscoveryPrefs({ staleReminder: event.target.checked })}
-            className="accent-white"
-          />
-          Remind me on the Opportunity Board when the last sweep is older than a day
-        </label>
       </div>
     </Card>
   )

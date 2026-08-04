@@ -16,6 +16,12 @@ export const AnalyticsEvent = {
   UpgradeStarted: 'upgrade_started',
   DiscoveryRunStarted: 'discovery_run_started',
   DiscoveryRunCompleted: 'discovery_run_completed',
+  // Auth/email funnel. `email_requested` records that the CLIENT asked for a send; whether it was
+  // actually delivered lives in `public.email_log`, which the Resend webhook keeps current.
+  EmailRequested: 'email_requested',
+  PasswordResetRequested: 'password_reset_requested',
+  MagicLinkRequested: 'magic_link_requested',
+  VerificationResent: 'verification_resent',
 } as const
 
 export type AnalyticsEventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent]
