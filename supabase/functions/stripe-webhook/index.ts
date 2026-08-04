@@ -2,7 +2,6 @@
 
 // supabase/functions/stripe-webhook/handler.ts
 import Stripe from "npm:stripe@16";
-import { createClient } from "jsr:@supabase/supabase-js@2";
 
 // packages/email/src/errors.ts
 var EmailError = class extends Error {
@@ -1756,7 +1755,9 @@ function loadEmailConfig(readEnv) {
   const warnings = [];
   const read = (key) => {
     const value = readEnv(key);
-    return value === void 0 || value.trim() === "" ? void 0 : value.trim();
+    if (value === void 0) return void 0;
+    const unquoted = value.trim().replace(/^(['"])([\s\S]*)\1$/, "$2").trim();
+    return unquoted === "" ? void 0 : unquoted;
   };
   const from = read("EMAIL_FROM") ?? DEFAULTS.from;
   if (!SENDER_PATTERN.test(from)) {
@@ -2010,6 +2011,36 @@ function mapBillingEmail(event, context) {
   }
 }
 
+// supabase/functions/_shared/admin.ts
+import { createClient } from "jsr:@supabase/supabase-js@2";
+var SERVICE_KEY_VARS = ["SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
+function serviceRoleKey() {
+  for (const name of SERVICE_KEY_VARS) {
+    const value = Deno.env.get(name);
+    if (value !== void 0 && value.trim() !== "") return value.trim();
+  }
+  return void 0;
+}
+var MissingServiceKeyError = class extends Error {
+  constructor() {
+    super(
+      `No service-role credential found. Set one of ${SERVICE_KEY_VARS.join(" / ")} (\`supabase secrets set SUPABASE_SECRET_KEY=sb_secret_...\`).`
+    );
+    this.name = "MissingServiceKeyError";
+  }
+};
+function createAdminClient() {
+  const url = requireUrl();
+  const key = serviceRoleKey();
+  if (key === void 0) throw new MissingServiceKeyError();
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+function requireUrl() {
+  const url = Deno.env.get("SUPABASE_URL");
+  if (url === void 0 || url === "") throw new Error("SUPABASE_URL is not set.");
+  return url;
+}
+
 // supabase/functions/_shared/mailer.ts
 var cached = null;
 function getEmailService() {
@@ -2019,14 +2050,23 @@ function getEmailService() {
   return cached;
 }
 async function sendLogged(admin, input) {
-  const mailer = getEmailService();
   const options = {
     userId: input.userId,
     dedupeKey: input.dedupeKey,
     preferencesUrl: input.preferencesUrl
   };
-  const idempotencyKey = mailer.buildIdempotencyKey(input.template, input.to, options);
-  const subject = mailer.subjectFor(input.template, input.props, options);
+  let mailer;
+  let idempotencyKey;
+  let subject;
+  try {
+    mailer = getEmailService();
+    idempotencyKey = mailer.buildIdempotencyKey(input.template, input.to, options);
+    subject = mailer.subjectFor(input.template, input.props, options);
+  } catch (error) {
+    const described = describeEmailError(error);
+    console.error(`[email] could not prepare ${input.template}: ${described.code} ${described.message}`);
+    return { status: "failed", ...described };
+  }
   const { error: claimError } = await admin.from("email_log").insert({
     user_id: input.userId ?? null,
     to_email: input.to,
@@ -2143,11 +2183,14 @@ Deno.serve(async (req) => {
   if (userId === void 0) {
     return json({ received: true, warning: "no user_id in subscription metadata" });
   }
-  const admin = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { persistSession: false } }
-  );
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error(`[stripe-webhook] ${detail}`);
+    return new Response(detail, { status: 500 });
+  }
   if (SUBSCRIPTION_EVENTS.has(event.type) && subscription !== void 0) {
     const dbError = await upsertSubscription(admin, event, subscription, userId);
     if (dbError !== null) return new Response(`Database error: ${dbError}`, { status: 500 });

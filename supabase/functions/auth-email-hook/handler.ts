@@ -18,11 +18,11 @@
 //          (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are injected automatically.)
 // Then enable the hook: Dashboard › Authentication › Hooks › Send Email.
 
-import { createClient } from 'jsr:@supabase/supabase-js@2'
 // Bare specifier on purpose: the bundler rewrites it to a pinned `npm:` URL using the version declared
 // in the root package.json, so there is no second place for that version to drift.
 import { Webhook } from 'standardwebhooks'
 import { formatDateTime, mapAuthEmail, type AuthHookPayload } from '@octant/email'
+import { createAdminClient } from '../_shared/admin.ts'
 import { sendLogged } from '../_shared/mailer.ts'
 
 /**
@@ -92,25 +92,32 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return hookOk()
   }
 
-  const admin = createClient(
-    supabaseUrl,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    { auth: { persistSession: false } },
-  )
+  // Everything past this point is wrapped: an uncaught throw here reaches GoTrue as a bare
+  // "Unexpected status code returned from hook: 500" with the cause visible nowhere — which is precisely
+  // how a missing service-role key or a malformed EMAIL_FROM used to present.
+  try {
+    const admin = createAdminClient()
 
-  const outcome = await sendLogged(admin, {
-    template: mapped.template,
-    to: mapped.to,
-    props: mapped.props,
-    userId: mapped.userId,
-    dedupeKey: mapped.dedupeKey,
-    metadata: { source: 'auth-hook', action: payload.email_data.email_action_type },
-  })
+    const outcome = await sendLogged(admin, {
+      template: mapped.template,
+      to: mapped.to,
+      props: mapped.props,
+      userId: mapped.userId,
+      dedupeKey: mapped.dedupeKey,
+      metadata: { source: 'auth-hook', action: payload.email_data.email_action_type },
+    })
 
-  if (outcome.status === 'failed') {
-    // Fail loudly: the user is mid-signup/mid-reset and needs to know to try again.
-    return hookError('We could not send your email. Please try again in a moment.', 500)
+    if (outcome.status === 'failed') {
+      console.error(`[auth-email-hook] send failed: ${outcome.code} ${outcome.message}`)
+      // Fail loudly: the user is mid-signup/mid-reset and needs to know to try again. The code goes in
+      // the message so it lands in the GoTrue auth log, which is where this gets debugged from.
+      return hookError(`Could not send your email (${outcome.code}). Please try again in a moment.`, 500)
+    }
+
+    return hookOk()
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err)
+    console.error(`[auth-email-hook] unexpected failure: ${detail}`)
+    return hookError(`Email hook failed: ${detail}`, 500)
   }
-
-  return hookOk()
 })

@@ -30,7 +30,6 @@
 //          SUPABASE_SERVICE_ROLE_KEY is injected automatically.
 
 import Stripe from 'npm:stripe@16'
-import { createClient } from 'jsr:@supabase/supabase-js@2'
 import {
   BILLING_EVENT_TYPES,
   displayNameFrom,
@@ -38,6 +37,7 @@ import {
   userIdFromSubscription,
   type StripeEventLike,
 } from '@octant/email'
+import { createAdminClient } from '../_shared/admin.ts'
 import { preferencesUrlFor, sendLogged } from '../_shared/mailer.ts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
@@ -164,11 +164,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ received: true, warning: 'no user_id in subscription metadata' })
   }
 
-  const admin = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    { auth: { persistSession: false } },
-  )
+  let admin
+  try {
+    admin = createAdminClient()
+  } catch (err) {
+    // 500 is correct here: without the admin client the tier cannot be written, and Stripe SHOULD
+    // redeliver once the credential is configured.
+    const detail = err instanceof Error ? err.message : String(err)
+    console.error(`[stripe-webhook] ${detail}`)
+    return new Response(detail, { status: 500 })
+  }
 
   // ── 1. Tier update: the part Stripe is allowed to retry us for ─────────────────────────────────
   if (SUBSCRIPTION_EVENTS.has(event.type) && subscription !== undefined) {
