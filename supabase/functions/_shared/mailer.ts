@@ -106,15 +106,37 @@ export async function sendLogged<N extends TemplateName>(
     return { status: 'failed', ...described }
   }
 
-  const { error: claimError } = await admin.from('email_log').insert({
-    user_id: input.userId ?? null,
+  // Blank is coerced to NULL, not passed through: an empty string would fail uuid conversion rather than
+  // being treated as "no user". An invitation to a non-user is the legitimate case.
+  const ownerId = input.userId === undefined || input.userId.trim() === '' ? null : input.userId
+
+  const claimRow = {
+    user_id: ownerId,
     to_email: input.to,
     template: input.template,
     subject,
     status: 'queued',
     idempotency_key: idempotencyKey,
     metadata: input.metadata ?? {},
-  })
+  }
+
+  let { error: claimError } = await admin.from('email_log').insert(claimRow)
+
+  // 23503 = foreign key violation on user_id.
+  //
+  // This happens for real during SIGNUP: Supabase Auth calls the Send Email Hook from inside its own
+  // uncommitted transaction, so the brand-new `auth.users` row is invisible to this connection. Migration
+  // 0015 drops that foreign key, which is the actual fix — but retrying without the association means a
+  // project that has not applied it yet still gets its email and its audit row, instead of every signup
+  // failing. Losing the user link is vastly preferable to blocking sign-ups.
+  if (claimError !== null && claimError.code === '23503' && ownerId !== null) {
+    console.warn(
+      `[email] user ${ownerId} not visible yet (uncommitted signup?); logging ${input.template} without the association. ` +
+        'Apply migration 0015 to drop the email_log.user_id foreign key.',
+    )
+    const retry = await admin.from('email_log').insert({ ...claimRow, user_id: null })
+    claimError = retry.error
+  }
 
   if (claimError !== null) {
     // 23505 = unique_violation on idempotency_key → this exact email was already handled.
@@ -123,8 +145,19 @@ export async function sendLogged<N extends TemplateName>(
       return { status: 'deduped' }
     }
     // Any other database failure means we cannot guarantee we won't double-send, so don't send at all.
-    console.error(`[email] could not claim ${input.template}: ${claimError.message}`)
-    return { status: 'failed', code: 'EMAIL_LOG_CLAIM', message: claimError.message }
+    console.error(
+      `[email] could not claim ${input.template}: [${claimError.code ?? 'no-code'}] ${claimError.message}` +
+        (claimError.details === undefined || claimError.details === null ? '' : ` — ${claimError.details}`),
+    )
+    // The Postgres error CODE rides along in the returned code (e.g. EMAIL_LOG_CLAIM_23503 for a foreign
+    // key violation). Edge Function logs are awkward to reach, and the caller's response is often the only
+    // thing visible — but the raw message is deliberately NOT included, since a hook's message can surface
+    // to end users and would leak schema detail.
+    return {
+      status: 'failed',
+      code: `EMAIL_LOG_CLAIM${claimError.code === undefined ? '' : `_${claimError.code}`}`,
+      message: claimError.message,
+    }
   }
 
   try {

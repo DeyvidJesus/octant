@@ -2067,22 +2067,37 @@ async function sendLogged(admin, input) {
     console.error(`[email] could not prepare ${input.template}: ${described.code} ${described.message}`);
     return { status: "failed", ...described };
   }
-  const { error: claimError } = await admin.from("email_log").insert({
-    user_id: input.userId ?? null,
+  const ownerId = input.userId === void 0 || input.userId.trim() === "" ? null : input.userId;
+  const claimRow = {
+    user_id: ownerId,
     to_email: input.to,
     template: input.template,
     subject,
     status: "queued",
     idempotency_key: idempotencyKey,
     metadata: input.metadata ?? {}
-  });
+  };
+  let { error: claimError } = await admin.from("email_log").insert(claimRow);
+  if (claimError !== null && claimError.code === "23503" && ownerId !== null) {
+    console.warn(
+      `[email] user ${ownerId} not visible yet (uncommitted signup?); logging ${input.template} without the association. Apply migration 0015 to drop the email_log.user_id foreign key.`
+    );
+    const retry = await admin.from("email_log").insert({ ...claimRow, user_id: null });
+    claimError = retry.error;
+  }
   if (claimError !== null) {
     if (claimError.code === "23505") {
       console.info(`[email] deduped ${input.template} for ${input.to}`);
       return { status: "deduped" };
     }
-    console.error(`[email] could not claim ${input.template}: ${claimError.message}`);
-    return { status: "failed", code: "EMAIL_LOG_CLAIM", message: claimError.message };
+    console.error(
+      `[email] could not claim ${input.template}: [${claimError.code ?? "no-code"}] ${claimError.message}` + (claimError.details === void 0 || claimError.details === null ? "" : ` \u2014 ${claimError.details}`)
+    );
+    return {
+      status: "failed",
+      code: `EMAIL_LOG_CLAIM${claimError.code === void 0 ? "" : `_${claimError.code}`}`,
+      message: claimError.message
+    };
   }
   try {
     const result = await mailer.send(input.template, input.to, input.props, options);

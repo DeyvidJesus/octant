@@ -56,16 +56,22 @@ function allowlist() {
   const raw = Deno.env.get("ALLOWED_ORIGINS") ?? Deno.env.get("APP_URL") ?? "";
   return raw.split(",").map((value) => value.trim().replace(/\/+$/, "")).filter(Boolean);
 }
+var BASE_HEADERS = {
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  Vary: "Origin"
+};
 function corsHeaders(req) {
   const allowed = allowlist();
+  if (allowed.length === 0) return { ...BASE_HEADERS, "Access-Control-Allow-Origin": "*" };
   const origin = (req.headers.get("Origin") ?? "").replace(/\/+$/, "");
-  const allowOrigin = allowed.length === 0 ? "*" : allowed.includes(origin) ? origin : allowed[0];
-  return {
-    "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, content-type",
-    Vary: "Origin"
-  };
+  if (origin !== "" && allowed.includes(origin)) {
+    return { ...BASE_HEADERS, "Access-Control-Allow-Origin": origin };
+  }
+  if (origin !== "") {
+    console.warn(`[cors] blocked origin "${origin}"; allowed: ${allowed.join(", ")}`);
+  }
+  return { ...BASE_HEADERS };
 }
 
 // src/utils/id.ts
