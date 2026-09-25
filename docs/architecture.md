@@ -176,4 +176,5 @@ one place.
 - **JSONB rows are not schema-validated in the database** (`pg_jsonschema` is not enabled). RLS protects
   *who* writes, not *what* is written.
 - **Knowledge-base relations** (fact → role/project) have no picker in the editor yet.
-- **Tier changes are not pushed** to the client (no realtime on `subscriptions`); they apply on reload.
+- **Tier changes are not pushed** to the client (no realtime on `subscriptions`). Returning from Stripe
+  Checkout, the settings page polls until the webhook lands (`refreshUntilPro`); other changes apply on reload.

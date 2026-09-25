@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { lazy, Suspense, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, CheckCircle2, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
@@ -13,9 +13,22 @@ import { INTERVIEW_STAGES, TERMINAL_STAGES } from '@/constants/applicationStages
 import { isDue } from '@/utils/dates'
 import { activityByWeek, funnel } from '@/services/metrics/computeMetrics'
 import { ChartCard } from '@/modules/metrics/components/ChartCard'
-import { FunnelChart } from '@/modules/metrics/components/FunnelChart'
-import { ActivityChart } from '@/modules/metrics/components/ActivityChart'
 import { StatCard } from './components/StatCard'
+
+// Recharts is ~110 KB gzipped. The dashboard is the landing route, so importing its charts statically
+// put that chunk in the modulepreload list of EVERY page (login included). Loaded lazily, it arrives
+// after the dashboard's first paint and never on routes without charts.
+const FunnelChart = lazy(() =>
+  import('@/modules/metrics/components/FunnelChart').then((module) => ({ default: module.FunnelChart })),
+)
+const ActivityChart = lazy(() =>
+  import('@/modules/metrics/components/ActivityChart').then((module) => ({ default: module.ActivityChart })),
+)
+
+/** Reserves the chart's height while its chunk loads, so the grid does not jump. */
+function ChartPlaceholder({ height }: { height: number }) {
+  return <div className="rounded-lg bg-surface-2/40 animate-pulse" style={{ height }} aria-hidden />
+}
 
 function formatPercent(value: number) {
   return `${Math.round(value)}%`
@@ -142,10 +155,14 @@ export function DashboardPage() {
         {applications.length > 0 ? (
           <>
             <ChartCard title="Pipeline funnel" subtitle="Applications reaching each stage.">
-              <FunnelChart steps={funnelSteps} />
+              <Suspense fallback={<ChartPlaceholder height={funnelSteps.length * 44 + 16} />}>
+                <FunnelChart steps={funnelSteps} />
+              </Suspense>
             </ChartCard>
             <ChartCard title="Activity over time" subtitle="Applications added per week.">
-              <ActivityChart weeks={activity} />
+              <Suspense fallback={<ChartPlaceholder height={220} />}>
+                <ActivityChart weeks={activity} />
+              </Suspense>
             </ChartCard>
           </>
         ) : (

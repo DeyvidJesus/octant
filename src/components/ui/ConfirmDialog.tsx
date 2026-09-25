@@ -1,12 +1,15 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useConfirmStore } from '@/stores/confirmStore'
+import { useFocusTrap } from './useFocusTrap'
 
 /** Renders the active confirm request as an accessible modal. Mounted once in AppLayout. */
 export function ConfirmDialog() {
   const request = useConfirmStore((state) => state.request)
   const respond = useConfirmStore((state) => state.respond)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef, request !== null)
 
   useEffect(() => {
     if (!request) return
@@ -27,6 +30,7 @@ export function ConfirmDialog() {
       onClick={() => respond(false)}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"

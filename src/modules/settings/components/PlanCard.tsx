@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Crown, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
+import { useToastStore } from '@/stores/toastStore'
 import { startProCheckout } from '@/services/billing/checkout'
 import { openBillingPortal } from '@/services/billing/portal'
 import { fetchPlanPricing, formatPlanPricing } from '@/services/billing/pricing'
@@ -10,10 +12,46 @@ import { FREE_LIMITS } from '@/constants/plan'
 
 export function PlanCard() {
   const tier = useSubscriptionStore((state) => state.tier)
+  const refreshUntilPro = useSubscriptionStore((state) => state.refreshUntilPro)
+  const notify = useToastStore((state) => state.notify)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Read once: Stripe sends the user back to /settings?checkout=success|cancelled.
+  const [checkoutResult] = useState(() => searchParams.get('checkout'))
+  const [confirming, setConfirming] = useState(checkoutResult === 'success')
   const [loading, setLoading] = useState(false)
   const [managing, setManaging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [price, setPrice] = useState<string | null>(null)
+
+  // Back from Checkout: wait for the webhook to flip the tier, instead of showing "Free" until a reload.
+  useEffect(() => {
+    if (checkoutResult === 'cancelled') notify('Checkout cancelled. You are still on the Free plan.', 'info')
+    if (checkoutResult !== 'success') return
+    const controller = new AbortController()
+    void refreshUntilPro({ signal: controller.signal }).then((upgraded) => {
+      if (controller.signal.aborted) return
+      setConfirming(false)
+      notify(
+        upgraded
+          ? 'Welcome to Pro. Your limits are lifted.'
+          : 'Payment received. Your plan will update in a moment; refresh the page if it does not.',
+        upgraded ? 'success' : 'info',
+      )
+    })
+    return () => controller.abort()
+  }, [checkoutResult, refreshUntilPro, notify])
+
+  // Drop the query param so a reload does not replay the confirmation.
+  useEffect(() => {
+    if (checkoutResult === null) return
+    setSearchParams(
+      (params) => {
+        params.delete('checkout')
+        return params
+      },
+      { replace: true },
+    )
+  }, [checkoutResult, setSearchParams])
 
   // Show the real Stripe price (only needed on the free-tier upgrade card).
   useEffect(() => {
@@ -84,8 +122,9 @@ export function PlanCard() {
             <li className="flex items-center gap-2"><Check size={14} className="text-success" aria-hidden /> Unlimited opportunities</li>
             <li className="flex items-center gap-2"><Check size={14} className="text-success" aria-hidden /> Unlimited tailored resumes</li>
           </ul>
-          <Button onClick={upgrade} disabled={loading}>
-            <Crown size={14} aria-hidden /> {loading ? 'Starting checkout…' : 'Upgrade to Pro'}
+          <Button onClick={upgrade} disabled={loading || confirming}>
+            <Crown size={14} aria-hidden />{' '}
+            {confirming ? 'Confirming your upgrade…' : loading ? 'Starting checkout…' : 'Upgrade to Pro'}
           </Button>
           {error && <p className="text-xs text-danger/90 leading-relaxed mt-3">{error}</p>}
         </>

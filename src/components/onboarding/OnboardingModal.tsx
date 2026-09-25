@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { useSettingsStore, resolveAiRunConfig } from '@/stores/settingsStore'
 import { useResumeStore } from '@/stores/resumeStore'
 import { extractProfile, type ExtractProfileResult } from '@/services/ai/tasks/extractProfile'
+import { useFocusTrap } from '@/components/ui/useFocusTrap'
 
 type Step = 'welcome' | 'import' | 'done'
 
@@ -23,10 +24,8 @@ export function OnboardingModal() {
   const [result, setResult] = useState<ExtractProfileResult['counts'] | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  // Move focus into the dialog on open (basic a11y; full focus-trap is a later pass).
-  useEffect(() => {
-    if (!onboardingCompleted) dialogRef.current?.focus()
-  }, [onboardingCompleted])
+  // Keep keyboard focus inside the dialog while it is open, and restore it on close.
+  useFocusTrap(dialogRef, !onboardingCompleted)
 
   // Escape dismisses the tour (same as "I'll do this later").
   useEffect(() => {

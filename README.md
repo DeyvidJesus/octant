@@ -87,9 +87,10 @@ Full write-up: [docs/architecture.md](docs/architecture.md).
 - **Design system on Tailwind v4 tokens**: surfaces, ink, inversion and status intents
   (`success/danger/warning/info`). Primitives merge classes with `cn()` (tailwind-merge), and a test
   fails the build if a raw palette class appears in UI code.
-- **Code-split routes** for the heavy pages (analysis, generator, prep, knowledge base, metrics).
-- **Accessibility**: keyboard moves between Kanban columns, `role="meter"` scores, labelled icon buttons,
-  promise-based confirm dialog, `aria-live` toasts.
+- **Code splitting**: heavy routes are lazy, and so are the dashboard's charts, which keeps Recharts
+  (~110 KB gzip) out of the preload list of every other page, login included.
+- **Accessibility**: keyboard moves between Kanban columns, focus-trapped modals that restore focus on
+  close, `role="meter"` scores, labelled icon buttons, promise-based confirm dialog, `aria-live` toasts.
 
 **Backend**
 - **RLS on every table**; free-plan caps live in RLS `WITH CHECK` policies (with upserts of existing rows exempted).
@@ -150,10 +151,11 @@ Functions, secrets and the discovery scheduler are covered step by step in
 | Script | What it does |
 |---|---|
 | `yarn dev` | Vite dev server |
-| `yarn test` | Vitest (≈470 tests) |
+| `yarn test` | Vitest (≈490 tests) |
 | `yarn lint` | oxlint, including layer-boundary rules |
 | `yarn build` | Type-check + production build |
 | `yarn build:functions` | Regenerate the bundled Edge Functions (run after editing a `worker.ts`/`handler.ts`) |
+| `yarn deploy:functions` | Rebuild and deploy every Edge Function with the right JWT flag (Supabase CLI) |
 | `yarn email:dev` | Preview email templates |
 
 ## Testing
@@ -161,8 +163,9 @@ Functions, secrets and the discovery scheduler are covered step by step in
 Most of the value is in pure functions, so most tests are fast unit tests: the skill extractor and
 matcher, résumé generation and coverage, metrics, discovery (dedupe, strategies, learning, cadence),
 AI response parsers, the grounding guardrail and email mapping/rendering. Component tests (happy-dom)
-cover auth flows, the confirm dialog and toasts. CI runs lint, tests, the build and the bundle
-freshness check on every push and pull request.
+cover auth flows, the Kanban board (keyboard moves, drag and drop), the focus trap, the confirm dialog
+and toasts. CI runs lint, tests, the build, `deno check` on the
+hand-written Edge Functions and the bundle freshness check on every push and pull request.
 
 ## Known trade-offs
 
