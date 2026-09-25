@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // fetches or re-subscribe — and so both getSession() and onAuthStateChange's INITIAL_SESSION
     // (which fire on load) only hydrate once. Set synchronously before any await to win that race.
     let currentUserId: string | null | undefined = undefined
+    let disposed = false
 
     const syncData = async (session: Session | null) => {
       const nextUserId = session?.user?.id ?? null
@@ -86,6 +87,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           useSubscriptionStore.getState()._fetchFromSupabase?.(),
           useSearchProfileStore.getState()._fetchFromSupabase?.(),
         ])
+        // The fetches took a while: bail if this effect was torn down (StrictMode's double run, unmount)
+        // or the user changed meanwhile (a sign-out right after sign-in). Otherwise a stale run would
+        // subscribe a second set of channels, or subscribe the previous user's.
+        if (disposed || currentUserId !== nextUserId) return
         // Subscribe after the initial load so realtime deltas apply on top of a hydrated store.
         realtimeCleanups = [
           useJobsStore.getState()._subscribeRealtime(),
@@ -107,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => {
+      disposed = true
       subscription.unsubscribe()
       teardownRealtime()
     }

@@ -202,7 +202,7 @@ export class DiscoveryRepository extends BaseRepository {
     if (!userId) return () => {}
 
     const channel = supabase
-      .channel(`realtime:discovered_jobs:${userId}`)
+      .channel(`discovered_jobs:${userId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'discovered_jobs', filter: `user_id=eq.${userId}` },
@@ -231,7 +231,7 @@ export class DiscoveryRepository extends BaseRepository {
     if (!userId) return () => {}
 
     const channel = supabase
-      .channel(`realtime:discovery_runs:${userId}`)
+      .channel(`discovery_runs:${userId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'discovery_runs', filter: `user_id=eq.${userId}` },

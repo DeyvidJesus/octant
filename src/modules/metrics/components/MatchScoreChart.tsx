@@ -14,7 +14,8 @@ export function MatchScoreChart({ buckets }: { buckets: MatchScoreBucket[] }) {
 
   return (
     <ResponsiveContainer width="100%" height={220}>
-      <BarChart data={buckets} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+      {/* Top margin leaves room for the value label above the tallest bar (the domain ends at the max). */}
+      <BarChart data={buckets} margin={{ top: 22, right: 12, bottom: 0, left: -16 }}>
         <CartesianGrid vertical={false} stroke={CHART.grid} />
         <XAxis dataKey="label" tick={{ fill: CHART.tickMuted, fontSize: 11 }} axisLine={{ stroke: CHART.axis }} tickLine={false} />
         <YAxis

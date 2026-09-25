@@ -70,7 +70,7 @@ export abstract class BaseRepository {
     if (!userId) return () => {}
 
     const channel = supabase
-      .channel(`realtime:${table}:${userId}`)
+      .channel(`${table}:${userId}`)
       .on<OwnedRow<T>>(
         'postgres_changes',
         { event: '*', schema: 'public', table, filter: `user_id=eq.${userId}` },

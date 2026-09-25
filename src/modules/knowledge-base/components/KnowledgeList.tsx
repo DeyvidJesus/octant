@@ -1,7 +1,8 @@
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useId, useState } from 'react'
 import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
+import { confirm } from '@/stores/confirmStore'
 import { removeById, updateById } from '@/utils/collections'
 
 interface KnowledgeListProps<T extends { id: string }> {
@@ -36,6 +37,7 @@ export function KnowledgeList<T extends { id: string }>({
   isVisible,
 }: KnowledgeListProps<T>) {
   const visible = isVisible ? items.filter(isVisible) : items
+  const listId = useId()
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
   const toggle = (id: string) =>
@@ -63,26 +65,38 @@ export function KnowledgeList<T extends { id: string }>({
         const isExpanded = expandedIds.has(item.id)
         return (
           <div key={item.id} className="border border-edge rounded-lg bg-base overflow-hidden">
-            <button
-              type="button"
-              onClick={() => toggle(item.id)}
-              className="flex items-center justify-between gap-3 w-full px-4 py-3 text-left hover:bg-surface/50 transition-colors"
-            >
-              <span className="flex items-center gap-2 text-xs text-faint uppercase tracking-wider min-w-0">
+            {/* Toggle and Delete are siblings: a button inside a button is invalid HTML and makes the
+                inner one unreachable for assistive tech. */}
+            <div className="flex items-center gap-3 pr-3 hover:bg-surface/50 transition-colors">
+              <button
+                type="button"
+                onClick={() => toggle(item.id)}
+                aria-expanded={isExpanded}
+                aria-controls={`${listId}-${item.id}`}
+                className="flex flex-1 items-center gap-2 min-w-0 px-4 py-3 text-left text-xs text-faint uppercase tracking-wider"
+              >
                 {isExpanded
                   ? <ChevronDown size={14} className="text-muted shrink-0" aria-hidden />
                   : <ChevronRight size={14} className="text-muted shrink-0" aria-hidden />}
                 {itemTitle?.(item)}
-              </span>
+              </button>
               <IconButton
                 icon={Trash2}
                 label="Delete"
                 tone="danger"
-                onClick={(e) => { e.stopPropagation(); onChange(removeById(items, item.id)) }}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Delete this entry?',
+                    message: 'It will be removed from your knowledge base and from any resume built from it.',
+                    confirmLabel: 'Delete',
+                    tone: 'danger',
+                  })
+                  if (ok) onChange(removeById(items, item.id))
+                }}
               />
-            </button>
+            </div>
             {isExpanded && (
-              <div className="px-4 pb-4 pt-1 border-t border-edge">
+              <div id={`${listId}-${item.id}`} className="px-4 pb-4 pt-1 border-t border-edge">
                 {renderItem(item, (patch) => onChange(updateById(items, item.id, patch)))}
               </div>
             )}
