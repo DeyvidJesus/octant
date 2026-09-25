@@ -130,6 +130,8 @@ supabase secrets set \
 
 ### E) Deploy das Edge Functions
 
+> **CLI:** o Supabase CLI é dependência de desenvolvimento do projeto; use `yarn supabase <comando>` (ex.: `yarn supabase login`). Instalar globalmente com npm não é suportado.
+>
 > **Atalho:** `yarn deploy:functions` regenera os bundles e publica todas as funções com a flag de JWT
 > certa ([scripts/deploy-functions.sh](../scripts/deploy-functions.sh)). `yarn deploy:functions ai-proxy`
 > publica só as nomeadas. Os comandos abaixo são o que ele executa.
