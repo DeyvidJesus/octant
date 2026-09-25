@@ -1,5 +1,5 @@
--- Consolidated schema for a fresh project. Afterwards apply migrations 0014, 0015 and 0016 from supabase/migrations;
--- signup fails without the email tables once the auth email hook is enabled.
+-- Consolidated schema for a fresh project; afterwards run every file in supabase/migrations in order (idempotent).
+-- supabase/tests replays exactly this path; signup fails without the email tables (0014) once the auth hook is on.
 
 create extension if not exists "uuid-ossp";
 
