@@ -49,6 +49,7 @@
     "react-email": "^6.9.1",
     "resend": "^6.18.1",
     "standardwebhooks": "^1.0.0",
+    "supabase": "^2.118.0",
     "tailwindcss": "^4.3.2",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
