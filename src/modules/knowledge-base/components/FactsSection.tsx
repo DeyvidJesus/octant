@@ -1,4 +1,4 @@
-import type { CareerFact, FactStatus, FactType } from '@/types/resume'
+import type { CareerFact, FactStatus, FactType, Initiative, Organization, Role } from '@/types/resume'
 import { Badge } from '@/components/ui/Badge'
 import { Field } from '@/components/ui/Field'
 import { Textarea } from '@/components/ui/Input'
@@ -8,16 +8,27 @@ import { FACT_STATUS_LABELS, FACT_STATUS_TONES, FACT_TYPES, FACT_TYPE_LABELS } f
 import { emptyFact } from '@/services/knowledge/classify'
 import { factText } from '@/services/knowledge/search'
 import { KnowledgeList } from './KnowledgeList'
+import { LinkPicker, type LinkOption } from './LinkPicker'
 import { StatusSelect } from './StatusSelect'
 
 interface FactsSectionProps {
   facts: CareerFact[]
+  roles: Role[]
+  organizations: Organization[]
+  initiatives: Initiative[]
   onChange: (next: CareerFact[]) => void
   query: string
   statusFilter: 'all' | FactStatus
 }
 
-export function FactsSection({ facts, onChange, query, statusFilter }: FactsSectionProps) {
+export function FactsSection({ facts, roles, organizations, initiatives, onChange, query, statusFilter }: FactsSectionProps) {
+  const orgName = new Map(organizations.map((org) => [org.id, org.name]))
+  const roleOptions: LinkOption[] = roles.map((role) => ({
+    id: role.id,
+    label: [role.title || 'Untitled role', orgName.get(role.organizationId)].filter(Boolean).join(' · '),
+  }))
+  const projectOptions: LinkOption[] = initiatives.map((initiative) => ({ id: initiative.id, label: initiative.name || 'Untitled project' }))
+
   return (
     <KnowledgeList
       items={facts}
@@ -55,6 +66,21 @@ export function FactsSection({ facts, onChange, query, statusFilter }: FactsSect
               <StatusSelect value={fact.status} onChange={(status) => update({ status })} />
             </Field>
           </div>
+          {/* A fact reaches a resume only through these links (see services/resume/projection.ts). */}
+          <LinkPicker
+            label="Appears under roles"
+            options={roleOptions}
+            selected={fact.roleIds}
+            onChange={(roleIds) => update({ roleIds })}
+            emptyHint="Add a role in the Experience tab to link this fact to it."
+          />
+          <LinkPicker
+            label="Appears under projects"
+            options={projectOptions}
+            selected={fact.initiativeIds}
+            onChange={(initiativeIds) => update({ initiativeIds })}
+            emptyHint="Add a project in the Projects tab to link this fact to it."
+          />
           <Field label="Tags">
             <TagInput ariaLabel="Fact tags" values={fact.tags} onChange={(tags) => update({ tags })} />
           </Field>
