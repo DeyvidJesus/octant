@@ -10,7 +10,7 @@ import { learnPreferences, applyLearnedToProfile, type DiscoverySignal } from '@
 import { isDueForRun } from '@/services/discovery/cadence'
 import { getAnalyzer } from '@/services/analysis/localHeuristicAnalyzer'
 import { parseJobsJson, normalizeCandidates } from '@/services/ai/tasks/extractJobsCore'
-import { createEmptyKnowledgeBase } from '@/constants/seedData'
+import { createEmptyKnowledgeBase } from '@/constants/emptyKnowledgeBase'
 import { projectKnowledgeBase } from '@/services/resume/projection'
 import type { SearchProfile } from '@/types/searchProfile'
 import type { MasterResume } from '@/types/resume'

@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import type { JobOpportunity } from '@/types/job'
 import type { JobAnalysis } from '@/types/analysis'
-import { initialJobs } from '@/constants/seedData'
 import { jobRepository } from '@/repositories/JobRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
 import { persist } from './persist'
@@ -26,7 +25,7 @@ interface JobsState {
 
 export const useJobsStore = create<JobsState>()(
   (set, get) => ({
-    jobs: initialJobs(),
+    jobs: [],
     analyses: {},
     addJob: (job) => {
       set((state) => ({ jobs: [job, ...state.jobs] }))

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CareerKnowledgeBase } from '@/types/resume'
-import { createSeedKnowledgeBase } from '@/constants/seedData'
+import { createSeedKnowledgeBase } from '@/test/fixtures/sampleCareer'
 import {
   assembleKnowledgeBase,
   diffById,

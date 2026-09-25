@@ -837,6 +837,35 @@ function getAnalyzer() {
   return new LocalHeuristicAnalyzer();
 }
 
+// src/constants/emptyKnowledgeBase.ts
+function createEmptyKnowledgeBase() {
+  return {
+    schemaVersion: 3,
+    profile: {
+      personal: { name: "", role: "", location: "" },
+      summary: "",
+      careerDirection: "",
+      values: [],
+      workPreferences: [],
+      languages: []
+    },
+    organizations: [],
+    roles: [],
+    initiatives: [],
+    skills: [],
+    facts: [],
+    metrics: [],
+    technicalDecisions: [],
+    stories: [],
+    credentials: [],
+    portfolioAssets: [],
+    publications: [],
+    learning: [],
+    unclassifiedFacts: [],
+    updatedAt: nowIso()
+  };
+}
+
 // src/services/resume/projection.ts
 var RESUME_FACT_TYPES = /* @__PURE__ */ new Set([
   "responsibility",
@@ -915,36 +944,6 @@ function projectKnowledgeBase(knowledgeBase) {
     updatedAt: knowledgeBase.updatedAt
   };
 }
-
-// src/constants/seedData.ts
-function createEmptyKnowledgeBase() {
-  return {
-    schemaVersion: 3,
-    profile: {
-      personal: { name: "", role: "", location: "" },
-      summary: "",
-      careerDirection: "",
-      values: [],
-      workPreferences: [],
-      languages: []
-    },
-    organizations: [],
-    roles: [],
-    initiatives: [],
-    skills: [],
-    facts: [],
-    metrics: [],
-    technicalDecisions: [],
-    stories: [],
-    credentials: [],
-    portfolioAssets: [],
-    publications: [],
-    learning: [],
-    unclassifiedFacts: [],
-    updatedAt: nowIso()
-  };
-}
-var DEMO_SEED_ENABLED = import.meta.env?.VITE_DEMO_SEED === "true";
 
 // supabase/functions/discovery-worker/worker.ts
 var GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-3.5-flash";

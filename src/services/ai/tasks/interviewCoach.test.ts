@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createSeedResume } from '@/constants/seedData'
+import { createSeedResume } from '@/test/fixtures/sampleCareer'
 import { getProvider } from '../providers'
 import {
   buildInterviewCoachPrompt,

@@ -7,7 +7,7 @@ import type {
   Provenance,
   Role,
 } from '@/types/resume'
-import { createEmptyKnowledgeBase } from '@/constants/seedData'
+import { createEmptyKnowledgeBase } from '@/constants/emptyKnowledgeBase'
 import { createId } from '@/utils/id'
 import { getProvider } from '../providers'
 import { AiError, type AiRunConfig, type ChatMessage } from '../types'

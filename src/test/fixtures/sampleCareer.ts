@@ -1,10 +1,10 @@
 import type { CareerFact, CareerKnowledgeBase, FactStatus, KnowledgeSkill, Provenance } from '@/types/resume'
-import type { JobOpportunity } from '@/types/job'
 import { projectKnowledgeBase } from '@/services/resume/projection'
-import { createId } from '@/utils/id'
 import { nowIso } from '@/utils/dates'
 
-const SOURCE = 'src/constants/seedData.ts (Octant v2 Master Resume seed)'
+// Test fixture: a realistic, fully linked knowledge base for the analysis, generator and AI-prompt tests.
+
+const SOURCE = 'test fixture'
 const provenance = (excerpt: string, notes?: string): Provenance => ({ source: SOURCE, excerpt, notes })
 
 function fact(
@@ -18,7 +18,7 @@ function skill(canonical: string, category: string, proficiency: 1 | 2 | 3 | 4 |
   return { id: `skill-${canonical.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}`, canonical, category, proficiency, favorite, evidenceFactIds: [], provenance: provenance(`${canonical} (${category}, self-assessed level ${proficiency})`) }
 }
 
-/** The only persisted starting point for a new Octant installation. */
+/** A complete knowledge base: skills with evidence, linked facts, a STAR story and pending facts. */
 export function createSeedKnowledgeBase(): CareerKnowledgeBase {
   const skills = [
     skill('React', 'Frontend', 5, true), skill('Next.js', 'Frontend', 5, true), skill('TypeScript', 'Frontend', 5, true),
@@ -52,15 +52,15 @@ export function createSeedKnowledgeBase(): CareerKnowledgeBase {
     fact('fact-story-task', 'task', 'Own the performance work and bring CLS and LCP into the green without regressing features.', ['role-econverse'], ['initiative-econverse-commerce'], [id('Core Web Vitals'), id('Ownership')]),
     fact('fact-story-action', 'action', 'Profiled rendering, deferred non-critical work, optimized images and hydration, and enforced budgets in review.', ['role-econverse'], ['initiative-econverse-commerce'], [id('Core Web Vitals'), id('Performance Optimization')]),
     fact('fact-story-result', 'result', 'Moved CLS and LCP into passing ranges and improved Lighthouse scores, protecting organic traffic.', ['role-econverse'], ['initiative-econverse-commerce'], [id('Core Web Vitals'), id('Performance Optimization'), id('SEO')], 'confirmed', ['metric-core-web-vitals']),
-    fact('todo-profile-links', 'technical_capability', 'TODO: Add email, phone, GitHub, LinkedIn, website, and work-authorization details.', [], [], [], 'todo'),
-    fact('todo-philosophy', 'communication', 'TODO: Add a concise career philosophy statement distinct from the existing engineering values.', [], [], [], 'todo'),
-    fact('todo-earlier-history', 'responsibility', 'TODO: Add all professional experiences before Econverse and Freelance, including dates, employers, roles, and evidence.', [], [], [], 'todo'),
-    fact('todo-credentials', 'technical_capability', 'TODO: Add education, certifications, and completed learning records.', [], [], [], 'todo'),
-    fact('todo-portfolio', 'achievement', 'TODO: Add portfolio URLs, repositories, live demos, write-ups, and talks.', [], [], [], 'todo'),
-    fact('todo-metrics', 'result', 'TODO: Add quantified business outcomes, baselines, timeframes, and measurement methods for each relevant achievement.', [], [], [], 'todo'),
-    fact('todo-cloud-testing', 'technical_capability', 'TODO: Add verified AWS/cloud deployment, testing, and CI/CD implementation evidence.', [], [], [], 'todo'),
-    fact('todo-leadership', 'leadership', 'TODO: Add leadership, mentoring, stakeholder, failure, and lesson stories with concrete situations and outcomes.', [], [], [], 'todo'),
-    fact('todo-role-context', 'situation', 'TODO: Add missing situation, task, decision, metric, business-value, and product-impact detail for Econverse and Freelance work.', ['role-econverse', 'role-freelance'], [], [], 'todo'),
+    fact('todo-profile-links', 'technical_capability', 'Contact links and work-authorization details are pending.', [], [], [], 'todo'),
+    fact('todo-philosophy', 'communication', 'A short career philosophy statement is pending.', [], [], [], 'todo'),
+    fact('todo-earlier-history', 'responsibility', 'Earlier professional experience, with dates and evidence, is pending.', [], [], [], 'todo'),
+    fact('todo-credentials', 'technical_capability', 'Education and certification records are pending.', [], [], [], 'todo'),
+    fact('todo-portfolio', 'achievement', 'Portfolio links and write-ups are pending.', [], [], [], 'todo'),
+    fact('todo-metrics', 'result', 'Quantified outcomes with baselines and timeframes are pending.', [], [], [], 'todo'),
+    fact('todo-cloud-testing', 'technical_capability', 'Cloud deployment and CI/CD evidence is pending.', [], [], [], 'todo'),
+    fact('todo-leadership', 'leadership', 'Leadership and mentoring stories are pending.', [], [], [], 'todo'),
+    fact('todo-role-context', 'situation', 'Situation and business-impact detail for both roles is pending.', ['role-econverse', 'role-freelance'], [], [], 'todo'),
   ]
 
   const skillsWithEvidence = skills.map((entry) => ({ ...entry, evidenceFactIds: facts.filter((entryFact) => entryFact.skillIds.includes(entry.id) && entryFact.status === 'confirmed').map((entryFact) => entryFact.id) }))
@@ -100,71 +100,7 @@ export function createSeedKnowledgeBase(): CareerKnowledgeBase {
   }
 }
 
-/** Compatibility helper for existing deterministic consumers and tests. */
+/** The fixture projected as a Master Resume. */
 export function createSeedResume() {
   return projectKnowledgeBase(createSeedKnowledgeBase())
-}
-
-/** A truly empty knowledge base — the real starting point for a new account. */
-export function createEmptyKnowledgeBase(): CareerKnowledgeBase {
-  return {
-    schemaVersion: 3,
-    profile: {
-      personal: { name: '', role: '', location: '' },
-      summary: '',
-      careerDirection: '',
-      values: [],
-      workPreferences: [],
-      languages: [],
-    },
-    organizations: [],
-    roles: [],
-    initiatives: [],
-    skills: [],
-    facts: [],
-    metrics: [],
-    technicalDecisions: [],
-    stories: [],
-    credentials: [],
-    portfolioAssets: [],
-    publications: [],
-    learning: [],
-    unclassifiedFacts: [],
-    updatedAt: nowIso(),
-  }
-}
-
-/** Preload the demo persona when VITE_DEMO_SEED=true; off by default. */
-// Optional chaining because the Deno worker imports this module and has no `import.meta.env`.
-export const DEMO_SEED_ENABLED =
-  (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_DEMO_SEED === 'true'
-
-/** Initial knowledge base for a fresh store — persona only in demo mode, otherwise empty. */
-export function initialKnowledgeBase(): CareerKnowledgeBase {
-  return DEMO_SEED_ENABLED ? createSeedKnowledgeBase() : createEmptyKnowledgeBase()
-}
-
-/** Initial jobs for a fresh store — persona only in demo mode, otherwise empty. */
-export function initialJobs(): JobOpportunity[] {
-  return DEMO_SEED_ENABLED ? createSeedJobs() : []
-}
-
-interface SeedJobInput { company: string; role: string; category: string; stack: string; exp: string; salary: string; link: string }
-const SEED_JOBS: SeedJobInput[] = [
-  { company: 'Tempo', role: 'Full-Stack Engineer', category: 'AI/SaaS', stack: 'TypeScript, React, Tailwind, Supabase', exp: '2+ years', salary: '$40k-$60k', link: 'https://jobs.ashbyhq.com/tempo/374cb123-0dde-427f-a907-e59b66d14624' },
-  { company: 'Concentrate AI', role: 'Full-Stack Engineer', category: 'AI/SaaS', stack: 'TypeScript, Node, React, Next, PostgreSQL', exp: '2+ years', salary: 'Competitive', link: 'https://jobs.ashbyhq.com/concentrate%20ai/c603e7c5-3e26-4dce-97a5-c445685e388c' },
-  { company: 'Bluepina', role: 'Founding Full-Stack Engineer', category: 'AI/SaaS', stack: 'Node, TypeScript, Next, PostgreSQL', exp: 'Founding', salary: '$160k-$220k', link: 'https://wellfound.com/jobs/4463395-founding-full-stack-software-engineer-remote-clone' },
-  { company: 'Reacher', role: 'Software Engineer - Latam', category: 'AI/SaaS', stack: 'TypeScript, React, Python, FastAPI', exp: '2-6 years', salary: '$60k-$85k', link: 'https://jobs.ashbyhq.com/reacher/e4d436eb-dd77-44d0-9586-44d48ad84aea' },
-  { company: 'XBOW', role: 'Software Engineer - AI', category: 'AI/SaaS', stack: 'TypeScript, Node, Python, LLMs', exp: 'Mid-level', salary: '$100k-$350k', link: 'https://jobs.ashbyhq.com/xbowcareers/304f9f4e-477e-4d29-a39a-7c212738a0c8' },
-  { company: 'NDEAVOUR', role: 'Regular Full-Stack Engineer', category: 'Enterprise', stack: 'Java, Spring Boot, React, REST APIs', exp: 'Mid-level', salary: 'Competitive', link: 'https://jobs.ashbyhq.com/ndeavour/4411587d-7994-4cd7-8ce3-d7000966e0be' },
-  { company: 'Addi', role: 'Backend JVM Engineer', category: 'Enterprise', stack: 'Java, Spring Boot, SQL, Docker', exp: '3-5 years', salary: 'Competitive', link: 'https://jobs.ashbyhq.com/addi/97f0cd1b-ccae-4b31-9878-2d90da42bae1' },
-  { company: 'Builder.io', role: 'Software Engineer', category: 'DevTools', stack: 'React, TypeScript, Node.js, REST APIs', exp: '3-5+ years', salary: 'Competitive', link: 'https://job-boards.greenhouse.io/builder/jobs/6020728004' },
-  { company: 'OpenSesame', role: 'Software Engineer', category: 'DevTools', stack: 'TypeScript, Node, React', exp: '2-4 years', salary: 'Competitive', link: 'https://job-boards.greenhouse.io/opensesame/jobs/7927745' },
-  { company: 'Maze', role: 'Senior Full Stack Engineer', category: 'DevTools', stack: 'TypeScript, React, Next, Node, GraphQL', exp: 'Senior/Mid', salary: '$130k-$155k', link: 'https://jobs.ashbyhq.com/mazedesign/691d243c-5da9-4afe-b6dc-52794e4e0de1' },
-  { company: 'Truelogic', role: 'Senior Full-Stack Engineer', category: 'Agency', stack: 'TypeScript, Node, React, Postgres, AWS', exp: '5+ years', salary: 'Competitive', link: 'https://jobs.ashbyhq.com/truelogic/d7f844a2-06dd-4f19-b2b7-ec5d3da72a6f' },
-  { company: 'WellTheory', role: 'Software Engineer - Implementation', category: 'Specialized', stack: 'JavaScript, TypeScript, React, Node, Postgres', exp: '3-5+ years', salary: 'Competitive', link: 'https://jobs.ashbyhq.com/welltheory/da3432c6-66da-450b-b9f9-f1e66b6482c9' },
-]
-
-export function createSeedJobs(): JobOpportunity[] {
-  return SEED_JOBS.map((job) => ({ id: createId(), company: job.company, role: job.role, description: `${job.role} at ${job.company} (${job.category}). Remote position. Required stack: ${job.stack}. Experience level: ${job.exp}. Salary: ${job.salary}.`, url: job.link, category: job.category, salaryRange: job.salary, workMode: 'remote', tags: [job.category, job.exp], createdAt: nowIso(), archived: false, source: 'manual' }))
 }

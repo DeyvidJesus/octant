@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createEmptyKnowledgeBase } from '@/constants/seedData'
+import { createEmptyKnowledgeBase } from '@/constants/emptyKnowledgeBase'
 import type { CareerKnowledgeBase, KnowledgeSkill } from '@/types/resume'
 import type { DiscoveryPrefs } from '@/types/discovery'
 import { deriveSearchProfile, resolveSearchProfile } from './deriveSearchProfile'

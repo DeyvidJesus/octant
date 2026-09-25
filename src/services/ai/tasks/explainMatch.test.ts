@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { buildUserPrompt } from './explainMatch'
 import type { JobAnalysis } from '@/types/analysis'
 import type { JobOpportunity } from '@/types/job'
-import { createSeedResume } from '@/constants/seedData'
+import { createSeedResume } from '@/test/fixtures/sampleCareer'
 
 const job: JobOpportunity = {
   id: 'job-1',

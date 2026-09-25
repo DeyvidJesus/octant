@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { CareerKnowledgeBase, MasterResume } from '@/types/resume'
-import { createEmptyKnowledgeBase, initialKnowledgeBase } from '@/constants/seedData'
+import { createEmptyKnowledgeBase } from '@/constants/emptyKnowledgeBase'
 import { projectKnowledgeBase } from '@/services/resume/projection'
 import { nowIso } from '@/utils/dates'
 import { knowledgeBaseRepository } from '@/repositories/KnowledgeBaseRepository'
@@ -41,7 +41,7 @@ export const useResumeStore = create<ResumeState>()(
       persist(() => searchProfileRepository.saveScoringSnapshot(projection), 'resume.scoringSnapshot')
     }
 
-    const initial = initialKnowledgeBase()
+    const initial = createEmptyKnowledgeBase()
     return {
       knowledgeBase: initial,
       resume: projectKnowledgeBase(initial),

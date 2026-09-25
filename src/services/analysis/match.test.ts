@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildMatchReport, collectResumeSkills } from './match'
 import { extractSkills } from './extract'
-import { createSeedResume } from '@/constants/seedData'
+import { createSeedResume } from '@/test/fixtures/sampleCareer'
 
 const resume = createSeedResume()
 const resumeSkills = collectResumeSkills(resume)

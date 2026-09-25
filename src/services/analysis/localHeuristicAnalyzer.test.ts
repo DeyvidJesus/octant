@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { getAnalyzer } from './localHeuristicAnalyzer'
-import { createSeedResume } from '@/constants/seedData'
+import { createSeedResume } from '@/test/fixtures/sampleCareer'
 import type { JobOpportunity } from '@/types/job'
 
 const resume = createSeedResume()

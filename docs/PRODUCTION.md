@@ -42,7 +42,6 @@ Antes do primeiro deploy, rode `yarn lint`, `yarn test` e `yarn build` localment
 | `VITE_SUPABASE_ANON_KEY` | ✅ | Supabase › Project Settings › API › `anon`/publishable key |
 | `VITE_POSTHOG_KEY` / `VITE_POSTHOG_HOST` | ⬜ | PostHog › Project Settings (host default `https://us.i.posthog.com`) |
 | `VITE_SENTRY_DSN` | ⬜ | Sentry › Project › Client Keys (DSN) |
-| `VITE_DEMO_SEED` | ⬜ | **Deixe ausente/`false` em produção** (só `true` para demо com a persona) |
 
 > ⚠️ O client faz **fail-fast em build de produção** se `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` faltarem ([client.ts](../src/services/supabase/client.ts)). Não use os prefixos `NEXT_PUBLIC_*` (o Vite ignora).
 
