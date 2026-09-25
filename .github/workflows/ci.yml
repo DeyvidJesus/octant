@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install
+        run: yarn install --frozen-lockfile
+
+      # oxlint, including the layer-boundary rules in .oxlintrc.json
+      - name: Lint
+        run: yarn lint
+
+      # Vitest: pure domain logic, component tests (happy-dom) and the design-token guard
+      - name: Test
+        run: yarn test
+
+      # tsc -b (type check) + vite build
+      - name: Build
+        run: yarn build
+
+      # The Supabase edge runtime cannot resolve the shared `@/` sources, so five functions deploy a
+      # generated bundle. Fail if a source changed without regenerating it (`yarn build:functions`).
+      - name: Edge Function bundles are up to date
+        run: |
+          yarn build:functions
+          git diff --exit-code -- supabase/functions || {
+            echo "::error::Generated Edge Function bundles are stale. Run 'yarn build:functions' and commit the result."
+            exit 1
+          }

@@ -2,147 +2,178 @@
 
 ## Overview
 
-Welcome to Octant. This document serves as the technical blueprint of our platform, reverse-engineered directly from the codebase. It details how data flows, how boundaries are drawn, and highlights the technical debt present in the system today. 
+Octant is a React single-page app backed by Supabase (Postgres + Auth + RLS + Realtime + Edge
+Functions). This document describes the architecture **as it is in the code today**: the layers, the
+rules between them, how data moves, and where the known trade-offs are. For the history of how it got
+here, see [DESIGN_REVIEW.md](DESIGN_REVIEW.md) and [technical-debt.md](technical-debt.md).
 
 ## Why this architecture exists
 
-Octant employs an **optimistic-UI, store-driven architecture** running on React and Supabase. 
-Historically, the application utilized local-first `Dexie` persistence. It has recently migrated to a fully cloud-native Supabase PostgreSQL backend. However, it retains its "local-first" roots: instead of adopting traditional asynchronous data fetching layers (like React Query), the application uses Zustand stores as the singular source of truth for UI, aggressively updating local state before blindly flushing those changes to the Supabase backend asynchronously. 
-
-The AI configuration is designed to be highly pluggable, extracting the specific vendor API mechanics into a service layer to easily swap between Anthropic, OpenAI, Google, and local models.
-
----
-
-## Layer Separation
-
-The application enforces a strict separation of concerns through its directory structure:
-
-1. **`src/modules/` (Feature/UI Layer)**: Defines isolated page routes and feature-specific components. Each subdirectory represents a discrete business domain (e.g., `application-tracker`, `resume-generator`).
-2. **`src/stores/` (State Layer)**: The heart of the application. Zustand stores (e.g., `resumeStore`, `applicationsStore`) act as localized in-memory databases. They provide the actions for the UI to call.
-3. **`src/services/` (Service Layer)**: Interfaces with the outside world. This includes the Supabase client initialization, database sync logic, AI provider configurations (`ai/registry.ts`), and deep research orchestration.
-4. **`src/components/` (Shared UI Layer)**: Dumb, reusable presentation components (buttons, inputs) and high-level wrappers (e.g., `ProtectedRoute`).
+- **Optimistic, store-driven UI.** The app started local-first (IndexedDB via Dexie). When it moved to
+  Supabase it kept that feel: Zustand stores are an in-memory replica of the user's data, mutations
+  apply synchronously, and persistence happens out of band. There is no React Query layer, because
+  the stores *are* the cache.
+- **Deterministic code owns truth; the LLM owns language.** Scoring, matching, résumé tailoring and
+  interview-prep plans are pure TypeScript. AI only transcribes, explains or grades, and its output is
+  checked by code (`services/ai/guardrails/grounding.ts`).
+- **The database is the security boundary.** Row Level Security scopes every table to `auth.uid()`,
+  and free-plan caps are enforced in RLS policies (migration 0007). Secrets (AI vendors, Stripe,
+  Resend, service role) live only in Edge Functions.
 
 ---
 
-## Boundaries & Dependency Direction
+## Layers and dependency direction
 
-### Feature Boundaries
-Features are self-contained within `src/modules/*` and rarely import from one another. The primary feature boundaries are:
-- `auth`: Login, Signup, and routing protection.
-- `master-resume`: Core user profile and knowledge base editing.
-- `resume-generator`: Job-specific resume tailoring.
-- `application-tracker`: Pipeline of job applications.
-- `job-discovery` / `job-opportunities`: Finding and cataloging job listings.
-- `interview-prep`: Interview AI analysis.
+```
+src/
+├── app/          # Router, lazy routes, layout shell
+├── contexts/     # AuthProvider: session → hydration → realtime (useAuth hook in useAuth.ts)
+├── modules/      # One folder per feature: pages + feature components
+├── components/   # Domain-agnostic UI primitives (ui/) and layout
+├── stores/       # Zustand stores + cross-store orchestration (persist.ts, discoveryRunner.ts)
+├── repositories/ # The only code that talks to Supabase tables; returns domain types
+├── services/     # Framework-free domain logic, AI providers/tasks, Supabase/auth plumbing
+├── constants/ types/ utils/   # Leaf layers
+└── styles/       # Tailwind v4 design tokens (@theme)
+```
 
-### Module Boundaries & Dependency Direction
-The dependency graph strictly flows downward. Modules are not allowed to directly mutate the database or manage API lifecycle states for core entities.
+**Dependency flow:** `modules / components → stores → repositories / services → types, utils, constants`
 
-**Dependency Flow:**
-`Modules (UI)` ➔ `Stores (Zustand)` ➔ `Services (Supabase/AI)` ➔ `External DB/APIs`
+These rules are **enforced by lint** (`no-restricted-imports` overrides in [.oxlintrc.json](../.oxlintrc.json)):
 
-Modules import from Stores to read and write state. Stores import from Services to persist data.
+| Layer | May not import |
+|---|---|
+| `types/`, `utils/`, `constants/` | React, UI, stores, repositories |
+| `services/`, `repositories/` | React, UI, stores |
+| `stores/` | UI (`app`, `modules`, `components`, `contexts`) |
+| `modules/`, `components/` | repositories, or the Supabase client directly |
+
+Anything that needs to read several stores and call services (e.g. the in-session discovery run)
+lives in `stores/`, so services stay pure and reusable. That purity is load-bearing: the same
+`services/discovery/*` and prompt-building cores run in the browser **and** in the Deno
+`discovery-worker` Edge Function.
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#f4f4f4', 'edgeLabelBackground':'#fff'}}}%%
 graph TD
-    subgraph UI Layer
-        Auth[Auth Module]
-        AppTracker[Application Tracker Module]
-        ResumeGen[Resume Generator Module]
+    subgraph UI
+        Modules[modules/* pages]
+        Components[components/ui]
     end
-
-    subgraph State Layer
-        AppStore(Applications Store)
-        GenStore(Generator Store)
-        ResStore(Resume Store)
+    subgraph State
+        Stores[Zustand stores]
+        Persist[persist + reconcile]
     end
-
-    subgraph Service Layer
-        SupaClient[Supabase Client]
-        AILayer[AI Services]
+    subgraph Data & Logic
+        Repos[repositories/*]
+        Services[services/* pure logic]
+        Providers[services/ai/providers]
     end
-
-    Auth --> SupaClient
-    AppTracker --> AppStore
-    ResumeGen --> GenStore
-    ResumeGen --> ResStore
-    
-    AppStore --> SupaClient
-    GenStore --> SupaClient
-    ResStore --> SupaClient
-    
-    AppTracker --> AILayer
-    ResumeGen --> AILayer
-
-    SupaClient --> DB[(PostgreSQL)]
-    AILayer --> LLM[(Claude / Gemini / OpenAI)]
+    subgraph Supabase
+        DB[(Postgres + RLS)]
+        RT[Realtime]
+        Edge[Edge Functions]
+    end
+    Modules --> Stores
+    Modules --> Services
+    Components --> Stores
+    Stores --> Persist --> Repos
+    Stores --> Services
+    Repos --> DB
+    RT --> Repos
+    Providers --> Edge
+    Edge --> LLM[(OpenAI / Gemini / Claude)]
 ```
 
 ---
 
-## Data and State Flow
+## Data and state flow
 
-Octant treats Zustand stores as an in-memory replica of the database. 
+### Hydration (`src/contexts/AuthContext.tsx`)
+1. `getSession()` and `onAuthStateChange` both call `syncData(session)`.
+2. The user id is mirrored into `services/supabase/session.ts`, so repositories resolve it
+   synchronously (no `auth.getUser()` round-trip per write).
+3. Hydration is keyed on **user id, not token**: a `TOKEN_REFRESHED` event does not refetch.
+4. On every user transition (sign-in, sign-out, switch) realtime channels are torn down and
+   `resetAllStores()` wipes memory, so nothing leaks across accounts on a shared browser.
+5. All stores fetch in one `Promise.all`; realtime subscribes **after** the initial load, so deltas
+   apply on top of hydrated state.
 
-1. **Read Flow**: Upon authentication, a store calls `_fetchFromSupabase()` to hydrate its initial state in memory. 
-2. **Write Flow**: When a user acts, the UI calls a store action (e.g., `updateApplication`).
-3. **Optimistic Update**: The store synchronously patches its internal state, triggering an immediate UI re-render.
-4. **Persistence**: The store fires a "fire-and-forget" asynchronous `upsert` call to Supabase.
-
+### Writes (optimistic)
 ```mermaid
 sequenceDiagram
-    participant UI as React Component
-    participant Store as Zustand Store
-    participant API as Supabase Service
-    participant DB as PostgreSQL
-
-    UI->>Store: action: moveStage(id, "interview")
-    Store->>Store: Mutate local state
-    Store-->>UI: Trigger re-render (Optimistic)
-    Store-)API: supabase.from('applications').update(...)
-    API-)DB: Async network request
+    participant UI as Component
+    participant Store as Zustand store
+    participant P as persist()
+    participant Repo as Repository
+    participant DB as Postgres (RLS)
+    UI->>Store: moveStage(id, "interview")
+    Store->>Store: patch state synchronously
+    Store-->>UI: re-render immediately
+    Store-)P: persist(() => repo.upsert(app), 'applications.moveStage', { reconcile })
+    P-)Repo: upsert
+    Repo-)DB: INSERT … ON CONFLICT
+    DB--xP: rejected (network, RLS plan cap)
+    P->>UI: toast "Some changes could not be saved…"
+    P->>Store: reconcile() → refetch, drop the rejected row
 ```
 
----
+### Realtime
+`BaseRepository.subscribeToOwnedTable` listens to `postgres_changes` filtered by `user_id` for jobs,
+applications and discovery. Stores merge by id (replace or prepend), which also absorbs the echo of
+this device's own writes. Deletes carry `user_id` thanks to `REPLICA IDENTITY FULL` (migration 0004).
 
-## Domain Flows
-
-### Authentication Flow
-1. User submits credentials via `LoginPage.tsx`.
-2. Supabase auth service (`supabase.auth.signInWithPassword`) validates the user.
-3. Once the session is established, `ProtectedRoute.tsx` mounts the `AppLayout`.
-4. As the layout mounts, individual stores are responsible for calling their `_fetchFromSupabase()` methods to pull user-scoped data.
-
-### AI Flow
-AI logic is entirely abstracted behind `src/services/ai`. 
-- **Standard Completions**: Providers (Claude, OpenAI, Gemini, Local) are cataloged in `registry.ts`. When a module requests a generation (e.g., interview analysis), the unified AI service wraps the prompt and talks to the selected provider.
-- **Deep Research Flow**: Specific heavy tasks are routed uniquely. `deepResearch.ts` executes long-running asynchronous background jobs specifically using Google Gemini. It uses a polling mechanism (fast polling initially, dropping to slow polling) rather than a synchronous completion, persisting interaction IDs so users can navigate away and return.
-
-### Resume Generation Flow
-The generation engine is split between `resumeStore` and `generatorStore`:
-1. **Master Data**: `resumeStore` holds the immutable `CareerKnowledgeBase`.
-2. **Projection**: `resumeStore` automatically projects the KB into a `MasterResume`.
-3. **Tailoring**: When generating a resume for a specific job, `generatorStore` clones the Master Resume into a `TailoredResume` mapped to a specific `jobId`.
-4. **Curation**: The user toggles specific bullets or projects on/off via `toggleBullet` and `toggleProject`. These functions flip boolean `included` flags within the `TailoredResume` JSON tree.
-5. **Persistence**: The tailored snapshot is saved to the `generators` table in Supabase.
+### Storage shape
+Most tables are `{ id, user_id, data jsonb }` plus the few columns the database must act on
+(`status`, `score`, `job_id`, `organization_id`, `mastery`). The knowledge base is split into
+`resume_organizations / roles / skills / facts` so one edit is a one-row write
+(`KnowledgeBaseRepository.applyChanges` diffs by id). See [database.md](database.md).
 
 ---
 
-## Architecture Critique & Technical Debt
+## Domain flows
 
-Reviewing this codebase through the lens of a production-grade enterprise system reveals significant technical debt stemming from its prototype origins. 
+- **Job analysis** — `services/analysis`: a taxonomy extractor tags each skill in the job description
+  as required/preferred; ATS score = matched weight / total weight (required ×2). `matched` is a set
+  intersection with the résumé, so no analyzer can invent experience.
+- **Recruiter Read / coach / enrichment** — AI tasks receive only structured facts; the grounding
+  guardrail flags (or drops) any skill the output names that is not in résumé ∪ job.
+- **Résumé generator** — `services/generator`: selects and ranks real bullets by job-weighted relevance;
+  every bullet keeps its source id; a coverage meter recomputes the ATS score from included content.
+  PDF export runs server-side in the `export-pdf` Edge Function.
+- **Discovery agent** — `services/discovery/pipeline.ts` (pure) runs strategies → grounded Gemini search
+  → extraction → dedupe → deterministic scoring → streaming inserts. It runs in-session
+  (`stores/discoveryRunner.ts`, cadence-gated) and offline (`discovery-worker`, triggered hourly by
+  GitHub Actions; free users every 24 h, pro every 1 h). Nothing reaches the board without approval.
+- **AI transport** — hosted providers call the `ai-proxy` Edge Function with the user's JWT; it holds
+  the vendor keys, uses a fixed endpoint allowlist (no SSRF), clamps output size and enforces a
+  monthly token budget per plan.
+- **Billing & email** — Stripe Checkout/Portal/webhook write `subscriptions` with the service role;
+  `packages/email` (React Email + Resend) sends auth, billing and account emails, idempotently via
+  `email_log.idempotency_key`.
 
-### 1. Scalability Debt
-* **Lack of robust sync mechanisms**: Store mutation functions blindly append `.then()` to Supabase updates (e.g., `supabase.from('applications').upsert(...).then()`). There is no global error handling, retry logic, or offline queueing. If a network request fails, the local state (which already updated optimistically) will permanently drift out of sync with the cloud until a hard refresh.
-* **Redundant Auth Checks**: Every single write action in the stores (e.g., `toggleBullet`, `saveTailored`) executes `supabase.auth.getUser()` to fetch the user ID before writing. This creates massive redundant overhead per interaction instead of centrally managing the user context in the service layer.
+---
 
-### 2. Production Debt
-* **Data Layer Coupling**: The application strictly violates separation of concerns by placing database querying logic (`supabase.from...`) directly inside Zustand store actions. Stores should manage UI state and delegate API communication to dedicated repository services.
-* **Residual Migration Logic**: The codebase retains legacy artifacts from its Dexie past (e.g., `migrateV2ToV3` inside the live `updateResume` loop), penalizing runtime performance to handle outdated prototype structures.
+## Design system
 
-### 3. Security Debt
-* **Client-Dictated Payloads**: The frontend pushes entire JSON blobs to Supabase via generic `.upsert({ data: application })` calls. While Row Level Security (RLS) protects *who* can write the data, the schema relies entirely on client-side trust for the internal JSON structure, leaving it vulnerable to payload tampering.
+Tailwind v4 CSS-first tokens in [src/styles/index.css](../src/styles/index.css):
 
-### 4. Prototype Debt
-* **Hydration Strategy**: There is no centralized data bootstrapper. Each store exports an isolated `_fetchFromSupabase` method. As the app scales, relying on individual components or stores to orchestrate their own hydration will lead to race conditions and waterfall loading issues.
+- **Surfaces and ink:** `base`, `surface`, `surface-2`, `edge*`, `ink*`, `muted`, `faint`.
+- **Emphasis and inversion:** `ink-strong`, `inverse`, `inverse-ink`, `scrim`, `paper`.
+- **Status intents:** `success`, `danger`, `warning`, `info`, each with `-strong / -soft / -deep` steps.
+
+Components use only these names; `src/styles/designTokens.test.ts` fails the suite if a raw palette
+class (`text-red-400`, `bg-white`, …) appears in UI code. Primitives merge caller classes with
+`cn()` (tailwind-merge), so `className` overrides win predictably. Two deliberate exceptions: the
+printed résumé sheet (grayscale on paper) and the categorical stage/chart palettes, each defined in
+one place.
+
+---
+
+## Known trade-offs (open)
+
+- **No offline queue or rollback.** A failed write is surfaced and reconciled by refetch, not retried.
+- **Last write wins.** Concurrent edits from two devices are not merged; realtime makes the window small.
+- **JSONB rows are not schema-validated in the database** (`pg_jsonschema` is not enabled). RLS protects
+  *who* writes, not *what* is written.
+- **Knowledge-base relations** (fact → role/project) have no picker in the editor yet.
+- **Tier changes are not pushed** to the client (no realtime on `subscriptions`); they apply on reload.

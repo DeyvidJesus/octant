@@ -1,5 +1,8 @@
 # Supabase Implementation Guide
 
+> **⚠️ Obsolete.** This describes an early blob schema (`generators`, `interview_preps`) that no longer
+> exists. Use [docs/PRODUCTION.md](docs/PRODUCTION.md) (go-live runbook) and `supabase/migrations/`.
+
 This document outlines the exact steps to finalize your Supabase setup for the **Octant** project. Since the app relies on Supabase for Auth and a simplified cloud-native state synchronization (where Zustand stores persist directly to JSONB columns), setting up your database is straightforward.
 
 ## 1. Environment Variables

@@ -1,5 +1,10 @@
 # Guia de Deploy — Octant
 
+> **Atenção:** o runbook atual é [docs/PRODUCTION.md](docs/PRODUCTION.md). Este guia é anterior às
+> funções de email e ao agente de descoberta (fala em 4–6 funções e migrations até 0008). Em um projeto
+> novo, aplique **todas** as migrations em `supabase/migrations/` depois do `supabase-schema.sql`: o
+> schema consolidado não inclui as tabelas de email (0014) nem a 0016.
+
 Este documento lista **tudo** que você precisa provisionar e configurar para colocar o Octant em produção, partindo apenas do código (nenhum serviço externo criado ainda).
 
 Nada aqui é executado automaticamente — é um passo a passo para você seguir.

@@ -39,7 +39,7 @@ While all core features are shipped and functional, the codebase retains signifi
 
 Octant uses an **optimistic-UI, store-driven architecture**.
 
-The user interface (`modules`) never directly fetches data from the backend. Instead, UI components subscribe to global Zustand `stores`. When a user takes an action, the store instantly mutates local memory (providing immediate UI feedback) and then blindly fires an asynchronous request to our `services` layer (Supabase) to persist the change in the cloud.
+The user interface (`modules`) never directly fetches data from the backend. Instead, UI components subscribe to global Zustand `stores`. When a user takes an action, the store instantly mutates local memory (providing immediate UI feedback) and hands the write to `persist()`, which calls a repository out of band. If the write fails (network, or an RLS plan cap), the user gets a toast and the store reconciles with the server.
 
 The AI capabilities are abstracted away behind a unified service layer, meaning the core logic of the app is entirely vendor-agnostic.
 
@@ -77,9 +77,9 @@ src/
 
 ## Current Limitations
 
-* **Scalability Debt (Fragile Syncing)**: Because stores update local state immediately and do "fire-and-forget" updates to Supabase, any network failure results in permanent silent data drift.
-* **Production Debt (Store/API Coupling)**: Stores contain hardcoded Supabase `.upsert` calls instead of calling an abstracted repository API layer. 
-* **Security Debt (Client Trust)**: The application pushes massive JSON tree blobs from the client directly into the Supabase database. There is minimal backend validation of the JSON schema, trusting the client implicitly.
+* **No offline queue**: a failed optimistic write is surfaced (toast) and reconciled by refetching, not retried or queued.
+* **Last write wins** across devices; realtime keeps the window small but edits are not merged.
+* **Security Debt (Client Trust)**: rows are `{ id, user_id, data jsonb }`. RLS controls who can write a row, but the JSON inside is not schema-validated by the database.
 
 ---
 
@@ -89,7 +89,7 @@ src/
 * **Master Resume**: A runtime-only, projected view of the Knowledge Base formatted cleanly for the resume generator.
 * **Tailored Resume**: A job-specific snapshot of the Master Resume, where irrelevant bullets and projects are toggled off. 
 * **Deterministic Analyzer**: The hardcoded local heuristic that compares a job description's required skills against a user's known skills.
-* **Deep Research**: An exhaustive, long-running (5-20 min) background AI agent process that uses Google Gemini to find jobs on the web.
+* **Discovery agent**: The job-search pipeline (strategies → grounded Gemini search → dedupe → deterministic scoring → review queue). It runs in the open app and, on a schedule, in the `discovery-worker` Edge Function.
 
 ---
 
