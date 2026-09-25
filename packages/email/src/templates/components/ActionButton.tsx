@@ -1,10 +1,4 @@
-/**
- * The primary call to action.
- *
- * React Email's `Button` emits the table+VML scaffolding Outlook needs, so padding actually applies.
- * `variant` covers the three cases the templates need — nothing more, so every email's CTA looks the
- * same weight.
- */
+// Primary call to action; React Email's `Button` emits the table/VML scaffolding Outlook needs.
 
 import { Button } from '@react-email/components'
 import type { CSSProperties, ReactNode } from 'react'
@@ -12,7 +6,6 @@ import { colors, fonts, fontSizes, radii } from '../../brand/tokens.ts'
 
 export interface ActionButtonProps {
   href: string
-  /** `ReactNode` rather than `string` so labels can interpolate — `Reactivate {planName}`. */
   children: ReactNode
   /** `primary` = brand accent, `neutral` = outlined, `danger` = destructive/urgent. */
   variant?: 'primary' | 'neutral' | 'danger'
@@ -26,8 +19,7 @@ const base: CSSProperties = {
   textDecoration: 'none',
   textAlign: 'center',
   borderRadius: radii.sm,
-  // Vertical padding on an <a> is unreliable in Outlook; React Email compensates internally, and the
-  // explicit padding here is what every other client uses.
+  // React Email handles Outlook's padding quirks; this padding is for every other client.
   padding: '12px 22px',
   display: 'inline-block',
 }

@@ -1,18 +1,8 @@
-/**
- * Email error hierarchy.
- *
- * Mirrors the app's `AppError` convention (`src/repositories/errors.ts`): a stable machine-readable
- * `code` for branching and telemetry, plus a human-readable message safe to log. Callers never have
- * to reason about Resend's `{ data, error }` envelope or HTTP status codes — the transport adapter
- * translates those into these types at the boundary.
- *
- * `retryable` is decided HERE, at the point where we still know what the provider said, rather than
- * re-derived later from a stringified message.
- */
+// Typed email errors with a stable `code`; the transport decides `retryable` while the provider response is known.
 
 /** Base class for every failure raised by this package. */
 export class EmailError extends Error {
-  /** Stable machine-readable code for branching / telemetry (never the raw message). */
+  /** Stable machine-readable code for branching and telemetry. */
   readonly code: string
 
   constructor(message: string, options?: { code?: string; cause?: unknown }) {
@@ -46,11 +36,7 @@ export class EmailRenderError extends EmailError {
   }
 }
 
-/**
- * The provider was reached (or the network attempt failed) and did not accept the message.
- * `retryable` distinguishes "try again in a moment" (5xx, timeout) from "this will never work"
- * (invalid key, rejected address).
- */
+/** The provider did not accept the message; `retryable` separates 5xx/timeouts from permanent rejections. */
 export class EmailTransportError extends EmailError {
   /** HTTP status the provider returned, when there was one. */
   readonly status: number | null
@@ -98,10 +84,7 @@ export class EmailRateLimitError extends EmailTransportError {
   }
 }
 
-/**
- * The recipient is on the suppression list (previous hard bounce or spam complaint). Sending again
- * would damage domain reputation, so this is a permanent refusal, not a failure to retry.
- */
+/** Recipient is suppressed (hard bounce or complaint); sending again would hurt domain reputation. */
 export class EmailSuppressedError extends EmailError {
   readonly recipient: string
 
@@ -119,10 +102,7 @@ export function isEmailError(error: unknown): error is EmailError {
   return error instanceof EmailError
 }
 
-/**
- * Collapses any thrown value into the `{ code, message }` pair we persist in `email_log`.
- * Unknown throws get `EMAIL_UNKNOWN` rather than losing the failure entirely.
- */
+/** Collapses any thrown value into the `{ code, message }` pair stored in `email_log`. */
 export function describeEmailError(error: unknown): { code: string; message: string } {
   if (isEmailError(error)) return { code: error.code, message: error.message }
   if (error instanceof Error) return { code: 'EMAIL_UNKNOWN', message: error.message }

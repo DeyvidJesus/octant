@@ -1,17 +1,9 @@
 export type SeniorityLevel = 'junior' | 'mid' | 'senior' | 'staff' | 'lead' | 'unknown'
 
-/**
- * Whether the job description frames a skill as a hard requirement or an
- * optional "nice to have" / "bonus". Drives gap triage and ATS weighting.
- */
+/** Hard requirement vs "nice to have"; drives gap triage and ATS weighting. */
 export type RequirementImportance = 'required' | 'preferred'
 
-/**
- * The result of analyzing a job description against the Master Resume.
- * Produced by any JobAnalyzer implementation (local heuristic today, LLM
- * later) — the shape is provider-independent so the UI never cares which
- * engine ran.
- */
+/** A job description analyzed against the Master Resume; the shape is analyzer-independent. */
 export interface JobAnalysis {
   jobId: string
   /** Which engine produced this, e.g. 'local-heuristic-v1'. */
@@ -40,11 +32,7 @@ export interface DetectedSkill {
 export interface MatchReport {
   /** 0-100, frequency-weighted coverage of JD skills by the resume. */
   atsScore: number
-  /**
-   * Skills present in both JD and resume. Always computed as a set
-   * intersection — no analyzer (local or LLM) can claim experience the
-   * Master Resume doesn't contain.
-   */
+  /** Always a set intersection, so no analyzer can claim experience the resume lacks. */
   matched: string[]
   /** Skills the JD wants that the resume lacks — shown as gaps, never filled in. */
   missing: string[]

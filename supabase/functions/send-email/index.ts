@@ -2,7 +2,7 @@
 
 // packages/email/src/errors.ts
 var EmailError = class extends Error {
-  /** Stable machine-readable code for branching / telemetry (never the raw message). */
+  /** Stable machine-readable code for branching and telemetry. */
   code;
   constructor(message, options) {
     super(message, { cause: options?.cause });
@@ -111,7 +111,7 @@ var colors = {
   accentDeep: "#7e14ff",
   /** Text on top of the accent. */
   accentInk: "#ffffff",
-  /** Status colours, taken from `src/modules/metrics/chartTheme.ts` so charts and email agree. */
+  /** Status colours, matching `src/modules/metrics/chartTheme.ts`. */
   success: "#0ca30c",
   warning: "#fab219",
   danger: "#d03b3b",
@@ -170,7 +170,7 @@ function createUrls(appUrl) {
   return {
     dashboard: join(appUrl, "/"),
     settings: join(appUrl, "/settings"),
-    // The plan card lives on the settings page; keep the deep link honest rather than inventing a route.
+    // The plan card lives on the settings page; there is no separate billing route.
     billing: join(appUrl, "/settings?tab=plan"),
     security: join(appUrl, "/settings?tab=security"),
     login: join(appUrl, "/login"),
@@ -194,8 +194,7 @@ var base = {
   textDecoration: "none",
   textAlign: "center",
   borderRadius: radii.sm,
-  // Vertical padding on an <a> is unreliable in Outlook; React Email compensates internally, and the
-  // explicit padding here is what every other client uses.
+  // React Email handles Outlook's padding quirks; this padding is for every other client.
   padding: "12px 22px",
   display: "inline-block"
 };
@@ -1336,9 +1335,9 @@ var HTML_TO_TEXT_OPTIONS = {
   selectors: [
     // Render label/value tables as aligned rows instead of one concatenated string.
     { selector: "table", format: "dataTable" },
-    // Decorative-only nodes (the logo tile) add noise to a plain-text reading.
+    // Decorative nodes such as the logo tile.
     { selector: `.${TEXT_SKIP_CLASS}`, format: "skip" },
-    // `<img>` has no text value here — every image in these templates is decorative.
+    // Every image in these templates is decorative.
     { selector: "img", format: "skip" }
   ]
 };
@@ -1397,8 +1396,7 @@ var PERMANENT_CODES = /* @__PURE__ */ new Set([
 var TRANSIENT_CODES = /* @__PURE__ */ new Set([
   "application_error",
   "internal_server_error",
-  // A concurrent replay of our own idempotency key: the first attempt is still in flight, so backing
-  // off and asking again is exactly right.
+  // Our own idempotency key is still in flight from an earlier attempt, so back off and retry.
   "concurrent_idempotent_requests"
 ]);
 var RATE_LIMIT_CODES = /* @__PURE__ */ new Set(["rate_limit_exceeded", "daily_quota_exceeded", "monthly_quota_exceeded"]);
@@ -1571,7 +1569,6 @@ var EmailService = class {
     this.retryPolicy = deps.config.retry ?? DEFAULT_RETRY_POLICY;
     this.retryDeps = deps.retryDeps ?? defaultRetryDeps;
   }
-  // ── Auth ────────────────────────────────────────────────────────────────────────────────────────
   sendWelcome(to, props, options) {
     return this.dispatch("welcome", to, props, options);
   }
@@ -1587,7 +1584,6 @@ var EmailService = class {
   sendInvitation(to, props, options) {
     return this.dispatch("invitation", to, props, options);
   }
-  // ── Account security ────────────────────────────────────────────────────────────────────────────
   sendSecurityAlert(to, props, options) {
     return this.dispatch("security-alert", to, props, options);
   }
@@ -1597,7 +1593,6 @@ var EmailService = class {
   sendPasswordChanged(to, props, options) {
     return this.dispatch("password-changed", to, props, options);
   }
-  // ── Billing ─────────────────────────────────────────────────────────────────────────────────────
   sendBillingSuccess(to, props, options) {
     return this.dispatch("billing-success", to, props, options);
   }
@@ -1616,26 +1611,15 @@ var EmailService = class {
   sendPaymentFailed(to, props, options) {
     return this.dispatch("payment-failed", to, props, options);
   }
-  // ── Internals ───────────────────────────────────────────────────────────────────────────────────
-  /**
-   * Escape hatch for callers that hold a template name as data (the auth hook maps Supabase's
-   * `email_action_type` to one, the billing webhook maps a Stripe event type). Still fully typed: the
-   * props must match the named template.
-   */
+  /** For callers holding the template name as data (auth hook, billing webhook); props stay typed. */
   send(template, to, props, options) {
     return this.dispatch(template, to, props, options);
   }
-  /** True when a real provider is wired up. Callers can skip building props when it isn't. */
+  /** True when a real provider is wired up. */
   get isConfigured() {
     return this.config.apiKey !== void 0;
   }
-  /**
-   * The subject a send WOULD use, without rendering the body.
-   *
-   * Exists so a caller can write its `email_log` claim row (which needs a subject) BEFORE attempting
-   * delivery. Claiming first is what makes the log an idempotency ledger rather than a post-hoc record:
-   * the unique constraint on `idempotency_key` rejects the second concurrent attempt.
-   */
+  /** Subject without rendering the body, so callers can write their `email_log` claim row before sending. */
   subjectFor(template, props, options) {
     return templateRegistry[template].subject(props, this.brandContext(options?.preferencesUrl));
   }
@@ -1647,10 +1631,7 @@ var EmailService = class {
       preferencesUrl
     });
   }
-  /**
-   * Stable per-send key. Two sends collapse into one iff template, recipient/user and dedupeKey match.
-   * The readable prefix is kept so the key is diagnosable in provider logs; the hash carries the rest.
-   */
+  /** Same template + user (or recipient) + dedupeKey gives the same key, so retries and duplicate webhooks collapse. */
   buildIdempotencyKey(template, to, options) {
     const subject = options?.userId ?? to.toLowerCase();
     const dedupe = options?.dedupeKey ?? "default";
@@ -1672,7 +1653,7 @@ var EmailService = class {
       html: rendered.html,
       text: rendered.text,
       headers: {
-        // Tells conforming clients not to auto-reply (out-of-office) to transactional mail.
+        // Stops out-of-office auto-replies to transactional mail.
         "X-Auto-Response-Suppress": "All",
         "Auto-Submitted": "auto-generated"
       },
@@ -1731,7 +1712,7 @@ var DEFAULTS = {
   domain: "useoctant.com",
   from: "Octant <noreply@useoctant.com>",
   supportEmail: "support@useoctant.com",
-  /** Vite's dev server origin — only ever used locally, and always warned about. */
+  /** Vite dev server origin; using it always produces a warning. */
   appUrl: "http://localhost:5173"
 };
 var SENDER_PATTERN = /^(?:[^<>]*<\s*[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+\s*>|[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+)$/;
@@ -1808,9 +1789,9 @@ var AuthEmailAction = {
   MagicLink: "magiclink",
   Invite: "invite",
   EmailChange: "email_change",
-  /** Sent to the address being LEFT, when "secure email change" is enabled. */
+  /** Sent to the old address when "secure email change" is enabled. */
   EmailChangeCurrent: "email_change_current",
-  /** Sent to the address being ADOPTED. */
+  /** Sent to the new address. */
   EmailChangeNew: "email_change_new",
   Reauthentication: "reauthentication"
 };
@@ -1916,16 +1897,22 @@ function allowlist() {
   const raw = Deno.env.get("ALLOWED_ORIGINS") ?? Deno.env.get("APP_URL") ?? "";
   return raw.split(",").map((value) => value.trim().replace(/\/+$/, "")).filter(Boolean);
 }
+var BASE_HEADERS = {
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  Vary: "Origin"
+};
 function corsHeaders(req) {
   const allowed = allowlist();
+  if (allowed.length === 0) return { ...BASE_HEADERS, "Access-Control-Allow-Origin": "*" };
   const origin = (req.headers.get("Origin") ?? "").replace(/\/+$/, "");
-  const allowOrigin = allowed.length === 0 ? "*" : allowed.includes(origin) ? origin : allowed[0];
-  return {
-    "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, content-type",
-    Vary: "Origin"
-  };
+  if (origin !== "" && allowed.includes(origin)) {
+    return { ...BASE_HEADERS, "Access-Control-Allow-Origin": origin };
+  }
+  if (origin !== "") {
+    console.warn(`[cors] blocked origin "${origin}"; allowed: ${allowed.join(", ")}`);
+  }
+  return { ...BASE_HEADERS };
 }
 
 // supabase/functions/_shared/mailer.ts
@@ -1954,22 +1941,37 @@ async function sendLogged(admin, input) {
     console.error(`[email] could not prepare ${input.template}: ${described.code} ${described.message}`);
     return { status: "failed", ...described };
   }
-  const { error: claimError } = await admin.from("email_log").insert({
-    user_id: input.userId ?? null,
+  const ownerId = input.userId === void 0 || input.userId.trim() === "" ? null : input.userId;
+  const claimRow = {
+    user_id: ownerId,
     to_email: input.to,
     template: input.template,
     subject,
     status: "queued",
     idempotency_key: idempotencyKey,
     metadata: input.metadata ?? {}
-  });
+  };
+  let { error: claimError } = await admin.from("email_log").insert(claimRow);
+  if (claimError !== null && claimError.code === "23503" && ownerId !== null) {
+    console.warn(
+      `[email] user ${ownerId} not visible yet (uncommitted signup?); logging ${input.template} without the association. Apply migration 0015 to drop the email_log.user_id foreign key.`
+    );
+    const retry = await admin.from("email_log").insert({ ...claimRow, user_id: null });
+    claimError = retry.error;
+  }
   if (claimError !== null) {
     if (claimError.code === "23505") {
       console.info(`[email] deduped ${input.template} for ${input.to}`);
       return { status: "deduped" };
     }
-    console.error(`[email] could not claim ${input.template}: ${claimError.message}`);
-    return { status: "failed", code: "EMAIL_LOG_CLAIM", message: claimError.message };
+    console.error(
+      `[email] could not claim ${input.template}: [${claimError.code ?? "no-code"}] ${claimError.message}` + (claimError.details === void 0 || claimError.details === null ? "" : ` \u2014 ${claimError.details}`)
+    );
+    return {
+      status: "failed",
+      code: `EMAIL_LOG_CLAIM${claimError.code === void 0 ? "" : `_${claimError.code}`}`,
+      message: claimError.message
+    };
   }
   try {
     const result = await mailer.send(input.template, input.to, input.props, options);
@@ -1998,13 +2000,10 @@ var INTENTS = {
   Welcome: "welcome",
   /** Follows a successful `auth.updateUser({ password })`. */
   PasswordChanged: "password-changed",
-  /** Courtesy notice to the address a user just moved AWAY from. */
-  EmailChangedNotice: "email-changed-notice",
-  /** User-initiated "this wasn't me" / new-device acknowledgement. */
+  /** New-device acknowledgement. */
   SecurityAlert: "security-alert"
 };
 var ALLOWED_INTENTS = new Set(Object.values(INTENTS));
-var EMAIL_PATTERN = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 Deno.serve(async (req) => {
   const CORS = corsHeaders(req);
   const json = (body3, status = 200) => new Response(JSON.stringify(body3), { status, headers: { ...CORS, "content-type": "application/json" } });
@@ -2057,8 +2056,7 @@ Deno.serve(async (req) => {
           template: "welcome",
           to: recipient,
           props: { name }
-          // No dedupeKey: the welcome email is once-per-user for all time, so the default key (which is
-          // derived from userId alone) is exactly the guard we want.
+          // No dedupeKey: the default per-user key makes welcome a once-ever email.
         });
       case INTENTS.PasswordChanged:
         return sendLogged(admin, {
@@ -2066,26 +2064,9 @@ Deno.serve(async (req) => {
           template: "password-changed",
           to: recipient,
           props: { name, occurredAt, ipAddress, userAgent },
-          // Keyed to the account's current password timestamp so each genuine change notifies, while a
-          // double-submit of the same change does not.
+          // Keyed to the update timestamp: each real change notifies, a double-submit doesn't.
           dedupeKey: `pwd:${user.updated_at ?? occurredAt ?? ""}`
         });
-      case INTENTS.EmailChangedNotice: {
-        const previousEmail = body2.previousEmail?.trim();
-        if (previousEmail === void 0 || !EMAIL_PATTERN.test(previousEmail)) {
-          return { status: "failed", code: "EMAIL_VALIDATION", message: "previousEmail is not a valid address." };
-        }
-        return sendLogged(admin, {
-          ...shared,
-          // Goes to the OLD address — the only inbox that can catch an unauthorised change. Sending it
-          // is safe because the address is not the recipient of anything else, and the template
-          // deliberately carries no confirmation link.
-          template: "email-changed",
-          to: previousEmail,
-          props: { name, newEmail: recipient, oldEmail: previousEmail, occurredAt, ipAddress, userAgent },
-          dedupeKey: `email-change:${previousEmail}:${recipient}`
-        });
-      }
       case INTENTS.SecurityAlert:
         return sendLogged(admin, {
           ...shared,

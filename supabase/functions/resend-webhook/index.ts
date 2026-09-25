@@ -2,7 +2,7 @@
 
 // packages/email/src/errors.ts
 var EmailError = class extends Error {
-  /** Stable machine-readable code for branching / telemetry (never the raw message). */
+  /** Stable machine-readable code for branching and telemetry. */
   code;
   constructor(message, options) {
     super(message, { cause: options?.cause });
@@ -91,7 +91,7 @@ var colors = {
   accentDeep: "#7e14ff",
   /** Text on top of the accent. */
   accentInk: "#ffffff",
-  /** Status colours, taken from `src/modules/metrics/chartTheme.ts` so charts and email agree. */
+  /** Status colours, matching `src/modules/metrics/chartTheme.ts`. */
   success: "#0ca30c",
   warning: "#fab219",
   danger: "#d03b3b",
@@ -150,7 +150,7 @@ function createUrls(appUrl) {
   return {
     dashboard: join(appUrl, "/"),
     settings: join(appUrl, "/settings"),
-    // The plan card lives on the settings page; keep the deep link honest rather than inventing a route.
+    // The plan card lives on the settings page; there is no separate billing route.
     billing: join(appUrl, "/settings?tab=plan"),
     security: join(appUrl, "/settings?tab=security"),
     login: join(appUrl, "/login"),
@@ -174,8 +174,7 @@ var base = {
   textDecoration: "none",
   textAlign: "center",
   borderRadius: radii.sm,
-  // Vertical padding on an <a> is unreliable in Outlook; React Email compensates internally, and the
-  // explicit padding here is what every other client uses.
+  // React Email handles Outlook's padding quirks; this padding is for every other client.
   padding: "12px 22px",
   display: "inline-block"
 };
@@ -1316,9 +1315,9 @@ var HTML_TO_TEXT_OPTIONS = {
   selectors: [
     // Render label/value tables as aligned rows instead of one concatenated string.
     { selector: "table", format: "dataTable" },
-    // Decorative-only nodes (the logo tile) add noise to a plain-text reading.
+    // Decorative nodes such as the logo tile.
     { selector: `.${TEXT_SKIP_CLASS}`, format: "skip" },
-    // `<img>` has no text value here — every image in these templates is decorative.
+    // Every image in these templates is decorative.
     { selector: "img", format: "skip" }
   ]
 };
@@ -1345,8 +1344,7 @@ var PERMANENT_CODES = /* @__PURE__ */ new Set([
 var TRANSIENT_CODES = /* @__PURE__ */ new Set([
   "application_error",
   "internal_server_error",
-  // A concurrent replay of our own idempotency key: the first attempt is still in flight, so backing
-  // off and asking again is exactly right.
+  // Our own idempotency key is still in flight from an earlier attempt, so back off and retry.
   "concurrent_idempotent_requests"
 ]);
 var RATE_LIMIT_CODES = /* @__PURE__ */ new Set(["rate_limit_exceeded", "daily_quota_exceeded", "monthly_quota_exceeded"]);
@@ -1429,9 +1427,9 @@ var AuthEmailAction = {
   MagicLink: "magiclink",
   Invite: "invite",
   EmailChange: "email_change",
-  /** Sent to the address being LEFT, when "secure email change" is enabled. */
+  /** Sent to the old address when "secure email change" is enabled. */
   EmailChangeCurrent: "email_change_current",
-  /** Sent to the address being ADOPTED. */
+  /** Sent to the new address. */
   EmailChangeNew: "email_change_new",
   Reauthentication: "reauthentication"
 };

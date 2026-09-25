@@ -1,9 +1,4 @@
-/**
- * Verify Email — the address-confirmation step of signup.
- *
- * Driven by Supabase Auth's Send Email Hook (`email_action_type: 'signup'`), which supplies the
- * `token_hash` the verify URL is built from.
- */
+// Signup address confirmation, built from the `token_hash` in Supabase's Send Email Hook.
 
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'

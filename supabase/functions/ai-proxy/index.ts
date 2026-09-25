@@ -1,14 +1,5 @@
-// Supabase Edge Function: ai-proxy
-//
-// Phase 6 — Securing AI Execution. Hosted-vendor completions used to run straight from the browser,
-// which shipped API keys to the client and hit vendor CORS. This function is the server-side seam:
-// it verifies the caller's Supabase JWT, injects vendor API keys held ONLY in the Edge environment,
-// makes the vendor call, and returns a normalized `{ text, model }` result. Keys never touch the
-// client, and the browser talks to a same-trusted origin so CORS is a non-issue.
-//
-// Deploy:  supabase functions deploy ai-proxy
-// Secrets: supabase secrets set OPENAI_API_KEY=... ANTHROPIC_API_KEY=... OPENROUTER_API_KEY=... GEMINI_API_KEY=...
-// (SUPABASE_URL and SUPABASE_ANON_KEY are injected automatically.)
+// ai-proxy: verifies the caller's Supabase JWT, enforces the monthly token budget, and calls the LLM vendor
+// with server-held keys, returning `{ text, model }`.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
@@ -39,7 +30,10 @@ interface VendorConfig {
 
 const ANTHROPIC_VERSION = '2023-06-01'
 
-// The vendor allowlist. Endpoints are fixed here (never taken from the client) to avoid SSRF.
+/** Hard ceiling on output tokens per request, whatever the client asks for. */
+const MAX_OUTPUT_TOKENS = 8192
+
+// Vendor allowlist. Endpoints are fixed here, never taken from the client, to prevent SSRF.
 const VENDORS: Record<ProviderId, VendorConfig> = {
   openai: {
     url: 'https://api.openai.com/v1/chat/completions',
@@ -57,8 +51,7 @@ const VENDORS: Record<ProviderId, VendorConfig> = {
     keyEnv: 'ANTHROPIC_API_KEY',
     wire: 'anthropic',
   },
-  // Gemini's endpoint embeds the model + method; `url` is the fixed base and the target is built in
-  // buildVendorCall. Unlike the OpenAI/Anthropic wires, Gemini can ground on live Google Search.
+  // Base URL only; buildVendorCall appends the model and method.
   gemini: {
     url: 'https://generativelanguage.googleapis.com/v1beta',
     keyEnv: 'GEMINI_API_KEY',
@@ -74,7 +67,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405)
 
-  // 1. Verify the caller's Supabase JWT by resolving the user it belongs to.
+  // Verify the caller's JWT by resolving its user.
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return json({ error: 'Missing authorization header.' }, 401)
 
@@ -86,7 +79,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return json({ error: 'Invalid or expired session.' }, 401)
 
-  // 2. Parse + validate the request.
   let payload: ProxyRequest
   try {
     payload = await req.json()
@@ -100,28 +92,28 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: 'Request must include messages[] and a model.' }, 400)
   }
   if (payload.webSearch && vendor.wire !== 'gemini') {
-    // Matches the frontend guard: only Gemini can ground on live Google Search here.
+    // Only Gemini supports Google Search grounding.
     return json({ error: `${payload.providerId} does not support web search grounding.` }, 400)
+  }
+  // The budget is checked before the call, so clamp output size to stop one request overspending it.
+  if (typeof payload.maxTokens === 'number') {
+    payload.maxTokens = Math.min(Math.max(1, Math.floor(payload.maxTokens)), MAX_OUTPUT_TOKENS)
   }
 
   const apiKey = Deno.env.get(vendor.keyEnv)
   if (!apiKey) return json({ error: `Server is missing ${vendor.keyEnv}.` }, 500)
 
-  // Service-role client for budget checks + usage logging. Bypasses RLS; never exposed to clients.
+  // Service-role client for budget checks and usage logging.
   const admin = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     { auth: { persistSession: false } },
   )
 
-  // Tier-aware monthly token cap protecting the operator's vendor cost. Defaults: Free 100k, Pro 2M.
-  // Tune with FREE_TIER_MONTHLY_TOKEN_LIMIT / PRO_TIER_MONTHLY_TOKEN_LIMIT; set a tier's value to 0
-  // to make it unlimited.
   if (await tierOverBudget(admin, user.id)) {
     return json({ error: 'Monthly AI usage limit reached for your plan.' }, 429)
   }
 
-  // 3. Build and make the vendor call.
   const { url, headers, body } = buildVendorCall(vendor, apiKey, payload)
   let vendorResponse: Response
   try {
@@ -138,7 +130,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
     )
   }
 
-  // 4. Normalize the vendor response to { text, model }.
   const data = await vendorResponse.json()
   const text =
     vendor.wire === 'anthropic'
@@ -151,7 +142,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
   const model = typeof data?.model === 'string' ? data.model : payload.model
 
-  // Log token usage for budget monitoring. Best-effort — monitoring must never fail the request.
   const usage = extractUsage(data, vendor.wire)
   try {
     await admin.from('token_usage_logs').insert({
@@ -175,7 +165,7 @@ interface TokenUsage {
   total: number
 }
 
-/** Normalizes the vendor's usage block. OpenAI reports prompt/completion/total; Anthropic input/output. */
+/** Normalizes each vendor's usage block to prompt/completion/total. */
 // deno-lint-ignore no-explicit-any
 function extractUsage(data: any, wire: Wire): TokenUsage {
   if (wire === 'gemini') {
@@ -195,8 +185,7 @@ function extractUsage(data: any, wire: Wire): TokenUsage {
   return { prompt, completion, total: Number(u.total_tokens ?? prompt + completion) }
 }
 
-/** True when a non-pro user has consumed at least `monthlyLimit` total tokens this calendar month. */
-/** Monthly token cap for a tier: Free 100k, Pro 2M by default; env-overridable; 0 = unlimited. */
+/** Monthly token cap: Free 100k, Pro 2M, overridable via *_TIER_MONTHLY_TOKEN_LIMIT; 0 = unlimited. */
 function monthlyLimitFor(tier: 'free' | 'pro'): number {
   const raw = tier === 'pro'
     ? Deno.env.get('PRO_TIER_MONTHLY_TOKEN_LIMIT')
@@ -236,8 +225,7 @@ function buildVendorCall(
   payload: ProxyRequest,
 ): { url: string; headers: Record<string, string>; body: Record<string, unknown> } {
   if (vendor.wire === 'gemini') {
-    // Google's generateContent: system prompt is `systemInstruction`, roles are user/model, and the
-    // key travels as a header. When webSearch is requested we attach the google_search grounding tool.
+    // generateContent: system prompt goes in `systemInstruction` and roles are user/model.
     const system = payload.messages
       .filter((message) => message.role === 'system')
       .map((message) => message.content)

@@ -9,19 +9,8 @@ import {
   type ExtractedJob,
 } from './extractJobsCore'
 
-/**
- * The single extraction seam of Job Discovery. Every source — a pasted Deep
- * Research report, an in-app sweep, an in-app Deep Research run — funnels its
- * raw text through here.
- *
- * Division of labor: the LLM only *transcribes* jobs it can see in the report
- * into JSON; all validation, normalization, and truth decisions happen in the
- * deterministic core (`extractJobsCore`). A malformed or inventive model output
- * degrades into dropped entries and warnings — never into fabricated board data.
- *
- * The pure helpers live in `extractJobsCore` (no provider/network imports) so the
- * Deno discovery worker can share them; they are re-exported here for existing callers.
- */
+// Every discovery source's raw text goes through here. The LLM only transcribes jobs to JSON;
+// validation lives in `extractJobsCore`, so bad output becomes dropped entries, not fake jobs.
 
 export type { ExtractedJob }
 export {

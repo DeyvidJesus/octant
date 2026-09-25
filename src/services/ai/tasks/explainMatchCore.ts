@@ -2,11 +2,7 @@ import type { JobOpportunity } from '@/types/job'
 import type { MasterResume } from '@/types/resume'
 import type { JobAnalysis } from '@/types/analysis'
 
-/**
- * Pure prompt-building core for the "Recruiter Read" / candidate-enrichment task — no provider or
- * grounding imports. Split out of `explainMatch.ts` so the Deno discovery worker can build the same
- * grounded prompt without pulling in the Supabase client.
- */
+// Prompt builder for the Recruiter Read. No provider imports: the Deno worker imports this file.
 
 export interface ExplainMatchInput {
   job: JobOpportunity

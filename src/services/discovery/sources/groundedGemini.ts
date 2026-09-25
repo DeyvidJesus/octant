@@ -3,13 +3,9 @@ import { getProvider } from '@/services/ai/providers'
 import { extractJobs, type ExtractedJob } from '@/services/ai/tasks/extractJobs'
 import type { DiscoveryStrategy, JobSource } from '../pipeline'
 
-/**
- * Continuous-collection source: a Google-search-grounded Gemini completion per strategy, followed by
- * the shared deterministic extraction seam. Runs through `ai-proxy` (server-side Gemini key). This is
- * the "predictable/efficient" collection path — Deep Research is reserved for analysis/strategy.
- */
+// Job source: one search-grounded Gemini completion per strategy, then the shared extraction step.
 
-/** Current Gemini model used for discovery (search + strategy). One place to bump on deprecations. */
+/** Gemini model used for discovery search and strategy. */
 export const GEMINI_DISCOVERY_MODEL = 'gemini-3.5-flash'
 
 /** Gemini is the only web-search-grounding provider; the operator's key is injected by ai-proxy. */

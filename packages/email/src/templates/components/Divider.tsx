@@ -1,6 +1,4 @@
-/**
- * Hairline rule. Wraps React Email's `Hr` so the border colour and vertical rhythm are defined once.
- */
+// Hairline rule with the brand border colour and spacing.
 
 import { Hr } from '@react-email/components'
 import { colors, spacing } from '../../brand/tokens.ts'

@@ -1,11 +1,4 @@
-/**
- * AI provider configuration — the *what*, kept provider-agnostic.
- *
- * Octant never couples to a single AI vendor. Providers are plugins behind
- * the `LLMProvider` adapter (`services/ai`); nothing in the app knows or cares
- * which one is active. These types describe the user's selection, not any
- * provider's wire format.
- */
+// The user's AI provider selection, independent of any vendor's wire format.
 
 export type AiProviderId = 'claude' | 'openai' | 'gemini' | 'openrouter' | 'local'
 

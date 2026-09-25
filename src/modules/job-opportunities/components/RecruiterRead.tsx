@@ -42,7 +42,7 @@ export function RecruiterRead({ job, resume, analysis }: RecruiterReadProps) {
     return (
       <Card className="text-center py-12">
         <Sparkles size={28} className="text-edge-2 mx-auto mb-4" aria-hidden />
-        <h3 className="text-white font-medium mb-2">Connect an AI provider</h3>
+        <h3 className="text-ink-strong font-medium mb-2">Connect an AI provider</h3>
         <p className="text-sm text-muted max-w-md mx-auto mb-6 leading-relaxed">
           The deterministic match report above is complete on its own. Add an AI provider to turn it
           into a recruiter's honest read of your fit for this role — verdict, angles to emphasize,
@@ -74,7 +74,7 @@ export function RecruiterRead({ job, resume, analysis }: RecruiterReadProps) {
         </div>
 
         {error && (
-          <p className="text-sm text-red-400 mb-4" role="alert">
+          <p className="text-sm text-danger mb-4" role="alert">
             {error}
           </p>
         )}
@@ -103,7 +103,7 @@ export function RecruiterRead({ job, resume, analysis }: RecruiterReadProps) {
 function GroundingBanner({ result }: { result: ExplainMatchResult }) {
   if (result.grounding.ok) {
     return (
-      <div className="flex items-center gap-2 text-xs text-emerald-400">
+      <div className="flex items-center gap-2 text-xs text-success">
         <ShieldCheck size={14} aria-hidden />
         Grounded — every skill mentioned traces back to your Master Resume or this job.
       </div>
@@ -111,19 +111,19 @@ function GroundingBanner({ result }: { result: ExplainMatchResult }) {
   }
 
   return (
-    <div className="flex items-start gap-2 rounded-lg border border-red-800/50 bg-red-900/20 p-3">
-      <AlertTriangle size={16} className="text-red-300 shrink-0 mt-0.5" aria-hidden />
-      <div className="text-xs text-red-200 leading-relaxed">
+    <div className="flex items-start gap-2 rounded-lg border border-danger-deep/50 bg-danger-deep/20 p-3">
+      <AlertTriangle size={16} className="text-danger-soft shrink-0 mt-0.5" aria-hidden />
+      <div className="text-xs text-danger-soft leading-relaxed">
         <strong>Unverified mentions:</strong>{' '}
         {result.grounding.unverifiedSkills.map((skill, i) => (
           <span key={skill}>
             {i > 0 && ', '}
-            <Badge tone="red" className="mx-0.5">
+            <Badge tone="danger" className="mx-0.5">
               {skill}
             </Badge>
           </span>
         ))}
-        <div className="mt-1.5 text-red-300/80">
+        <div className="mt-1.5 text-danger-soft/80">
           These appear in neither your Master Resume nor this job description. The AI may have
           introduced them — treat as unverified and do not put them on a resume.
         </div>

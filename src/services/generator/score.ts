@@ -2,12 +2,7 @@ import type { JobAnalysis } from '@/types/analysis'
 import type { Accomplishment } from '@/types/resume'
 import { extractSkills } from '@/services/analysis/extract'
 
-/**
- * Relevance scoring for tailoring: how strongly does one piece of real resume
- * content speak to THIS job? Pure arithmetic over the analyzer's output —
- * required skills weigh double and frequent mentions weigh more, mirroring
- * the ATS score's weighting so "relevant" here means the same thing there.
- */
+// Tailoring relevance uses the same weighting as the ATS score: count, doubled for required skills.
 
 export type JdWeights = Map<string, number>
 
@@ -19,11 +14,7 @@ export function buildJdWeights(analysis: JobAnalysis): JdWeights {
   return weights
 }
 
-/**
- * Every canonical skill an accomplishment can truthfully claim: its curated
- * tags plus whatever the taxonomy finds in its text — so untagged entries
- * still rank correctly.
- */
+/** Curated tags plus taxonomy hits in the text, so untagged entries still rank. */
 export function accomplishmentSkills(accomplishment: Accomplishment): Set<string> {
   const canonical = new Set<string>()
   for (const hit of extractSkills(

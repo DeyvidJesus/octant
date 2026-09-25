@@ -1,9 +1,4 @@
-/**
- * Trial Ending — `customer.subscription.trial_will_end` (Stripe fires it 3 days out).
- *
- * NOTE: checkout does not set `trial_period_days` today, so no trial exists to end and nothing triggers
- * this yet. Implemented and callable so that enabling trials is a checkout change, not a template change.
- */
+// `customer.subscription.trial_will_end` (3 days out). Nothing triggers it until checkout sets `trial_period_days`.
 
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'

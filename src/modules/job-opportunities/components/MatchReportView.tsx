@@ -8,7 +8,7 @@ export function MatchReportView({ match }: { match: MatchReport }) {
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <Card className="flex flex-col items-center justify-center py-10">
-          <div className="text-6xl font-light text-white mb-2">
+          <div className="text-6xl font-light text-ink-strong mb-2">
             {match.atsScore}
             <span className="text-2xl text-faint">%</span>
           </div>
@@ -26,7 +26,7 @@ export function MatchReportView({ match }: { match: MatchReport }) {
       </div>
 
       <Card>
-        <h3 className="text-sm font-medium text-white mb-2">Observations</h3>
+        <h3 className="text-sm font-medium text-ink-strong mb-2">Observations</h3>
         <ul className="space-y-2">
           {match.notes.map((note, i) => (
             <li key={i} className="text-ink-3 text-sm leading-relaxed">

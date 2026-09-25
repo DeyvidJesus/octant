@@ -1,10 +1,4 @@
-/**
- * Typographic primitives.
- *
- * Thin wrappers over React Email's `Heading` / `Text` that bake in the brand tokens, so no template
- * ever writes a raw hex value or a font stack. Renamed (`EmailHeading`, `Paragraph`) to avoid shadowing
- * the upstream components they wrap.
- */
+// Heading and paragraph wrappers that bake in brand tokens, named to avoid shadowing React Email's own.
 
 import { Heading, Text } from '@react-email/components'
 import type { CSSProperties, ReactNode } from 'react'

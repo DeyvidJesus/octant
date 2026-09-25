@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { useSettingsStore, resolveAiRunConfig } from '@/stores/settingsStore'
 import { useResumeStore } from '@/stores/resumeStore'
 import { extractProfile, type ExtractProfileResult } from '@/services/ai/tasks/extractProfile'
+import { useFocusTrap } from '@/components/ui/useFocusTrap'
 
 type Step = 'welcome' | 'import' | 'done'
 
@@ -23,10 +24,7 @@ export function OnboardingModal() {
   const [result, setResult] = useState<ExtractProfileResult['counts'] | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  // Move focus into the dialog on open (basic a11y; full focus-trap is a later pass).
-  useEffect(() => {
-    if (!onboardingCompleted) dialogRef.current?.focus()
-  }, [onboardingCompleted])
+  useFocusTrap(dialogRef, !onboardingCompleted)
 
   // Escape dismisses the tour (same as "I'll do this later").
   useEffect(() => {
@@ -63,7 +61,7 @@ export function OnboardingModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 backdrop-blur-sm animate-fade-in p-4">
       <div
         ref={dialogRef}
         role="dialog"
@@ -76,10 +74,10 @@ export function OnboardingModal() {
           <div className="p-8">
             {step === 'welcome' && (
               <div className="text-center flex flex-col items-center">
-                <div className="p-4 rounded-2xl mb-6 bg-indigo-400/10">
-                  <Rocket size={44} className="text-indigo-400" strokeWidth={1.5} />
+                <div className="p-4 rounded-2xl mb-6 bg-info/10">
+                  <Rocket size={44} className="text-info" strokeWidth={1.5} />
                 </div>
-                <h2 id="onboarding-title" className="text-2xl font-semibold text-white mb-3">
+                <h2 id="onboarding-title" className="text-2xl font-semibold text-ink-strong mb-3">
                   Welcome to {APP_NAME}
                 </h2>
                 <p className="text-ink-2 mb-8 leading-relaxed max-w-md">
@@ -99,7 +97,7 @@ export function OnboardingModal() {
 
             {step === 'import' && (
               <div>
-                <h2 id="onboarding-title" className="text-xl font-semibold text-white mb-2">
+                <h2 id="onboarding-title" className="text-xl font-semibold text-ink-strong mb-2">
                   Import your résumé
                 </h2>
                 <p className="text-sm text-ink-2 mb-4 leading-relaxed">
@@ -120,7 +118,7 @@ export function OnboardingModal() {
                 />
 
                 {error && (
-                  <p className="text-sm text-red-400 mt-3" role="alert">
+                  <p className="text-sm text-danger mt-3" role="alert">
                     {error}
                   </p>
                 )}
@@ -155,10 +153,10 @@ export function OnboardingModal() {
 
             {step === 'done' && result && (
               <div className="text-center flex flex-col items-center">
-                <div className="p-4 rounded-2xl mb-6 bg-emerald-400/10">
-                  <CheckCircle size={44} className="text-emerald-400" strokeWidth={1.5} />
+                <div className="p-4 rounded-2xl mb-6 bg-success/10">
+                  <CheckCircle size={44} className="text-success" strokeWidth={1.5} />
                 </div>
-                <h2 id="onboarding-title" className="text-2xl font-semibold text-white mb-3">
+                <h2 id="onboarding-title" className="text-2xl font-semibold text-ink-strong mb-3">
                   Knowledge Base imported
                 </h2>
                 <p className="text-ink-2 mb-8 leading-relaxed max-w-md">

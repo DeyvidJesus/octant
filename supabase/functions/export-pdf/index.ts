@@ -1,20 +1,9 @@
-// Supabase Edge Function: export-pdf
-//
-// Phase 9 — Serverless PDF Export (ATS Safety). Client-side "Save as PDF" (window.print) produced
-// output that varied by browser/OS, risking ATS misparsing. This function renders a tailored resume
-// to a PDF server-side from ONE strictly standardized, ATS-optimized HTML/CSS template, so every
-// download is byte-for-byte consistent and machine-parseable.
-//
-// Runtime note: Supabase Edge Functions run on Deno isolates, which cannot launch a bundled
-// Chromium. We therefore drive a REMOTE headless browser over the DevTools protocol via
-// puppeteer-core `connect()`. Provision any browserless-compatible endpoint and set:
-//   supabase secrets set BROWSER_PDF_WS_ENDPOINT="wss://chrome.browserless.io?token=..."
-// (SUPABASE_URL / SUPABASE_ANON_KEY are injected automatically.)
-//
-// Deploy: supabase functions deploy export-pdf
+// export-pdf: renders a tailored resume to PDF from one ATS-safe template for a JWT-verified caller.
+// Deno can't launch Chromium, so it drives a remote browser at BROWSER_PDF_WS_ENDPOINT.
 
 import puppeteer from 'npm:puppeteer-core@22.15.0'
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { createUserClient } from '../_shared/admin.ts'
+import { corsHeaders } from '../_shared/cors.ts'
 
 interface LabeledLink { label: string; url: string }
 interface TailoredBullet { text: string; metric?: string; included: boolean }
@@ -43,18 +32,6 @@ interface TailoredResume {
   languages: TailoredLanguage[]
 }
 
-const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-}
-
-function jsonError(message: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
-  })
-}
 
 /** Escapes text so user content can never break the template markup. */
 function esc(value: string): string {
@@ -74,12 +51,8 @@ function bulletHtml(bullets: TailoredBullet[]): string {
   return `<ul>${items}</ul>`
 }
 
-/**
- * Builds the single ATS-optimized document. Rules: one column, standard system sans-serif, real
- * selectable text, no tables/columns/images/icons, recognizable section headings in a conventional
- * order, plain bullet lists. Inclusion/ordering mirror the text exporters (excluded content is
- * omitted) so the PDF matches what the user curated in the preview.
- */
+// Single-column ATS template: plain text, standard headings, no tables or images.
+// Excluded content is omitted, matching the text exporters and the preview.
 function buildAtsHtml(resume: TailoredResume): string {
   const { header } = resume
   const sections: string[] = []
@@ -112,7 +85,7 @@ function buildAtsHtml(resume: TailoredResume): string {
   if (experiences.length) {
     const entries = experiences
       .map((entry) => {
-        const meta = [entry.duration, entry.location].filter(Boolean).map(esc).join(' | ')
+        const meta = [entry.duration, entry.location].filter((part): part is string => Boolean(part)).map(esc).join(' | ')
         return `<div class="entry"><h3>${esc(entry.role)} — ${esc(entry.company)}</h3>${meta ? `<p class="meta">${meta}</p>` : ''}${bulletHtml(entry.bullets)}</div>`
       })
       .join('')
@@ -196,21 +169,26 @@ function buildAtsHtml(resume: TailoredResume): string {
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
+  const CORS_HEADERS = corsHeaders(req)
+  const jsonError = (message: string, status: number): Response =>
+    new Response(JSON.stringify({ error: message }), {
+      status,
+      headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
+    })
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
   if (req.method !== 'POST') return jsonError('Method not allowed.', 405)
 
-  // 1. Verify the caller's Supabase JWT.
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return jsonError('Missing authorization header.', 401)
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
-  )
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return jsonError('Invalid or expired session.', 401)
+  try {
+    const { data, error: authError } = await createUserClient(authHeader).auth.getUser()
+    if (authError || !data.user) return jsonError('Invalid or expired session.', 401)
+  } catch (err) {
+    console.error(`[export-pdf] ${err instanceof Error ? err.message : String(err)}`)
+    return jsonError('PDF export is not configured on the server.', 500)
+  }
 
-  // 2. Parse + minimally validate the TailoredResume payload.
   let resume: TailoredResume
   try {
     resume = await req.json()
@@ -224,15 +202,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const endpoint = Deno.env.get('BROWSER_PDF_WS_ENDPOINT')
   if (!endpoint) return jsonError('Server is missing BROWSER_PDF_WS_ENDPOINT.', 500)
 
-  // 3. Render the standardized template to PDF via the remote headless browser.
   const html = buildAtsHtml(resume)
   let pdf: Uint8Array
-  const browser = await puppeteer.connect({ browserWSEndpoint: endpoint })
+  // `connect` is inside the try so an unreachable browser becomes a 502, not a bare 500.
+  let browser: Awaited<ReturnType<typeof puppeteer.connect>> | undefined
   try {
+    browser = await puppeteer.connect({ browserWSEndpoint: endpoint })
     const page = await browser.newPage()
-    // The template is fully self-contained (inline CSS, no external fonts/images/scripts), so wait for
-    // 'load' rather than 'networkidle0' — network-idle detection can hang on remote browsers and time
-    // out even though there is no network activity to wait for.
+    // The template is self-contained; 'networkidle0' can hang on remote browsers, so wait for 'load'.
     await page.setContent(html, { waitUntil: 'load', timeout: 20_000 })
     pdf = await page.pdf({
       format: 'Letter',
@@ -243,13 +220,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
   } catch (err) {
     return jsonError(`Could not render the PDF. ${String(err)}`.trim(), 502)
   } finally {
-    // Disconnect (don't close) — the remote browser session is managed by the provider.
-    await browser.disconnect()
+    // Disconnect rather than close: the provider owns the browser session.
+    await browser?.disconnect()
   }
 
-  // 4. Return the binary.
   const safeName = (resume.header.name || 'resume').replace(/[^\w.-]+/g, '_')
-  return new Response(pdf, {
+  // Copied because BodyInit rejects a SharedArrayBuffer-typed Uint8Array.
+  return new Response(new Uint8Array(pdf), {
     status: 200,
     headers: {
       ...CORS_HEADERS,

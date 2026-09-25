@@ -1,12 +1,4 @@
-/**
- * Monospaced block for one-time codes and copy-paste fallback links.
- *
- * Every action email needs this: link-rewriting proxies and aggressive corporate mail filters routinely
- * break the CTA button, and without a visible fallback the recipient is simply stuck.
- *
- * `wordBreak: break-all` is required — a long signed URL will otherwise stretch the table past 600px
- * and force horizontal scrolling on mobile.
- */
+// Monospaced block for codes and fallback links; `break-all` stops long URLs widening the layout past 600px.
 
 import { Link, Section, Text } from '@react-email/components'
 import { colors, fonts, fontSizes, radii, spacing } from '../../brand/tokens.ts'

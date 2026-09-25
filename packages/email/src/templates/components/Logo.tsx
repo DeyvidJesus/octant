@@ -1,11 +1,4 @@
-/**
- * The Octant lockup: an accent-filled tile with the brand initial, next to the wordmark.
- *
- * Built from `Row`/`Column` (which render as `<table>/<tr>/<td>`) rather than flexbox, because Outlook
- * desktop uses the Word rendering engine and ignores `display: flex` entirely. Deliberately
- * asset-free — an `<Img>` would need a publicly hosted file, and images are blocked by default in most
- * clients, so a text lockup is the only mark guaranteed to render.
- */
+// Text-only lockup (initial tile + wordmark) in table cells: Outlook ignores flexbox and images are often blocked.
 
 import { Column, Row, Text } from '@react-email/components'
 import { colors, fonts, fontSizes, radii, TEXT_SKIP_CLASS } from '../../brand/tokens.ts'
@@ -51,8 +44,7 @@ export function Logo({ appName }: LogoProps) {
   return (
     <Row>
       <Column style={tileCell}>
-        {/* Purely decorative: the wordmark beside it already says the name, so the plain-text
-            renderer skips this to avoid opening every email with a stray letter. */}
+        {/* Decorative; skipped in plain text so emails don't open with a stray letter. */}
         <Text className={TEXT_SKIP_CLASS} style={tile}>
           {appName.charAt(0).toUpperCase()}
         </Text>

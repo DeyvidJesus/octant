@@ -1,11 +1,6 @@
 import type { AiProviderDescriptor, AiProviderId } from '@/types/ai'
 
-/**
- * The provider catalog. Adding a vendor is a matter of adding a descriptor here
- * and an adapter in `providers/` — no UI or task code changes. Model lists are
- * suggestions only; the model field is free text so new models work the day
- * they ship, without a release of Octant.
- */
+/** Provider catalog. Model lists are suggestions; the model field is free text so new models work immediately. */
 export const AI_PROVIDERS: AiProviderDescriptor[] = [
   {
     id: 'claude',
@@ -18,7 +13,7 @@ export const AI_PROVIDERS: AiProviderDescriptor[] = [
       { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5 (fast)' },
     ],
     docsUrl: 'https://console.anthropic.com/settings/keys',
-    hint: 'Recommended for career reasoning. Uses direct browser access.',
+    hint: 'Recommended for career reasoning. Proxied through the ai-proxy Edge Function.',
   },
   {
     id: 'openai',

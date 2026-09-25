@@ -1,12 +1,5 @@
-/**
- * Link builders.
- *
- * Every URL an email can contain is produced here, from the single `appUrl` in `EmailConfig`. Templates
- * never concatenate paths themselves, so a change to a route is a one-line change and there is no risk
- * of a template shipping a relative link (which is dead in an email client).
- *
- * The route names mirror `src/app/routes.tsx`.
- */
+// Every link an email contains is built here from `appUrl`, so templates never ship a relative (dead) link.
+// Route names mirror `src/app/routes.tsx`.
 
 import type { EmailBrandContext } from '../templates/props.ts'
 
@@ -33,7 +26,7 @@ export function createUrls(appUrl: string): EmailUrls {
   return {
     dashboard: join(appUrl, '/'),
     settings: join(appUrl, '/settings'),
-    // The plan card lives on the settings page; keep the deep link honest rather than inventing a route.
+    // The plan card lives on the settings page; there is no separate billing route.
     billing: join(appUrl, '/settings?tab=plan'),
     security: join(appUrl, '/settings?tab=security'),
     login: join(appUrl, '/login'),
@@ -43,7 +36,7 @@ export function createUrls(appUrl: string): EmailUrls {
   }
 }
 
-/** Convenience for templates, which always hold a `brand` prop rather than the raw config. */
+/** For templates, which hold a `brand` prop rather than the raw config. */
 export function urlsFor(brand: EmailBrandContext): EmailUrls {
   return createUrls(brand.appUrl)
 }

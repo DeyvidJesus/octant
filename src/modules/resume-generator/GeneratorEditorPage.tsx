@@ -36,8 +36,7 @@ export function GeneratorEditorPage() {
   const [exportError, setExportError] = useState<string | null>(null)
   const bootstrapped = useRef(false)
 
-  // Bootstrap: analyze (local, instant) if needed, then generate if needed.
-  // Both are deterministic and non-destructive, so no confirmation required.
+  // Analyze, then generate, if needed; both are deterministic and non-destructive.
   useEffect(() => {
     if (!job || bootstrapped.current) return
     bootstrapped.current = true
@@ -47,8 +46,7 @@ export function GeneratorEditorPage() {
         current = await getAnalyzer().analyze({ job, resume })
         saveAnalysis(current)
       }
-      // Don't auto-generate a NEW tailored resume for a free user already at the cap — the DB would
-      // reject the insert. An existing one (this job already tailored) is always editable.
+      // Skip auto-generating a new resume at the free cap, since the DB would reject the insert.
       if (!tailored && !tailoredResumeLimitReached(tier, tailoredCount)) {
         saveTailored(generateTailoredResume(resume, current))
       }
@@ -125,7 +123,7 @@ export function GeneratorEditorPage() {
 
   return (
     <div className="flex flex-col lg:flex-row lg:h-full animate-fade-in print:h-auto print:block">
-      {/* Controls — never printed */}
+      {/* Controls, hidden in print */}
       <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-edge bg-base lg:overflow-y-auto custom-scrollbar p-6 shrink-0 space-y-8 print:hidden">
         <div>
           <button
@@ -135,14 +133,14 @@ export function GeneratorEditorPage() {
             <ArrowLeft size={12} aria-hidden /> All tailored resumes
           </button>
           <div className="text-xs text-faint font-semibold uppercase tracking-widest mb-1">Tailored for</div>
-          <div className="text-white font-medium">{job.company}</div>
+          <div className="text-ink-strong font-medium">{job.company}</div>
           <div className="text-muted text-xs">{job.role}</div>
         </div>
 
         {coverage && <CoverageMeter coverage={coverage} />}
 
         {stale && (
-          <p className="text-xs text-amber-400/90 leading-relaxed">
+          <p className="text-xs text-warning/90 leading-relaxed">
             Your Master Resume changed since this was generated. Regenerate to pick up the latest
             content (your bullet selections will reset).
           </p>
@@ -153,7 +151,7 @@ export function GeneratorEditorPage() {
             <Download size={14} aria-hidden /> {exporting ? 'Generating PDF…' : 'Download PDF'}
           </Button>
           {exportError && (
-            <p className="text-xs text-red-400/90 leading-relaxed">{exportError}</p>
+            <p className="text-xs text-danger/90 leading-relaxed">{exportError}</p>
           )}
           <Button variant="subtle" className="w-full" onClick={() => copy('markdown', toMarkdown(tailored))}>
             <ClipboardCopy size={14} aria-hidden />
@@ -175,8 +173,8 @@ export function GeneratorEditorPage() {
         </p>
       </div>
 
-      {/* Paper preview — the only thing that prints */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-base print:overflow-visible print:p-0 print:bg-white">
+      {/* Paper preview, the only printed element */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-base print:overflow-visible print:p-0 print:bg-paper">
         <ResumePaper tailored={tailored} onToggleBullet={handleToggle} onToggleProject={handleToggleProject} />
       </div>
     </div>

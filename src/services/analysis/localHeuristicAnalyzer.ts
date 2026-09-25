@@ -3,11 +3,7 @@ import type { AnalyzerContext, JobAnalyzer } from './types'
 import { detectSeniority, extractSkills } from './extract'
 import { buildMatchReport, collectResumeSkills } from './match'
 
-/**
- * Deterministic, offline job analysis: taxonomy-based keyword extraction,
- * regex seniority detection, and frequency-weighted ATS scoring against the
- * Master Resume. Same input always produces the same output.
- */
+// Deterministic offline analysis: taxonomy keywords, regex seniority, and weighted ATS score.
 class LocalHeuristicAnalyzer implements JobAnalyzer {
   readonly id = 'local-heuristic-v2'
   readonly kind = 'local' as const
@@ -39,11 +35,7 @@ class LocalHeuristicAnalyzer implements JobAnalyzer {
   }
 }
 
-/**
- * The entire analyzer "registry". When an LLM-backed analyzer arrives,
- * this reads a provider setting and returns the right implementation —
- * nothing else in the app changes.
- */
+/** Single place to choose the analyzer implementation. */
 export function getAnalyzer(): JobAnalyzer {
   return new LocalHeuristicAnalyzer()
 }

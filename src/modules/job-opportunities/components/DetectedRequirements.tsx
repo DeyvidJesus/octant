@@ -20,7 +20,7 @@ export function DetectedRequirements({ analysis }: { analysis: JobAnalysis }) {
     <div className="space-y-6">
       <Card>
         <SectionLabel className="mb-3">Detected Seniority</SectionLabel>
-        <p className="text-xl text-white font-medium mb-2">
+        <p className="text-xl text-ink-strong font-medium mb-2">
           {SENIORITY_LABELS[analysis.detectedSeniority]}
         </p>
         {analysis.seniorityEvidence.length > 0 && (
@@ -58,7 +58,7 @@ function SkillGroup({ title, skills }: { title: string; skills: DetectedSkill[] 
       <p className="text-xs text-muted mb-2">{title}</p>
       <div className="flex flex-wrap gap-2">
         {skills.map((skill) => (
-          <Badge key={skill.canonical} tone={skill.inResume ? 'emerald' : 'red'}>
+          <Badge key={skill.canonical} tone={skill.inResume ? 'success' : 'danger'}>
             {skill.canonical}
             {skill.count > 1 && <span className="ml-1 opacity-60">×{skill.count}</span>}
           </Badge>

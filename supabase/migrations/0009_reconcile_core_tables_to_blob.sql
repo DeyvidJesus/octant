@@ -1,23 +1,6 @@
--- 0009_reconcile_core_tables_to_blob.sql
--- Phase 13: schema/runtime reconciliation.
---
--- JobRepository / ApplicationRepository persist each domain object in a single `data` jsonb column
--- ({id, user_id, data}) — the same hybrid shape as tailored_resumes / discovered_jobs / resume_*.
--- The three original tables (jobs, applications, job_analyses) were never converted and still had
--- typed, NOT NULL columns (company, role, analysis_json, ...). Against that shape every insert failed
--- (missing `data`, violated NOT NULLs) and every read returned an undefined `data`.
---
--- This migration converts them IN PLACE and is safe to run repeatedly and on an already-converted DB:
---   1) add the `data` column,
---   2) backfill it from the legacy typed columns for any existing rows,
---   3) relax the legacy NOT NULLs so blob-only writes succeed (columns are kept, not dropped, so
---      migration 0001's (user_id, status)/(user_id, stage) indexes stay valid; a later cleanup
---      migration may drop them once confirmed unused),
---   4) dedupe job_analyses and add the (user_id, job_id) uniqueness that lets upsert replace.
---
--- Guards use information_schema so each block is a no-op when the legacy column is already gone.
+-- Converts jobs, applications and job_analyses in place to the {id, user_id, data} shape the repositories use.
+-- Backfills data from the typed columns and relaxes their NOT NULLs; the columns stay so 0001's indexes remain valid.
 
--- jobs -----------------------------------------------------------------------
 alter table public.jobs add column if not exists data jsonb;
 
 do $$
@@ -53,7 +36,6 @@ update public.jobs set data = '{}'::jsonb where data is null;
 alter table public.jobs alter column data set default '{}'::jsonb;
 alter table public.jobs alter column data set not null;
 
--- applications ---------------------------------------------------------------
 alter table public.applications add column if not exists data jsonb;
 
 do $$
@@ -96,7 +78,6 @@ update public.applications set data = '{}'::jsonb where data is null;
 alter table public.applications alter column data set default '{}'::jsonb;
 alter table public.applications alter column data set not null;
 
--- job_analyses ---------------------------------------------------------------
 alter table public.job_analyses add column if not exists data jsonb;
 
 do $$
@@ -108,7 +89,7 @@ begin
   end if;
 end $$;
 
--- Collapse pre-existing duplicates (repo used to insert a new row per save) — keep the newest.
+-- The repo used to insert a row per save; keep the newest before adding the unique index.
 delete from public.job_analyses a
   using public.job_analyses b
   where a.user_id = b.user_id

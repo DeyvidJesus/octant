@@ -1,36 +1,26 @@
-// Supabase Edge Function: get-plan-pricing
-//
-// Returns the live Pro price (amount / currency / interval) straight from Stripe, so the site always
-// displays exactly what STRIPE_PRICE_ID charges — no hardcoded price to keep in sync. Read-only; the
-// Stripe secret key stays server-side. Called from the authenticated Settings page.
-//
-// Deploy:  supabase functions deploy get-plan-pricing
-// Secrets: STRIPE_SECRET_KEY, STRIPE_PRICE_ID (already set for create-checkout-session).
-// (SUPABASE_URL / SUPABASE_ANON_KEY are injected automatically. JWT verification stays ON.)
+// get-plan-pricing: returns the live STRIPE_PRICE_ID amount, currency and interval to a JWT-verified caller.
 
 import Stripe from 'npm:stripe@16'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-import { staticCorsHeaders } from '../_shared/cors.ts'
+import { corsHeaders } from '../_shared/cors.ts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2024-06-20',
   httpClient: Stripe.createFetchHttpClient(),
 })
 
-const CORS_HEADERS = staticCorsHeaders()
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
-  })
-}
-
 Deno.serve(async (req: Request): Promise<Response> => {
+  const CORS_HEADERS = corsHeaders(req)
+  const json = (body: unknown, status = 200): Response =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
+    })
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
   if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405)
 
-  // Verify the caller's Supabase JWT (the price card only renders for signed-in users).
+  // Verify the caller's Supabase JWT.
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return json({ error: 'Missing authorization header.' }, 401)
   const supabase = createClient(
@@ -47,7 +37,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     const price = await stripe.prices.retrieve(priceId)
     return json({
-      // unit_amount is in the currency's smallest unit (e.g. cents); the client formats it.
+      // Smallest currency unit (e.g. cents); the client formats it.
       amount: price.unit_amount,
       currency: price.currency,
       interval: price.recurring?.interval ?? null, // 'month' | 'year' | null

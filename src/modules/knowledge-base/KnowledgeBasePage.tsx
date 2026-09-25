@@ -80,7 +80,7 @@ export function KnowledgeBasePage() {
       />
 
       {stats.needsReview > 0 && (
-        <p className="text-sm text-amber-400/90 mb-4">
+        <p className="text-sm text-warning/90 mb-4">
           {stats.needsReview} fact{stats.needsReview === 1 ? '' : 's'} still need review.
         </p>
       )}
@@ -104,12 +104,12 @@ export function KnowledgeBasePage() {
             onClick={() => { setSection(tab.key); setStatusFilter('all') }}
             aria-pressed={section === tab.key}
             className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-              section === tab.key ? 'bg-white text-black font-medium' : 'text-muted hover:text-ink-2 hover:bg-surface'
+              section === tab.key ? 'bg-inverse text-inverse-ink font-medium' : 'text-muted hover:text-ink-2 hover:bg-surface'
             }`}
           >
             {tab.label}
             {tab.count !== undefined && (
-              <span className={`text-xs ${section === tab.key ? 'text-black/60' : 'text-faint'}`}>{tab.count}</span>
+              <span className={`text-xs ${section === tab.key ? 'text-inverse-ink/60' : 'text-faint'}`}>{tab.count}</span>
             )}
           </button>
         ))}

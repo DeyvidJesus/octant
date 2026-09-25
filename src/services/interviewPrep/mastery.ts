@@ -1,9 +1,6 @@
 import type { InterviewQuestionCategory } from '@/types/interviewPrep'
 
-/**
- * Pure mastery math for the closed-loop interview simulation. Kept framework- and I/O-free so the
- * blend is unit-testable; the repository/store only handle persistence.
- */
+// Pure mastery math for the interview simulation; persistence lives in the repository/store.
 
 export interface MasteryState {
   mastery: number
@@ -19,10 +16,7 @@ export function clampScore(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)))
 }
 
-/**
- * Blends a new answer score into a skill's mastery as a running average over all attempts. A brand
- * new skill takes the first score directly; each subsequent answer nudges mastery toward it.
- */
+/** Running average of all answer scores for the skill. */
 export function blendMastery(prev: MasteryState | null, score: number): MasteryState {
   const clamped = clampScore(score)
   const prevAttempts = prev?.attempts ?? 0

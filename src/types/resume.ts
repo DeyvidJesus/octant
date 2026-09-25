@@ -1,8 +1,4 @@
-/**
- * CareerKnowledgeBase is the persisted source of truth for Octant. A
- * ResumeProjection is a deterministic, read-only view used by legacy resume
- * consumers while they transition to the knowledge-base collections.
- */
+// CareerKnowledgeBase is what gets persisted; ResumeProjection is a read-only view for legacy consumers.
 
 export type FactStatus = 'confirmed' | 'needs_review' | 'todo'
 

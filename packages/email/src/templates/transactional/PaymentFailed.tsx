@@ -1,10 +1,4 @@
-/**
- * Payment Failed — `invoice.payment_failed`.
- *
- * The most time-sensitive billing email, so the CTA is the only thing that matters: update the card.
- * The decline reason is shown when Stripe gives a usable one, because "expired card" and "insufficient
- * funds" call for completely different actions from the recipient.
- */
+// `invoice.payment_failed`: the CTA is updating the card; the decline reason is shown when Stripe gives one.
 
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'

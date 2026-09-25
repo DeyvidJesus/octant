@@ -3,12 +3,7 @@ import { supabase } from '@/services/supabase/client'
 /** Same-project Edge Function that creates a Stripe Customer Portal session server-side. */
 const PORTAL_URL = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/create-portal-session`
 
-/**
- * Opens the Stripe Customer Portal so a Pro user can manage or cancel their subscription, update
- * their card, and see invoices. Asks the Edge Function for a portal session (the secret key stays
- * server-side) and redirects the browser to it. Requires an authenticated session with an active
- * subscription.
- */
+/** Redirects to the Stripe Customer Portal. Needs a session and an active subscription. */
 export async function openBillingPortal(): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token

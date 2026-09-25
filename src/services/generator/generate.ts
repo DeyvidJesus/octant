@@ -10,22 +10,15 @@ import type {
 import { nowIso } from '@/utils/dates'
 import { buildJdWeights, scoreAccomplishment, scoreText, type JdWeights } from './score'
 
-/**
- * The deterministic tailoring engine. Selection, ranking, and reordering of
- * real Master Resume content — never generation. Same inputs, same output.
- *
- * Selection defaults tuned for a one-page, ATS-parseable resume:
- * recruiters skim; every included line should either match the job or carry
- * a metric.
- */
+// Deterministic tailoring: selects and reorders real Master Resume content, never generates it.
+// Limits target a one-page, ATS-parseable resume.
 
-/** Bullets kept per experience — top-relevance first. */
 const MAX_BULLETS_PER_EXPERIENCE = 4
 /** Even for an unrelated job, a role never renders empty. */
 const MIN_BULLETS_PER_EXPERIENCE = 2
 const MAX_PROJECTS = 2
 const MAX_BULLETS_PER_PROJECT = 2
-/** Unmatched skills still worth listing (favorites/high proficiency), capped. */
+/** Total unmatched skills kept across all categories, highest proficiency first. */
 const MAX_UNMATCHED_SKILLS = 8
 
 export function generateTailoredResume(
@@ -82,11 +75,7 @@ function buildHeader(resume: MasterResume): TailoredResume['header'] {
   }
 }
 
-/**
- * Skills reordered for the recruiter's 6-second scan: categories with the
- * most JD matches first; within a category, matched skills first. Unmatched
- * skills are capped so tailoring actually *removes* noise.
- */
+// Categories with the most JD matches first, matched skills first within each; unmatched skills are capped.
 function buildSkillGroups(skills: Skill[], jdSkills: Set<string>): TailoredSkillGroup[] {
   const byCategory = new Map<string, Skill[]>()
   for (const skill of skills) {
@@ -119,11 +108,7 @@ function buildSkillGroups(skills: Skill[], jdSkills: Set<string>): TailoredSkill
   return groups.sort((a, b) => b.matchedCount - a.matchedCount).map((entry) => entry.group)
 }
 
-/**
- * Experiences keep their reverse-chronological order (recruiters expect it);
- * tailoring happens *inside* each role: bullets ranked by relevance, top N
- * included, authored order breaking ties.
- */
+// Experience order is kept (reverse-chronological); only the bullets inside each role are ranked.
 function buildExperience(
   entry: MasterResume['experience'][number],
   weights: JdWeights,
@@ -157,8 +142,7 @@ function selectBullets(
     text: accomplishment.text,
     metric: accomplishment.metric,
     relevance,
-    // Include the top `max` relevant bullets; keep at least `min` even when
-    // nothing matches so the role never renders empty.
+    // Top `max` relevant bullets, but at least `min` even when nothing matches.
     included: rank < max && (relevance > 0 || rank < min),
   }))
 }

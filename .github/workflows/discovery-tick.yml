@@ -1,30 +1,18 @@
-# Scheduler do agente de descoberta.
-#
-# O que faz: de tempos em tempos, faz um POST no Edge Function `discovery-worker`, que então roda
-# a busca de vagas em segundo plano para os usuários "due" (mesmo com eles offline). O worker NÃO
-# tem relógio próprio — este workflow é o "tique" que o aciona.
-#
-# Pré-requisitos (uma vez):
-#   1) O worker precisa estar publicado: `supabase functions deploy discovery-worker --no-verify-jwt`
-#      (sem a flag, este workflow recebe 401; se a função não existir, recebe 404).
-#   2) No GitHub, em Settings › Secrets and variables › Actions, crie:
-#        - SUPABASE_URL          = https://SEU_PROJECT_REF.supabase.co
-#        - DISCOVERY_CRON_SECRET = o mesmo valor que você setou em `supabase secrets set DISCOVERY_CRON_SECRET=...`
-#
-# Você pode rodar manualmente em Actions › discovery-tick › Run workflow (workflow_dispatch).
+# Hourly trigger for the discovery-worker Edge Function, which has no scheduler of its own.
+# Needs repo secrets SUPABASE_URL and DISCOVERY_CRON_SECRET, and the worker deployed with --no-verify-jwt.
 
 name: discovery-tick
 
 on:
   schedule:
-    - cron: '0 * * * *' # de hora em hora (UTC). Comece conservador; ajuste depois.
-  workflow_dispatch: {} # permite disparar manualmente pela aba Actions
+    - cron: '0 * * * *' # hourly (UTC); the worker only processes users that are due
+  workflow_dispatch: {} # manual run from the Actions tab
 
 jobs:
   tick:
     runs-on: ubuntu-latest
     steps:
-      - name: Acionar o discovery-worker
+      - name: Trigger the discovery-worker
         run: |
           curl -fsS -X POST "$SUPABASE_URL/functions/v1/discovery-worker" \
             -H "x-discovery-secret: $DISCOVERY_CRON_SECRET" \

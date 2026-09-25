@@ -1,46 +1,18 @@
-// Supabase Edge Function: send-email
-//
-// Phase 15 — the ONE endpoint the browser may use to trigger an email. It exists for the messages that
-// have no provider webhook behind them: the welcome email, and the account-security notices that follow
-// a password or email change.
-//
-// SECURITY MODEL — this is the whole reason the function is shaped this way:
-//
-//   * The client sends only `{ intent }` from a fixed allowlist. It cannot choose a template, a subject,
-//     a body, or any prop.
-//   * The recipient is ALWAYS `user.email` from the verified JWT. It is never read from the request body.
-//     Without that rule this endpoint would be an open relay: any signed-in user could have branded
-//     Octant email delivered to any address they liked.
-//   * Props are assembled server-side from the verified session and the request headers.
-//
-// Idempotency is enforced by `email_log.idempotency_key` (see `_shared/mailer.ts`), so a double-clicked
-// button or a re-mounted React effect cannot send twice.
-//
-// Source of truth: edit `handler.ts`, then run `yarn build:functions` to regenerate `index.ts`.
-//
-// Deploy:  yarn build:functions && supabase functions deploy send-email
-//          (JWT verification stays ON — the caller must be a signed-in user.)
-// Secrets: RESEND_API_KEY, EMAIL_FROM, APP_URL (shared with the other email functions).
-
+// send-email: lets a signed-in user trigger an allowlisted email by `{ intent }`. The recipient always comes
+// from the verified JWT, never the body, so this can't become an open relay.
 
 import { SecurityAlertKind, displayNameFrom, formatDateTime } from '@octant/email'
 import { createAdminClient, createUserClient } from '../_shared/admin.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import { preferencesUrlFor, sendLogged } from '../_shared/mailer.ts'
 
-/**
- * The intents a browser may trigger. Each maps to a template whose entire payload can be derived from
- * the verified session — that derivability is the criterion for being on this list. Anything needing
- * caller-supplied content (an invitation, a billing receipt) belongs to a webhook, not here.
- */
+// Only templates whose props can be derived entirely from the verified session belong here.
 const INTENTS = {
   /** Sent once, after the address is confirmed. */
   Welcome: 'welcome',
   /** Follows a successful `auth.updateUser({ password })`. */
   PasswordChanged: 'password-changed',
-  /** Courtesy notice to the address a user just moved AWAY from. */
-  EmailChangedNotice: 'email-changed-notice',
-  /** User-initiated "this wasn't me" / new-device acknowledgement. */
+  /** New-device acknowledgement. */
   SecurityAlert: 'security-alert',
 } as const
 
@@ -50,15 +22,10 @@ const ALLOWED_INTENTS = new Set<string>(Object.values(INTENTS))
 
 interface RequestBody {
   intent?: string
-  /**
-   * The ONLY caller-supplied value that is honoured, and only for `email-changed-notice`: the address
-   * being moved away from, which by definition is no longer on the account and so cannot be read from
-   * the session. Validated below, and used solely as display copy — never as the recipient.
-   */
-  previousEmail?: string
 }
 
-const EMAIL_PATTERN = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/
+// No "email changed" intent: it would need a recipient from the body. auth-email-hook covers the old
+// address via `email_change_current`.
 
 Deno.serve(async (req: Request): Promise<Response> => {
   const CORS = corsHeaders(req)
@@ -68,7 +35,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405)
 
-  // Verify the caller's Supabase JWT — this is what makes the recipient trustworthy.
+  // The verified JWT is what makes the recipient trustworthy.
   const authHeader = req.headers.get('Authorization')
   if (authHeader === null) return json({ error: 'Missing authorization header.' }, 401)
 
@@ -81,7 +48,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
     user = data.user
   } catch (err) {
-    // A missing public key is server misconfiguration, not a bad token — don't report it as a 401.
+    // A missing public key is server misconfiguration, not a bad token, so not a 401.
     console.error(`[send-email] ${err instanceof Error ? err.message : String(err)}`)
     return json({ error: 'Email is not configured on the server.' }, 500)
   }
@@ -126,8 +93,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           template: 'welcome',
           to: recipient,
           props: { name },
-          // No dedupeKey: the welcome email is once-per-user for all time, so the default key (which is
-          // derived from userId alone) is exactly the guard we want.
+          // No dedupeKey: the default per-user key makes welcome a once-ever email.
         })
 
       case INTENTS.PasswordChanged:
@@ -136,27 +102,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
           template: 'password-changed',
           to: recipient,
           props: { name, occurredAt, ipAddress, userAgent },
-          // Keyed to the account's current password timestamp so each genuine change notifies, while a
-          // double-submit of the same change does not.
+          // Keyed to the update timestamp: each real change notifies, a double-submit doesn't.
           dedupeKey: `pwd:${user.updated_at ?? occurredAt ?? ''}`,
         })
-
-      case INTENTS.EmailChangedNotice: {
-        const previousEmail = body.previousEmail?.trim()
-        if (previousEmail === undefined || !EMAIL_PATTERN.test(previousEmail)) {
-          return { status: 'failed' as const, code: 'EMAIL_VALIDATION', message: 'previousEmail is not a valid address.' }
-        }
-        return sendLogged(admin, {
-          ...shared,
-          // Goes to the OLD address — the only inbox that can catch an unauthorised change. Sending it
-          // is safe because the address is not the recipient of anything else, and the template
-          // deliberately carries no confirmation link.
-          template: 'email-changed',
-          to: previousEmail,
-          props: { name, newEmail: recipient, oldEmail: previousEmail, occurredAt, ipAddress, userAgent },
-          dedupeKey: `email-change:${previousEmail}:${recipient}`,
-        })
-      }
 
       case INTENTS.SecurityAlert:
         return sendLogged(admin, {
@@ -177,7 +125,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   })()
 
   if (outcome.status === 'failed') {
-    // 502: the request was valid, the downstream provider was not.
+    // 502: the request was valid; the email provider failed.
     return json({ error: 'Could not send the email.', code: outcome.code }, 502)
   }
 

@@ -22,12 +22,7 @@ export const SKILL_CATEGORY_LABELS: Record<SkillTaxonomyCategory, string> = {
   practices: 'Practices',
 }
 
-/**
- * The analyzer's dictionary: canonical skills, the aliases job descriptions
- * use for them, and the category they roll up into. Matching is
- * case-insensitive on word boundaries. Grow this list as real JDs reveal
- * missing terms.
- */
+/** The analyzer's skill dictionary; aliases match case-insensitively on term boundaries. */
 export const SKILL_TAXONOMY: TaxonomyEntry[] = [
   // Frontend
   { canonical: 'JavaScript', aliases: ['javascript', 'js', 'es6'], category: 'frontend' },

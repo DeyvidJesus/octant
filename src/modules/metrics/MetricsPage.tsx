@@ -116,7 +116,7 @@ function MetricTile({ label, value, accent = false }: { label: string; value: nu
   return (
     <Card className="p-4">
       <SectionLabel className="mb-2">{label}</SectionLabel>
-      <p className={`text-3xl font-light ${accent ? 'text-emerald-400' : 'text-white'}`}>{value}</p>
+      <p className={`text-3xl font-light ${accent ? 'text-success' : 'text-ink-strong'}`}>{value}</p>
     </Card>
   )
 }

@@ -5,12 +5,7 @@ import { createId } from '@/utils/id'
 import { getProvider } from '../providers'
 import { AiError, type AiRunConfig, type ChatMessage } from '../types'
 
-/**
- * "Interview Generator" — dynamically generates targeted interview questions from the candidate's
- * Master Resume and the skills a specific job requires but the resume lacks. Replaces the
- * deterministic, hardcoded question banks. Runs through the same provider seam (→ ai-proxy) as the
- * interview coach; keys stay server-side.
- */
+// Generates interview questions targeting the skills a job requires but the resume lacks.
 
 export interface InterviewGeneratorInput {
   job: Pick<JobOpportunity, 'company' | 'role' | 'description'>

@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install
+        run: yarn install --frozen-lockfile
+
+      # oxlint, including the layer-boundary rules in .oxlintrc.json.
+      - name: Lint
+        run: yarn lint
+
+      # Domain logic, component tests (happy-dom) and the design-token guard.
+      - name: Test
+        run: yarn test
+
+      # tsc -b, then vite build.
+      - name: Build
+        run: yarn build
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # Hand-written Edge Functions are Deno code tsc never sees; bundled ones are covered by the build.
+      - name: Type-check Edge Functions
+        run: |
+          deno check --no-config \
+            supabase/functions/ai-proxy/index.ts \
+            supabase/functions/export-pdf/index.ts \
+            supabase/functions/create-checkout-session/index.ts \
+            supabase/functions/create-portal-session/index.ts \
+            supabase/functions/get-plan-pricing/index.ts
+
+      # Fails if a bundled function's source changed without rerunning `yarn build:functions`.
+      - name: Edge Function bundles are up to date
+        run: |
+          yarn build:functions
+          git diff --exit-code -- supabase/functions || {
+            echo "::error::Generated Edge Function bundles are stale. Run 'yarn build:functions' and commit the result."
+            exit 1
+          }

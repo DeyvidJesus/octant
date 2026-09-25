@@ -13,14 +13,7 @@ interface OpenAiCompatibleOptions {
 /** Same-project Edge Function that holds vendor keys and makes hosted AI calls server-side. */
 const AI_PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/ai-proxy`
 
-/**
- * Runs a hosted-provider completion through the Supabase Edge Function proxy (`ai-proxy`).
- *
- * The browser never holds or sends a vendor API key or vendor URL — it POSTs the normalized request
- * with the user's Supabase JWT, and the Edge Function injects the key (from its own environment),
- * calls the vendor, and returns a normalized `{ text, model }`. This is what fixes both API-key
- * exposure and vendor CORS. Local (offline) models keep calling direct via `completeOpenAiCompatible`.
- */
+/** Hosted completion via `ai-proxy`, authenticated with the user's JWT; the browser never sees vendor keys. */
 export async function completeViaProxy(
   request: CompletionRequest,
   providerId: AiProviderId,
@@ -30,7 +23,7 @@ export async function completeViaProxy(
     throw new AiError(`${providerId}: web search grounding is not supported by this provider.`)
   }
 
-  // getSession() reads the session from local storage — no network round-trip (see Phase 3).
+  // getSession() reads local storage; no network round-trip.
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
   if (!token) throw new AiError('You must be signed in to use AI features.')
@@ -62,19 +55,13 @@ export async function completeViaProxy(
   }
 }
 
-/**
- * Direct `/chat/completions` call for LOCAL, offline servers (Ollama, LM Studio) — those run on the
- * user's machine, carry no key, and a cloud Edge Function cannot reach them. Hosted providers
- * (OpenAI, OpenRouter) go through `completeViaProxy` instead so their keys stay server-side.
- * System messages are supported natively, so no message rewriting is needed here.
- */
+/** Direct `/chat/completions` call for local servers (Ollama, LM Studio), which the proxy can't reach. */
 export async function completeOpenAiCompatible(
   request: CompletionRequest,
   options: OpenAiCompatibleOptions,
 ): Promise<CompletionResult> {
   if (request.webSearch) {
-    // Silently ignoring the flag would return listings hallucinated from
-    // parametric memory — worse than failing.
+    // Ignoring the flag would return listings hallucinated from memory.
     throw new AiError(`${options.providerId}: web search grounding is not supported by this provider.`)
   }
 

@@ -3,11 +3,7 @@ import { type SearchProfile } from '@/types/searchProfile'
 import type { MasterResume } from '@/types/resume'
 import { BaseRepository } from './BaseRepository'
 
-/**
- * Data-access boundary for the structured search profile that drives continuous discovery.
- * One row per user in `public.search_profiles` ({id, user_id, data}); RLS-scoped via the session
- * mirror; reads with `maybeSingle()` so a new account (no row yet) resolves to null.
- */
+/** Data access for the per-user search profile; a new account with no row reads as null. */
 export class SearchProfileRepository extends BaseRepository {
   async getSearchProfile(): Promise<SearchProfile | null> {
     const userId = this.requireUserId()
@@ -31,10 +27,7 @@ export class SearchProfileRepository extends BaseRepository {
     )
   }
 
-  /**
-   * Publishes the projected Master Resume so the offline worker can score candidates server-side
-   * without reassembling the knowledge base. Only touches `scoring_snapshot` (leaves `data` intact).
-   */
+  /** Stores the projected resume in `scoring_snapshot` so the offline worker can score candidates. */
   async saveScoringSnapshot(resume: MasterResume): Promise<void> {
     const userId = this.requireUserId()
     this.unwrap(
@@ -49,5 +42,5 @@ export class SearchProfileRepository extends BaseRepository {
   }
 }
 
-/** Shared singleton — import this from stores. The class is exported for testing/DI. */
+/** Shared singleton for stores; the class is exported for tests. */
 export const searchProfileRepository = new SearchProfileRepository()

@@ -22,10 +22,7 @@ interface ExperienceSectionProps {
   query: string
 }
 
-/**
- * Organizations and the roles held at them. Roles carry a foreign key to an organization, edited
- * here via a dropdown — so add the organization first, then the role.
- */
+/** Organizations and their roles; a role picks its organization from a dropdown, so add orgs first. */
 export function ExperienceSection({
   organizations,
   roles,

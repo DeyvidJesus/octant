@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Star } from 'lucide-react'
 import type { Application, ApplicationStage } from '@/types/application'
 import { Select } from '@/components/ui/Select'
@@ -64,17 +64,24 @@ export function TableView({ applications }: { applications: Application[] }) {
                   onClick={() => navigate(`/applications/${application.id}/edit`)}
                   className="border-b border-edge/60 last:border-0 hover:bg-surface cursor-pointer"
                 >
-                  <td className="px-4 py-3 text-white">
+                  <td className="px-4 py-3 text-ink-strong">
                     <span className="inline-flex items-center gap-1.5">
-                      {application.priority && <Star size={13} className="text-amber-400" aria-label="Priority" />}
-                      {application.company}
+                      {application.priority && <Star size={13} className="text-warning" aria-label="Priority" />}
+                      {/* The row click is a mouse shortcut; this link is the keyboard/screen-reader path. */}
+                      <Link
+                        to={`/applications/${application.id}/edit`}
+                        onClick={(event) => event.stopPropagation()}
+                        className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong"
+                      >
+                        {application.company}
+                      </Link>
                     </span>
                   </td>
                   <td className="px-4 py-3 text-muted">{application.role}</td>
                   <td className="px-4 py-3">
                     <StagePill stage={application.stage} />
                   </td>
-                  <td className={`px-4 py-3 ${overdue ? 'text-red-400' : 'text-muted'}`}>
+                  <td className={`px-4 py-3 ${overdue ? 'text-danger' : 'text-muted'}`}>
                     {application.followUpAt ? formatRelative(application.followUpAt) : '—'}
                   </td>
                   <td className="px-4 py-3 text-faint">{formatRelative(application.updatedAt)}</td>

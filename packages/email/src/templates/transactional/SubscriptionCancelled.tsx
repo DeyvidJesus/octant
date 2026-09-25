@@ -1,9 +1,4 @@
-/**
- * Subscription Cancelled — `customer.subscription.deleted`.
- *
- * States plainly that the data survives the downgrade. That is both true (the free tier caps CREATION,
- * not reading — see `within_job_limit` in migration 0007) and the single most common fear at cancel time.
- */
+// `customer.subscription.deleted`; says data survives the downgrade (the free tier limits creation, not reading).
 
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'

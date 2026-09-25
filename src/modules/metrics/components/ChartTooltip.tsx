@@ -22,7 +22,7 @@ export function ChartTooltip({ active, title, rows }: ChartTooltipProps) {
         <div key={index} className="flex items-center gap-2 text-sm text-ink-2">
           {row.color && <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: row.color }} />}
           <span className="text-muted">{row.label}</span>
-          <span className="ml-auto font-medium text-white tabular-nums">{row.value}</span>
+          <span className="ml-auto font-medium text-ink-strong tabular-nums">{row.value}</span>
         </div>
       ))}
     </div>

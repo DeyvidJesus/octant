@@ -1,11 +1,5 @@
-/**
- * Invitation — Supabase Auth's `invite` action, and any future team-invite flow.
- *
- * NOTE: the product is single-user today (no teams, no `invitations` table), so nothing triggers this
- * automatically yet. It is fully implemented and callable via `EmailService.sendInvitation()` so that
- * adding the feature is a wiring change, not a template-writing exercise. `workspaceName` is optional
- * precisely so it works as a plain product invite until teams exist.
- */
+// Supabase `invite` action. Nothing triggers it yet (single-user product); `workspaceName` is optional
+// so it works as a plain product invite.
 
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'

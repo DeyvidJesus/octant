@@ -1,14 +1,5 @@
-/**
- * Stripe event → template + props.
- *
- * Pure, and typed against STRUCTURAL interfaces rather than `Stripe.Event`, so this package takes no
- * dependency on the Stripe SDK. The Edge Function passes its real `Stripe.Subscription` / `Stripe.Invoice`
- * straight in — the shapes are compatible, and the narrow interfaces double as documentation of exactly
- * which fields the emails depend on.
- *
- * Being pure is the point: `supabase/functions/**` is outside the vitest suite, so mapping logic left in
- * the webhook would be untestable. Here it's covered by `stripeBilling.test.ts`.
- */
+// Pure mapping from a Stripe event to a template and props, typed structurally so there is no Stripe SDK
+// dependency; real `Stripe.Subscription` / `Stripe.Invoice` objects fit these shapes.
 
 import { daysBetween, formatDate, formatMoney, type FormattingOptions } from '../formatting.ts'
 import type { TemplateDefinitions, TemplateName } from '../templates/props.ts'
@@ -25,10 +16,8 @@ export const BillingEvent = {
 
 export type BillingEventValue = (typeof BillingEvent)[keyof typeof BillingEvent]
 
-/** Every event type that must be enabled on the Stripe endpoint. Asserted by the tests. */
+/** Every event type that must be enabled on the Stripe endpoint. */
 export const BILLING_EVENT_TYPES: BillingEventValue[] = Object.values(BillingEvent)
-
-// ── Structural subsets of the Stripe objects ──────────────────────────────────────────────────────
 
 export interface StripeSubscriptionLike {
   id: string
@@ -65,7 +54,7 @@ export interface StripeInvoiceLike {
   last_finalization_error?: { message?: string | null } | null
 }
 
-/** `previous_attributes` from a `.updated` event — the only way to know what actually changed. */
+/** `previous_attributes` on a `.updated` event is the only way to know what changed. */
 export interface StripeEventLike {
   type: string
   data: {
@@ -77,7 +66,7 @@ export interface StripeEventLike {
 export interface BillingEmailContext extends FormattingOptions {
   /** Fallback plan label when Stripe's price has no nickname. */
   defaultPlanName?: string
-  /** "Now", in Unix seconds. Injected so `daysBetween` stays deterministic in tests. */
+  /** "Now" in Unix seconds, injected so `daysBetween` is deterministic in tests. */
   nowUnixSeconds: number
   /** Days of access after a failed payment, for the payment-failed copy. */
   gracePeriodDays?: number
@@ -113,13 +102,7 @@ export function userIdFromSubscription(subscription: StripeSubscriptionLike): st
   return value !== undefined && value !== '' ? value : undefined
 }
 
-/**
- * Maps one Stripe event to the email it should trigger.
- *
- * Returns `null` when the event is relevant to the subscription table but should NOT produce an email —
- * most `.updated` events are exactly that (a renewal, a metadata tweak), and sending on each would spam
- * the customer. The caller still performs its database upsert; only the email is skipped.
- */
+/** Returns `null` for events that need no email (most `.updated` events); the caller still upserts its row. */
 export function mapBillingEmail(
   event: StripeEventLike,
   context: BillingEmailContext,
@@ -132,7 +115,7 @@ export function mapBillingEmail(
     case BillingEvent.SubscriptionCreated: {
       const subscription = event.data.object as StripeSubscriptionLike
       const { amountFormatted, interval } = priceFrom(subscription, formatting)
-      // A subscription that starts in trial gets the trial narrative, not a "you're on Pro" receipt.
+      // A subscription that starts in trial gets the trial emails, not a "you're on Pro" receipt.
       if (subscription.status === 'trialing') return null
       return {
         template: 'subscription-created',
@@ -155,7 +138,7 @@ export function mapBillingEmail(
         props: {
           name,
           planName: planNameFrom(subscription, fallbackPlan),
-          // Only claim retained access when the period genuinely hasn't elapsed yet.
+          // Only mention retained access if the period hasn't elapsed yet.
           accessUntil:
             subscription.current_period_end !== null &&
             subscription.current_period_end !== undefined &&
@@ -177,7 +160,7 @@ export function mapBillingEmail(
           name,
           planName: planNameFrom(subscription, fallbackPlan),
           daysRemaining: daysBetween(context.nowUnixSeconds, trialEnd),
-          // Non-null: `formatDate` only returns undefined for a non-finite input, already excluded.
+          // `formatDate` only returns undefined for non-finite input, which is excluded above.
           trialEndsOn: formatDate(trialEnd, formatting) ?? '',
         },
       }
@@ -186,8 +169,7 @@ export function mapBillingEmail(
     case BillingEvent.SubscriptionUpdated: {
       const subscription = event.data.object as StripeSubscriptionLike
       const previousStatus = event.data.previous_attributes?.status
-      // The ONLY update worth emailing about: the trial ended without converting. Every other
-      // transition is either covered by a dedicated event or is routine churn.
+      // Only email when a trial ended without converting; other transitions have dedicated events.
       const leftTrial = previousStatus === 'trialing'
       const nowLapsed = LAPSED_STATUSES.has(subscription.status ?? '')
       if (!leftTrial || !nowLapsed) return null

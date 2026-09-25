@@ -1,6 +1,5 @@
 export * from './errors'
 export * from './BaseRepository'
-export * from './persist'
 export * from './JobRepository'
 export * from './ApplicationRepository'
 export * from './TailoredResumeRepository'

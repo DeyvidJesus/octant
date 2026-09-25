@@ -50,7 +50,7 @@ export function CoachPanel({ job, resume, question, resumeEvidence, missingSkill
         config,
       )
       setResult(coachResult)
-      // Closed loop: persist the answer and blend its AI score into the skill's mastery.
+      // Persist the answer and blend its AI score into the skill's mastery.
       const updated = await recordAnswer({
         job: { id: job.id, company: job.company, role: job.role },
         skill: skillKeyFor(question.topic, question.category),
@@ -89,13 +89,13 @@ export function CoachPanel({ job, resume, question, resumeEvidence, missingSkill
       />
 
       {error && (
-        <p className="text-sm text-red-400" role="alert">
+        <p className="text-sm text-danger" role="alert">
           {error}
         </p>
       )}
 
       {result && <CoachFeedback result={result} providerLabel={providerLabel} />}
-      {masteryNote && <p className="text-xs text-emerald-400">{masteryNote}</p>}
+      {masteryNote && <p className="text-xs text-success">{masteryNote}</p>}
     </div>
   )
 }
@@ -106,15 +106,15 @@ function CoachFeedback({ result, providerLabel }: { result: InterviewCoachResult
       <GroundingBanner result={result} />
 
       <div className="flex items-center gap-3">
-        <span className="text-2xl font-semibold text-white">{result.score}</span>
+        <span className="text-2xl font-semibold text-ink-strong">{result.score}</span>
         <span className="text-xs text-faint">/ 100</span>
         <span className="text-sm text-ink-2">{result.verdict}</span>
       </div>
 
       {result.strengths.length > 0 && (
-        <FeedbackList title="Strengths" items={result.strengths} tone="emerald" />
+        <FeedbackList title="Strengths" items={result.strengths} tone="success" />
       )}
-      {result.gaps.length > 0 && <FeedbackList title="Gaps" items={result.gaps} tone="red" />}
+      {result.gaps.length > 0 && <FeedbackList title="Gaps" items={result.gaps} tone="danger" />}
 
       {result.idealAnswer && (
         <div>
@@ -141,8 +141,8 @@ function CoachFeedback({ result, providerLabel }: { result: InterviewCoachResult
   )
 }
 
-function FeedbackList({ title, items, tone }: { title: string; items: string[]; tone?: 'emerald' | 'red' }) {
-  const marker = tone === 'emerald' ? 'text-emerald-400' : tone === 'red' ? 'text-red-400' : 'text-faint'
+function FeedbackList({ title, items, tone }: { title: string; items: string[]; tone?: 'success' | 'danger' }) {
+  const marker = tone === 'success' ? 'text-success' : tone === 'danger' ? 'text-danger' : 'text-faint'
   return (
     <div>
       <SectionLabel>{title}</SectionLabel>
@@ -163,7 +163,7 @@ function FeedbackList({ title, items, tone }: { title: string; items: string[]; 
 function GroundingBanner({ result }: { result: InterviewCoachResult }) {
   if (result.grounding.ok) {
     return (
-      <div className="flex items-center gap-2 text-xs text-emerald-400">
+      <div className="flex items-center gap-2 text-xs text-success">
         <ShieldCheck size={14} aria-hidden />
         Grounded — feedback traces only to your Master Resume and this job.
       </div>
@@ -171,19 +171,19 @@ function GroundingBanner({ result }: { result: InterviewCoachResult }) {
   }
 
   return (
-    <div className="flex items-start gap-2 rounded-lg border border-red-800/50 bg-red-900/20 p-3">
-      <AlertTriangle size={16} className="text-red-300 shrink-0 mt-0.5" aria-hidden />
-      <div className="text-xs text-red-200 leading-relaxed">
+    <div className="flex items-start gap-2 rounded-lg border border-danger-deep/50 bg-danger-deep/20 p-3">
+      <AlertTriangle size={16} className="text-danger-soft shrink-0 mt-0.5" aria-hidden />
+      <div className="text-xs text-danger-soft leading-relaxed">
         <strong>Unverified mentions:</strong>{' '}
         {result.grounding.unverifiedSkills.map((skill, index) => (
           <span key={skill}>
             {index > 0 && ', '}
-            <Badge tone="red" className="mx-0.5">
+            <Badge tone="danger" className="mx-0.5">
               {skill}
             </Badge>
           </span>
         ))}
-        <div className="mt-1.5 text-red-300/80">
+        <div className="mt-1.5 text-danger-soft/80">
           These appear in neither your Master Resume nor this job. Treat as unverified.
         </div>
       </div>

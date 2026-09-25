@@ -1,14 +1,11 @@
 @import 'tailwindcss';
 
-/*
- * Octant design tokens — the visual identity extracted from the original
- * prototype. Dark, minimal, terminal-inspired. These are the ONLY places the
- * palette hex values live; components use the semantic utility names.
- *
- * Mirrored (by hand, deliberately) in packages/email/src/brand/tokens.ts. Email
- * clients strip CSS variables, so the email layer needs literal hex values and
- * cannot import from here — and it is server-only besides.
- */
+/* Keep classes from the archived prototype and email templates out of the bundle. */
+@source not '../../docs';
+@source not '../../packages';
+
+/* Design tokens: the only place palette values live. Mirrored by hand in
+ * packages/email/src/brand/tokens.ts, since email clients strip CSS variables. */
 @theme {
   --color-base: #0a0a0a; /* app background */
   --color-surface: #111111; /* cards */
@@ -23,13 +20,32 @@
   --color-faint: #666666; /* faint text */
   --color-ghost: #444444; /* decorative marks */
 
-  /* Brand accent. Taken from public/favicon.svg, which was previously the only
-   * brand-coloured asset in the repo and referenced nowhere in the theme. Used
-   * by the email templates; available to the UI but not yet applied anywhere, so
-   * adding it changes nothing visually. */
+  /* Brand accent from the favicon; used by the email templates, not yet by the UI. */
   --color-accent: #863bff;
   --color-accent-deep: #7e14ff;
   --color-accent-ink: #ffffff;
+
+  /* Emphasis and inversion, named by role so components never hard-code white/black. */
+  --color-ink-strong: #ffffff; /* headings, emphasized text, focus rings */
+  --color-inverse: #ffffff; /* primary CTA / active tab surface */
+  --color-inverse-hover: oklch(92.8% 0.006 264.531); /* inverse surface on hover */
+  --color-inverse-ink: #000000; /* text on an inverse surface */
+  --color-scrim: #000000; /* modal/drawer backdrop, always used with opacity */
+  --color-paper: #ffffff; /* printed resume sheet (ResumePaper keeps its own neutral ink) */
+
+  /* Status intents: base, -strong, -soft, -deep (Tailwind emerald/red/amber/indigo). */
+  --color-success: oklch(76.5% 0.177 163.223);
+  --color-success-strong: oklch(69.6% 0.17 162.48);
+  --color-success-soft: oklch(84.5% 0.143 164.978);
+  --color-success-deep: oklch(37.8% 0.077 168.94);
+  --color-danger: oklch(70.4% 0.191 22.216);
+  --color-danger-strong: oklch(63.7% 0.237 25.331);
+  --color-danger-soft: oklch(80.8% 0.114 19.571);
+  --color-danger-deep: oklch(39.6% 0.141 25.723);
+  --color-warning: oklch(82.8% 0.189 84.429);
+  --color-info: oklch(67.3% 0.182 276.935);
+  --color-info-soft: oklch(78.5% 0.115 274.713);
+  --color-info-deep: oklch(35.9% 0.144 278.697);
 
   --animate-fade-in: fade-in 0.5s ease both;
   --animate-rise-in: rise-in 0.3s ease both;
@@ -70,7 +86,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Slim scrollbar matching the prototype's custom-scrollbar aesthetic */
+/* Slim scrollbar */
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: var(--color-edge-2) transparent;

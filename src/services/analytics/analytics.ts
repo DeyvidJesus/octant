@@ -1,12 +1,8 @@
 import posthog from 'posthog-js'
 
-/**
- * Product analytics (PostHog). Env-gated on `VITE_POSTHOG_KEY`: with no key every function below is
- * a no-op, so dev/test/CI never emit events and nothing breaks when analytics isn't configured.
- * We track explicit funnel events rather than autocapturing every click.
- */
+// PostHog analytics. Every function is a no-op without `VITE_POSTHOG_KEY`; autocapture is off.
 
-/** Canonical funnel event names — use these constants, never raw strings, to avoid drift. */
+/** Use these constants rather than raw strings. */
 export const AnalyticsEvent = {
   JobAdded: 'job_added',
   JobAnalyzed: 'job_analyzed',
@@ -16,8 +12,7 @@ export const AnalyticsEvent = {
   UpgradeStarted: 'upgrade_started',
   DiscoveryRunStarted: 'discovery_run_started',
   DiscoveryRunCompleted: 'discovery_run_completed',
-  // Auth/email funnel. `email_requested` records that the CLIENT asked for a send; whether it was
-  // actually delivered lives in `public.email_log`, which the Resend webhook keeps current.
+  // `email_requested` means the client asked for a send; delivery status is in `public.email_log`.
   EmailRequested: 'email_requested',
   PasswordResetRequested: 'password_reset_requested',
   MagicLinkRequested: 'magic_link_requested',

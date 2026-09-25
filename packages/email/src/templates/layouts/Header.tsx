@@ -1,7 +1,3 @@
-/**
- * Email header: the brand lockup, above the content card.
- */
-
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'
 import { Logo } from '../components/Logo.tsx'

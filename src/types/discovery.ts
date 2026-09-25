@@ -1,12 +1,7 @@
 import type { JobAnalysis } from './analysis'
 import type { JobSource, WorkMode } from './job'
 
-/**
- * Job Discovery: opportunities found by AI research (a pasted Deep Research
- * report, an in-app search-grounded sweep, or an in-app Deep Research run)
- * land here as *candidates* — never directly on the board. The user triages a
- * review queue (quality over quantity); only approval creates a JobOpportunity.
- */
+// AI-discovered jobs land as candidates in a review queue; only approval creates a JobOpportunity.
 
 export type CandidateOrigin = 'paste' | 'sweep' | 'deep-research' | 'agent'
 
@@ -27,20 +22,15 @@ export interface DiscoveredCandidate {
   /** Provenance for the card footer, e.g. "gemini · gemini-2.0-flash". */
   sourceNote: string
   foundAt: string
-  /**
-   * Local heuristic ATS score, computed at ingest so triage is score-informed.
-   * Undefined when the description is too thin to score honestly.
-   */
+  /** Heuristic ATS score computed at ingest; undefined when the description is too thin to score. */
   matchScore?: number
-  /** Full deterministic analysis (matched/missing/categoryBreakdown/seniority), persisted so the
-   *  card shows gaps without re-analysing. Undefined for thin/unscored candidates. */
+  /** Persisted so the card shows gaps without re-analysing. Undefined for unscored candidates. */
   analysis?: JobAnalysis
   /** Provenance from the continuous pipeline. */
   runId?: string
   strategyId?: string
-  /** AI enrichment lifecycle (Phase 3). */
   enrichmentStatus?: EnrichmentStatus
-  /** AI-generated fit explanation + action recommendation (Phase 3). */
+  /** AI-generated fit explanation and action recommendation. */
   explanation?: string
   recommendation?: string
 }

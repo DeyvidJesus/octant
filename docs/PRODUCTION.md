@@ -10,7 +10,7 @@ Guia único e ordenado para colocar todo o projeto no ar, **incluindo as 5 fases
      │  Supabase JS (JWT)      │
      ▼                         ▼
 [ Supabase ] Postgres + Auth + RLS + Realtime + Edge Functions (Deno)
-     │   Edge Functions (segredos server-side): ai-proxy, deep-research,
+     │   Edge Functions (segredos server-side): ai-proxy,
      │   discovery-worker, stripe-webhook, create-checkout/portal, get-plan-pricing, export-pdf
      ▼
 [ Provedores ]  Gemini (busca+estratégia+worker) · OpenAI (reasoning padrão) · Stripe · PostHog · Sentry
@@ -47,7 +47,7 @@ Supabase, Netlify (ou similar), Google AI Studio (Gemini). Opcionais: OpenAI, St
 ### 2.2 Supabase Edge Functions (`supabase secrets set`) — SERVIDOR
 | Segredo | Usado por | Obrigatório | Onde obter |
 |---|---|---|---|
-| `GEMINI_API_KEY` | discovery-worker, deep-research, ai-proxy (gemini) | ✅ (descoberta) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| `GEMINI_API_KEY` | discovery-worker, ai-proxy (gemini) | ✅ (descoberta) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | `OPENAI_API_KEY` | ai-proxy (provider padrão `gpt-4o`) | ✅ (reasoning) | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
 | `ANTHROPIC_API_KEY` | ai-proxy (claude) | ⬜ | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
 | `OPENROUTER_API_KEY` | ai-proxy (openrouter) | ⬜ | [openrouter.ai/keys](https://openrouter.ai/keys) |
@@ -85,7 +85,7 @@ Supabase, Netlify (ou similar), Google AI Studio (Gemini). Opcionais: OpenAI, St
 1. Crie o projeto; copie **Project URL** e **anon key** (Project Settings › API).
 2. **Aplique o schema.** Fonte de verdade: [`supabase-schema.sql`](../supabase-schema.sql) (consolidado — já inclui as tabelas de descoberta das Fases 1–4).
    - **Projeto novo:** SQL Editor → cole `supabase-schema.sql` → Run. (Cria tudo, incl. `search_profiles`, `discovery_runs`, `discovery_signals`, `discovered_jobs.score` e o realtime.)
-   - **Projeto existente:** aplique as migrations pendentes por `supabase db push` (ou cole no SQL Editor, em ordem): `0009` → `0010` → `0011` → `0012` → `0013`. Todas são **idempotentes**.
+   - **Projeto existente:** aplique as migrations pendentes por `supabase db push` (ou cole no SQL Editor, em ordem): `0009` → `0010` → `0011` → `0012` → `0013` → `0014` → `0015` → `0016`. Todas são **idempotentes**.
 3. **Auth:** Authentication › Providers → habilite **Email**. (Confirme a política de confirmação de email conforme sua preferência.)
 4. **Realtime:** garanta que Realtime está ligado no projeto (padrão no Supabase). As migrations já adicionam `discovered_jobs` e `discovery_runs` à publicação `supabase_realtime` com `replica identity full` — é o que faz o **feed incremental** (Fase 1) chegar sozinho.
 5. **RLS:** confirme (Table Editor) que todas as tabelas mostram RLS habilitado. O schema já define as policies `auth.uid() = user_id`.
@@ -126,9 +126,13 @@ supabase secrets set \
 ```
 
 ### E) Deploy das Edge Functions
+
+> **Atalho:** `yarn deploy:functions` regenera os bundles e publica todas as funções com a flag de JWT
+> certa ([scripts/deploy-functions.sh](../scripts/deploy-functions.sh)). `yarn deploy:functions ai-proxy`
+> publica só as nomeadas. Os comandos abaixo são o que ele executa.
+
 ```bash
 supabase functions deploy ai-proxy
-supabase functions deploy deep-research
 # O worker é chamado pelo scheduler via header `x-discovery-secret` (não um JWT do Supabase); ele
 # valida a segurança por dentro, então precisa de --no-verify-jwt (mesmo padrão do stripe-webhook):
 supabase functions deploy discovery-worker --no-verify-jwt
@@ -218,7 +222,7 @@ Alternativas equivalentes (só mudam "quem chama o endpoint"): **pg_cron + pg_ne
 - **Teto por usuário/mês:** Free `FREE_TIER_MONTHLY_TOKEN_LIMIT` (default 100k) e Pro `PRO_TIER_MONTHLY_TOKEN_LIMIT` (default 2M); `0` em qualquer um = ilimitado. Vale no `ai-proxy` e no `discovery-worker`.
 - **Cadência:** free 24h / pro 1h ([cadence.ts](../src/services/discovery/cadence.ts)); ajuste os números se o custo real pedir. O cron pode rodar de hora em hora sem problema — o worker só processa quem está "due".
 - **Monitoramento:** a tabela `discovery_runs` é o log (status, `stats`, `tokens_used`); `token_usage_logs` soma o consumo por usuário/mês. Comece **conservador** (cron 1×/dia) e aumente observando essas tabelas.
-- **Deep Research** é caro e permanece **manual** (não entra na coleta contínua).
+- **Deep Research** foi removido: a função `deep-research` não tinha chamador no app nem orçamento de tokens. Se ela ainda estiver publicada no projeto, apague com `supabase functions delete deep-research`.
 
 ## 7. Troubleshooting
 | Sintoma | Causa provável | Correção |

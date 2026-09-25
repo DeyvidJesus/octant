@@ -17,22 +17,15 @@ const CONFIG: EmailConfig = {
   retry: { attempts: 3, baseDelayMs: 10, maxDelayMs: 40 },
 }
 
-/** No real waiting, pinned jitter — the retry path is asserted, not timed. */
+/** No real waiting and pinned jitter: the retry path is asserted, not timed. */
 const RETRY_DEPS: RetryDeps = { sleep: () => Promise.resolve(), random: () => 1 }
 
-/**
- * The service logs through plain `console` (house convention, `[email]` prefix). Stubbing the three
- * methods keeps a passing run silent AND gives the log assertions something to inspect — the same thing
- * an injected logger did, without the abstraction.
- *
- * `ConsoleSpy` is a structural view of the spy: enough to read what was logged, without importing
- * vitest's generic mock types into every assertion.
- */
+/** Structural view of a console spy; stubbing console keeps runs silent and lets tests read the logs. */
 interface ConsoleSpy {
   mock: { calls: unknown[][] }
 }
 
-/** First argument of every recorded call, stringified. Each log call here passes one message. */
+/** First argument of every recorded call, stringified. */
 function loggedLines(spy: ConsoleSpy): string[] {
   return spy.mock.calls.map((call) => String(call[0]))
 }
@@ -208,7 +201,7 @@ describe('EmailService — failure handling', () => {
     const logged = loggedLines(consoleError).join('\n')
     expect(logged).toContain('[email]')
     expect(logged).toContain('welcome')
-    // The stable code, not just the prose — that is what makes the log searchable.
+    // The stable code is what makes the log searchable.
     expect(logged).toContain('EMAIL_VALIDATION')
   })
 
@@ -295,11 +288,7 @@ describe('createEmailService', () => {
   })
 })
 
-/**
- * Covers every public `send*` method through the generic `send()` entry point, so a new template with a
- * typo'd registry wiring fails here rather than in production. Uses the shared fixtures, minus the
- * injected `brand`.
- */
+// Every template through the generic `send()`, so broken registry wiring fails here, not in production.
 describe.each(TEMPLATE_NAMES)('EmailService.send("%s")', (name) => {
   it('renders and delivers with the registry subject', async () => {
     const { service, transport } = build()

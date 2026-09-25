@@ -56,16 +56,22 @@ function allowlist() {
   const raw = Deno.env.get("ALLOWED_ORIGINS") ?? Deno.env.get("APP_URL") ?? "";
   return raw.split(",").map((value) => value.trim().replace(/\/+$/, "")).filter(Boolean);
 }
+var BASE_HEADERS = {
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  Vary: "Origin"
+};
 function corsHeaders(req) {
   const allowed = allowlist();
+  if (allowed.length === 0) return { ...BASE_HEADERS, "Access-Control-Allow-Origin": "*" };
   const origin = (req.headers.get("Origin") ?? "").replace(/\/+$/, "");
-  const allowOrigin = allowed.length === 0 ? "*" : allowed.includes(origin) ? origin : allowed[0];
-  return {
-    "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, content-type",
-    Vary: "Origin"
-  };
+  if (origin !== "" && allowed.includes(origin)) {
+    return { ...BASE_HEADERS, "Access-Control-Allow-Origin": origin };
+  }
+  if (origin !== "") {
+    console.warn(`[cors] blocked origin "${origin}"; allowed: ${allowed.join(", ")}`);
+  }
+  return { ...BASE_HEADERS };
 }
 
 // src/utils/id.ts
@@ -1119,6 +1125,14 @@ async function selectDueUsers(admin) {
   }
   return due;
 }
+function timingSafeEqual(a, b) {
+  const left = new TextEncoder().encode(a);
+  const right = new TextEncoder().encode(b);
+  if (left.length !== right.length) return false;
+  let diff = 0;
+  for (let i = 0; i < left.length; i++) diff |= left[i] ^ right[i];
+  return diff === 0;
+}
 Deno.serve(async (req) => {
   const cors = corsHeaders(req);
   const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "content-type": "application/json" } });
@@ -1137,7 +1151,7 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get("Authorization");
   let userIds = [];
   let trigger = "scheduled";
-  if (cronSecret && providedSecret && providedSecret === cronSecret) {
+  if (cronSecret && providedSecret && timingSafeEqual(providedSecret, cronSecret)) {
     const body = await req.json().catch(() => ({}));
     userIds = Array.isArray(body.userIds) && body.userIds.length > 0 ? body.userIds.filter((id) => typeof id === "string") : await selectDueUsers(admin);
     trigger = "scheduled";

@@ -9,11 +9,7 @@ function safeFilename(name: string): string {
   return name.replace(/[/\\?%*:|"<>]+/g, '-').trim() || 'resume'
 }
 
-/**
- * Renders a tailored resume to a PDF via the `export-pdf` Edge Function and triggers a browser
- * download. The PDF comes from ONE standardized ATS template server-side, so output no longer varies
- * by the user's browser or OS. Requires an authenticated session (the JWT authorizes the function).
- */
+/** Renders server-side so the PDF doesn't vary by browser or OS, then triggers a download. Needs a session. */
 export async function exportResumePdf(tailored: TailoredResume, filename: string): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token

@@ -1,24 +1,10 @@
-/**
- * Where every email link lands.
- *
- * GoTrue's `/auth/v1/verify` endpoint validates the token hash, establishes the session, and then
- * redirects here. Before this route existed there was nowhere for a verification or magic link to go —
- * the only public route was `/login`, so a confirmed user was bounced to a sign-in form with no
- * explanation.
- *
- * Two cases have to be distinguished, because Supabase reuses the same redirect for both:
- *   * `type=recovery` → the session exists ONLY so the user can set a new password. Send them to
- *     `/reset-password`, not into the app; dropping them on the dashboard leaves the reset unfinished.
- *   * everything else → a normal session. Go to the app.
- *
- * An error arrives as query or hash params (`error`, `error_description`) — most often an expired link,
- * which needs an actionable message rather than a spinner that never resolves.
- */
+// Landing route for every email link after GoTrue verifies it. Recovery goes to /reset-password,
+// anything else into the app; `error` params (usually an expired link) show a message.
 
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { APP_NAME } from '@/constants/brand'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/contexts/useAuth'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 
@@ -66,14 +52,14 @@ export function AuthCallbackPage() {
     )
   }
 
-  // Session established → into the app. AuthContext also fires the welcome email at this point.
+  // AuthContext also sends the welcome email at this point.
   if (!isLoading && session) return <Navigate to="/" replace />
   if (!isLoading && !session) return <Navigate to="/login" replace />
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-base" role="status" aria-live="polite">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink-strong mx-auto mb-4" />
         <p className="text-sm text-muted">Signing you in to {APP_NAME}…</p>
       </div>
     </div>

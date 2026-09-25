@@ -9,10 +9,7 @@ interface ApplicationRow {
   data: Application
 }
 
-/**
- * Data-access boundary for the application-tracker domain.
- * All methods are RLS-scoped to the current user and throw `AppError` subclasses on failure.
- */
+/** Data access for applications. RLS-scoped to the current user; throws `AppError` subclasses. */
 export class ApplicationRepository extends BaseRepository {
   async getApplications(): Promise<Application[]> {
     const userId = this.requireUserId()
@@ -41,10 +38,7 @@ export class ApplicationRepository extends BaseRepository {
     )
   }
 
-  /**
-   * Streams cross-device changes to the current user's applications. `onUpsert` fires for
-   * INSERT/UPDATE, `onDelete` for DELETE. Returns an unsubscribe function.
-   */
+  /** Streams cross-device changes to the user's applications. Returns an unsubscribe function. */
   subscribeToApplications(handlers: {
     onUpsert: (application: Application) => void
     onDelete: (id: string) => void
@@ -56,5 +50,5 @@ export class ApplicationRepository extends BaseRepository {
   }
 }
 
-/** Shared singleton — import this from stores. The class is exported for testing/DI. */
+/** Shared singleton for stores; the class is exported for tests. */
 export const applicationRepository = new ApplicationRepository()

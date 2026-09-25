@@ -3,12 +3,12 @@ import type { AiRunConfig } from '@/services/ai/types'
 import { DEFAULT_DISCOVERY_PREFS, type DiscoveryPrefs } from '@/types/discovery'
 import { settingsRepository } from '@/repositories/SettingsRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
-import { persist } from '@/repositories/persist'
+import { persist } from './persist'
 
 interface SettingsState {
+  /** Legacy discovery prefs kept so older rows round-trip; discovery now reads `search_profiles`. */
   discovery: DiscoveryPrefs
   onboardingCompleted: boolean
-  setDiscoveryPrefs: (patch: Partial<DiscoveryPrefs>) => void
   completeOnboarding: () => void
   _fetchFromSupabase: () => Promise<void>
   /** Clears in-memory state (sign-out / user switch) so no data bleeds across sessions. */
@@ -20,13 +20,6 @@ export const useSettingsStore = create<SettingsState>()(
     discovery: DEFAULT_DISCOVERY_PREFS,
     onboardingCompleted: false,
 
-    setDiscoveryPrefs: (patch) => {
-      set((state) => ({ discovery: { ...state.discovery, ...patch } }))
-      persist(
-        () => settingsRepository.saveSettings({ discovery: get().discovery, onboardingCompleted: get().onboardingCompleted }),
-        'settings.setDiscoveryPrefs',
-      )
-    },
     completeOnboarding: () => {
       set({ onboardingCompleted: true })
       persist(
@@ -47,14 +40,7 @@ export const useSettingsStore = create<SettingsState>()(
   })
 )
 
-/**
- * Resolve the current selection into a runnable config.
- *
- * Vendor keys live server-side in the `ai-proxy` Edge Function (Phase 6), so the client no longer
- * needs a `VITE_OPENAI_API_KEY` to enable AI features — the proxy injects the key and authorizes by
- * the user's JWT. Returns a default hosted config; the proxy surfaces a clear error if its key is
- * unset. (`apiKey` is intentionally omitted — proxied providers ignore any client key.)
- */
+/** Returns the default hosted AI config. No `apiKey`: `ai-proxy` holds vendor keys and authorizes by JWT. */
 export function resolveAiRunConfig(): AiRunConfig {
   return { providerId: 'openai', model: 'gpt-4o' }
 }

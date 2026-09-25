@@ -1,15 +1,7 @@
 import type { AiProviderId } from '@/types/ai'
 
-/**
- * The AI seam of Octant. Every provider (Claude, OpenAI, Gemini, OpenRouter,
- * local models, future vendors) implements this one interface; the rest of the
- * app talks only in normalized messages and never sees a vendor wire format.
- *
- * This layer is deliberately dumb: it moves messages in and text out. It knows
- * nothing about resumes, jobs, or truth. Domain intelligence and the
- * anti-hallucination guardrails live one layer up, in `services/ai/tasks` and
- * `services/ai/guardrails`.
- */
+// Provider-agnostic AI interface: normalized messages in, text out. Domain logic and
+// guardrails live in `services/ai/tasks` and `services/ai/guardrails`.
 
 export type ChatRole = 'system' | 'user' | 'assistant'
 
@@ -27,11 +19,7 @@ export interface CompletionRequest {
   baseUrl?: string
   temperature?: number
   maxTokens?: number
-  /**
-   * Ground this completion in live web search results. Providers that cannot
-   * MUST throw AiError rather than silently answer from parametric memory —
-   * an ungrounded "current job listing" is a hallucination.
-   */
+  /** Ground in live web search. Providers that can't must throw AiError, not answer from memory. */
   webSearch?: boolean
   signal?: AbortSignal
 }
@@ -48,8 +36,7 @@ export interface LLMProvider {
   complete(request: CompletionRequest): Promise<CompletionResult>
 }
 
-/** Everything a task needs to reach a provider. Hosted-vendor keys live server-side in the ai-proxy
- * Edge Function; `apiKey` is only ever set for a local (offline) model with a custom config. */
+/** Hosted-vendor keys live in the ai-proxy Edge Function; `apiKey` is only set for local models. */
 export interface AiRunConfig {
   providerId: AiProviderId
   model: string

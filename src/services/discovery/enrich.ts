@@ -5,14 +5,8 @@ import { checkGrounding } from '@/services/ai/guardrails/grounding'
 import { collectResumeSkills } from '@/services/analysis/match'
 import { candidateToEphemeralJob } from './pipeline'
 
-/**
- * AI enrichment for the highest-relevance candidates (Phase 3 "Intelligence"). Deterministic score +
- * gaps already live on the candidate's persisted `analysis`; this adds the two things code is bad at:
- * a grounded fit EXPLANATION and an action RECOMMENDATION. Cost is controlled by only enriching the
- * top-K new candidates per run (plus on-demand from the card). Transport is injected so it runs in the
- * browser (ai-proxy) and the Deno worker (server key) unchanged. Reuses the Recruiter Read prompt +
- * grounding guardrail — a hallucinated explanation is dropped rather than persisted.
- */
+// Adds a grounded AI fit explanation and a recommendation to a candidate. Transport is injected
+// so this runs in both the browser and the Deno worker.
 
 export type EnrichCompleteFn = (system: string, user: string) => Promise<string>
 
@@ -45,10 +39,7 @@ export function buildRecommendation(candidate: DiscoveredCandidate): string {
     : 'Stretch role — apply only if it strongly aligns with your goals.'
 }
 
-/**
- * Produces the enrichment patch for a candidate. The recommendation is deterministic; the explanation
- * is a grounded AI read (dropped if it mentions skills outside the resume + job — anti-hallucination).
- */
+/** The explanation is dropped if it names skills outside the resume and job. */
 export async function enrichCandidate(
   candidate: DiscoveredCandidate,
   resume: MasterResume,

@@ -1,19 +1,11 @@
-/**
- * Single source of truth for the Interview Prep module. Everything else
- * (the deterministic generator, the static question bank, the behavioral set,
- * the store, the page, and the dashboard) imports from here — no local
- * re-declarations of these concepts.
- */
+// Shared Interview Prep types; import from here rather than redeclaring them.
 
 /** The three readiness categories surfaced on the dashboard. */
 export type InterviewQuestionCategory = 'technical' | 'behavioral' | 'architecture'
 
 export type PrepDifficulty = 'beginner' | 'intermediate' | 'advanced'
 
-/**
- * How relevant a question is to the selected job, driving ordering. Behavioral
- * and architecture questions default to `resume-core` when there is no JD signal.
- */
+/** Relevance to the selected job, used for ordering; `resume-core` when there is no JD signal. */
 export type PrepPriority = 'required-missing' | 'required-matched' | 'preferred' | 'resume-core'
 
 /** A single generated (deterministic) interview question. */
@@ -61,10 +53,7 @@ export type InterviewPrepStatus =
   | 'review_next_week'
   | 'mastered'
 
-/**
- * A question the user has engaged with, merged with their progress. Denormalized
- * so the dashboard can compute readiness without re-running the generator.
- */
+/** Question plus user progress, denormalized so the dashboard needn't re-run the generator. */
 export interface TrackedQuestion {
   id: string
   category: InterviewQuestionCategory
@@ -79,10 +68,7 @@ export interface TrackedQuestion {
   lastReviewedAt?: string
 }
 
-/**
- * Per-skill mastery, driven by AI answer scores (Phase 10) rather than manual self-rating. One row
- * per (user, skill) in `user_skills`; `mastery` is a running 0-100 blend of scored answers.
- */
+/** One `user_skills` row per (user, skill); `mastery` is a running 0-100 blend of AI answer scores. */
 export interface UserSkill {
   skill: string
   category: InterviewQuestionCategory

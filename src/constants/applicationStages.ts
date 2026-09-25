@@ -21,7 +21,7 @@ export const INTERVIEW_STAGES: ApplicationStage[] = ['screening', 'interviewing'
 /** Terminal stages — the application is closed, favorably or not. */
 export const TERMINAL_STAGES: ApplicationStage[] = ['accepted', 'rejected', 'withdrawn', 'ghosted']
 
-/** Pill classes per stage (background/border/text) for badges and board headers. */
+/** Categorical palette (one hue per stage), so it uses raw Tailwind hues instead of status tokens. */
 export const APPLICATION_STAGE_COLORS: Record<ApplicationStage, string> = {
   saved: 'bg-surface-2 border-edge-2 text-ink-2',
   applied: 'bg-indigo-900/30 border-indigo-800/50 text-indigo-300',
@@ -42,11 +42,7 @@ export interface BoardColumn {
   stages: ApplicationStage[]
 }
 
-/**
- * Board layout: the six active pipeline stages as their own columns, with all
- * terminal stages aggregated into a single "Closed" column so the board stays
- * scannable. Dropping onto "Closed" defaults to the first terminal stage.
- */
+/** Active stages get their own columns; terminal stages share "Closed" (drops default to the first). */
 export const BOARD_COLUMNS: BoardColumn[] = [
   { key: 'saved', label: 'Saved', stages: ['saved'] },
   { key: 'applied', label: 'Applied', stages: ['applied'] },

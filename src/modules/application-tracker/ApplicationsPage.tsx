@@ -65,7 +65,7 @@ function ViewToggle({
       onClick={onClick}
       aria-pressed={active}
       className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors ${
-        active ? 'bg-white text-black font-medium' : 'text-muted hover:text-ink-2'
+        active ? 'bg-inverse text-inverse-ink font-medium' : 'text-muted hover:text-ink-2'
       }`}
     >
       <Icon size={15} aria-hidden />

@@ -60,9 +60,7 @@ export function JobAnalysisPage() {
     }
   }
 
-  // Analysis is instant, local, and non-destructive — run it automatically the
-  // first time an unanalyzed job is opened so there's no extra click. Re-runs
-  // stay explicit via the "Re-run" button.
+  // Analysis is local and non-destructive, so run it automatically the first time a job is opened.
   useEffect(() => {
     if (job && !analysis && !autoRan.current) {
       autoRan.current = true
@@ -112,9 +110,9 @@ export function JobAnalysisPage() {
       <div className="flex items-center justify-center h-full animate-fade-in">
         <div className="text-center max-w-md px-6">
           <div className="w-16 h-16 bg-surface border border-edge-2 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
-            <Loader2 size={32} className={`text-white ${running ? 'animate-spin' : ''}`} aria-hidden />
+            <Loader2 size={32} className={`text-ink-strong ${running ? 'animate-spin' : ''}`} aria-hidden />
           </div>
-          <h2 className="text-2xl font-semibold text-white mb-3">
+          <h2 className="text-2xl font-semibold text-ink-strong mb-3">
             {running ? 'Analyzing…' : 'Job Analyzer'}
           </h2>
           <p className="text-muted text-sm mb-8 leading-relaxed">
@@ -139,7 +137,7 @@ export function JobAnalysisPage() {
       <div className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-edge bg-base lg:overflow-y-auto custom-scrollbar py-6 shrink-0">
         <div className="px-6 mb-6">
           <div className="text-xs text-faint font-semibold uppercase tracking-widest mb-1">Target</div>
-          <div className="text-white font-medium truncate">{job.company}</div>
+          <div className="text-ink-strong font-medium truncate">{job.company}</div>
           <div className="text-muted text-xs truncate">{job.role}</div>
         </div>
 
@@ -151,11 +149,11 @@ export function JobAnalysisPage() {
               aria-current={activeSection === section.id}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left whitespace-nowrap shrink-0 lg:w-full transition border ${
                 activeSection === section.id
-                  ? 'bg-surface-2 text-white border-edge-2'
+                  ? 'bg-surface-2 text-ink-strong border-edge-2'
                   : 'text-muted hover:text-ink-2 border-transparent'
               }`}
             >
-              <section.icon size={14} className={activeSection === section.id ? 'text-white' : 'text-edge-3'} aria-hidden />
+              <section.icon size={14} className={activeSection === section.id ? 'text-ink-strong' : 'text-edge-3'} aria-hidden />
               <span className="truncate">{section.title}</span>
             </button>
           ))}
@@ -179,7 +177,7 @@ export function JobAnalysisPage() {
 
       <div className="flex-1 lg:overflow-y-auto custom-scrollbar p-6 lg:p-10 bg-base">
         <div className="max-w-3xl animate-rise-in" key={activeSection}>
-          <h2 className="text-2xl font-semibold text-white mb-6">
+          <h2 className="text-2xl font-semibold text-ink-strong mb-6">
             {SECTIONS.find((section) => section.id === activeSection)?.title}
           </h2>
           {activeSection === 'requirements' && <DetectedRequirements analysis={analysis} />}

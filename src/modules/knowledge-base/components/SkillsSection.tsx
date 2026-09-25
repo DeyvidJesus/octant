@@ -37,7 +37,7 @@ export function SkillsSection({ skills, onChange, query }: SkillsSectionProps) {
       }
       itemTitle={(skill) => (
         <span className="flex items-center gap-2">
-          {skill.favorite && <span className="text-amber-400" aria-label="Favorite">★</span>}
+          {skill.favorite && <span className="text-warning" aria-label="Favorite">★</span>}
           {skill.canonical || 'Untitled skill'}
           {skill.category && <span className="text-faint">· {skill.category}</span>}
         </span>

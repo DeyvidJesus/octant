@@ -1,121 +1,222 @@
 # Octant
 
-A local-first personal Career Operating System. The **Master Resume** is the single source of
-truth; job analysis, tailored resumes, interview preparation, application tracking, and career
-metrics all derive from it.
+[![CI](https://github.com/DeyvidJesus/octant/actions/workflows/ci.yml/badge.svg)](https://github.com/DeyvidJesus/octant/actions/workflows/ci.yml)
 
-All data lives on this device (IndexedDB). Export a JSON backup regularly from **Settings**.
+**Live:** [useoctant.com](https://useoctant.com/login)
 
-## Stack
+**A career operating system for software engineers.** You describe your career once, in a structured
+knowledge base, and Octant derives everything else from it: how well you match each job, a résumé
+tailored to that job, interview preparation for it, the application pipeline, and the metrics of your
+search. An agent keeps looking for new openings while you're offline.
 
-- React 19 + TypeScript + Vite
-- Tailwind CSS v4 (CSS-first config, design tokens in `src/styles/index.css`)
-- Zustand (persisted stores) + Dexie (IndexedDB) behind a `KeyValueStore` seam
-- react-router-dom
+The design principle behind all of it: **deterministic code owns the truth, the LLM only owns the
+language.** Scores, matches and résumé content are computed from your real data; AI explains, drafts
+questions or grades answers, and its output is checked by code before you see it.
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+---
+
+## What it does
+
+| Area | What you get |
+|---|---|
+| **Knowledge base** | Profile, experience, projects, skills, credentials, stories and metrics as typed entities. Import from a pasted résumé with AI; everything imported starts as *needs review*. |
+| **Job analysis** | Paste a job description → required vs. nice-to-have skills, seniority, an ATS-style match score, gaps and strengths. A "Recruiter Read" (AI) gives an honest verdict, with unverified claims flagged. |
+| **Résumé generator** | Selects and ranks your real bullets and projects for one job. Toggle any line and a coverage meter shows its keyword cost instantly. Server-rendered, ATS-safe PDF; Markdown/plain-text export. |
+| **Discovery agent** | Searches for current openings (grounded web search), de-duplicates, scores them against your résumé, and queues them for your approval. Runs in the open app and on a schedule. Learns from what you approve or dismiss. |
+| **Application tracker** | Kanban board (drag and drop, or keyboard) and a sortable table, with follow-ups, contacts and an activity timeline per application. |
+| **Interview prep** | Technical, behavioral (STAR) and system-design questions from the job's stack and your gaps. An AI coach grades your answers; mastery per skill accumulates over time. |
+| **Metrics** | Funnel and conversion, response/offer/ghost rates, time in stage, weekly activity, match-score distribution. |
+| **Plans** | Free and Pro via Stripe Checkout and Customer Portal. Limits are enforced by the database, not just the UI. |
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/job-analysis.png" alt="Job analysis: must-have and nice-to-have skills, matched in green and missing in red"></td>
+    <td><img src="docs/screenshots/resume-generator.png" alt="Résumé generator with a live keyword-coverage meter and toggleable bullets"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Job analysis: required vs. nice-to-have, matched vs. missing</sub></td>
+    <td align="center"><sub>Résumé generator: toggle a bullet, watch coverage change</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/job-board.png" alt="Discovery agent review queue with ATS scores and recommendations"></td>
+    <td><img src="docs/screenshots/applications-board.png" alt="Kanban board of applications"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Discovery agent: nothing reaches the board without approval</sub></td>
+    <td align="center"><sub>Application tracker (drag and drop or keyboard)</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/interview-prep.png" alt="Interview prep with readiness per category and the AI coach"></td>
+    <td><img src="docs/screenshots/metrics.png" alt="Career metrics: rates, funnel, outcomes, time in stage"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Interview prep and AI coach</sub></td>
+    <td align="center"><sub>Career metrics</sub></td>
+  </tr>
+</table>
+
+<sub>Screenshots use a fictional demo persona, rendered locally with the Supabase backend mocked.</sub>
+
+## How it stays honest
+
+- **Matching is a set intersection.** A skill counts as matched only if it is in both the job and your
+  résumé, so no analyzer can invent experience. ATS score = matched weight / total weight, with
+  required skills weighted ×2 ([src/services/analysis](src/services/analysis)).
+- **The anti-hallucination guardrail is code, not a prompt.** Generated text is scanned with the same
+  skill extractor used for analysis; any skill it names that isn't in your résumé or the job is flagged
+  (or, for agent-written explanations, the text is dropped) ([grounding.ts](src/services/ai/guardrails/grounding.ts)).
+- **The generator cannot write a word.** It only selects and orders existing content, and every bullet
+  keeps the id of the fact it came from ([src/services/generator](src/services/generator)).
+- **AI transcribes, code decides.** Résumé import, job extraction and question generation ask the model
+  for JSON only, then validate and normalize it deterministically, with one corrective retry.
+
+---
 
 ## Architecture
 
+```mermaid
+graph LR
+    subgraph Browser [React SPA · Netlify]
+        UI[modules / components] --> Stores[Zustand stores]
+        Stores --> Repos[repositories]
+        Stores --> Core[services: pure domain logic]
+    end
+    subgraph Supabase
+        DB[(Postgres + RLS)]
+        RT[Realtime]
+        subgraph Edge [Edge Functions · Deno]
+            Proxy[ai-proxy]
+            Worker[discovery-worker]
+            Billing[stripe-webhook · checkout · portal]
+            Mail[auth-email-hook · send-email · resend-webhook]
+            PDF[export-pdf]
+        end
+    end
+    Repos --> DB
+    DB --> RT --> Stores
+    Core -. same code .-> Worker
+    Stores --> Proxy --> LLM[(OpenAI · Gemini · Claude)]
+    Cron[GitHub Actions hourly] --> Worker
+    Stripe[(Stripe)] --> Billing --> DB
+    Mail --> Resend[(Resend)]
+```
+
+**Layers** (enforced by lint rules in [.oxlintrc.json](.oxlintrc.json)):
+`modules/components → stores → repositories/services → types/utils/constants`. UI never touches
+Supabase or a repository directly; `services/` and `repositories/` never import React or stores. The
+pure core in `services/` runs both in the browser and in the Deno `discovery-worker`.
+
+Full write-up: [docs/architecture.md](docs/architecture.md).
+
+### Engineering highlights
+
+**Frontend**
+- **Optimistic, store-driven UI.** Mutations apply synchronously; `persist()` writes in the background,
+  and on failure shows a toast and reconciles with the server (e.g. a row rejected by a plan cap disappears).
+- **Realtime sync across devices**, merged idempotently by id (which also absorbs a device's own echo).
+  Hydration is keyed on the user id, and every store resets on sign-out or user switch.
+- **Design system on Tailwind v4 tokens**: surfaces, ink, inversion and status intents
+  (`success/danger/warning/info`). Primitives merge classes with `cn()` (tailwind-merge), and a test
+  fails the build if a raw palette class appears in UI code.
+- **Code splitting**: heavy routes are lazy, and so are the dashboard's charts, which keeps Recharts
+  (~110 KB gzip) out of the preload list of every other page, login included.
+- **Accessibility**: keyboard moves between Kanban columns, focus-trapped modals that restore focus on
+  close, `role="meter"` scores, labelled icon buttons, promise-based confirm dialog, `aria-live` toasts.
+
+**Backend**
+- **RLS on every table**; free-plan caps live in RLS `WITH CHECK` policies (with upserts of existing rows exempted).
+- **`ai-proxy`**: vendor keys server-side, fixed endpoint allowlist (no SSRF), output-size clamp,
+  monthly token budget per plan.
+- **Stripe webhook**: signature-verified; the subscription upsert is the contract (DB error → 500 so
+  Stripe retries), billing emails are best-effort and never cause a redelivery.
+- **Idempotent email**: a unique `email_log.idempotency_key` claim row plus the same key sent to Resend;
+  out-of-order delivery webhooks cannot move a status backwards.
+- **One source, two runtimes**: an esbuild step bundles the shared TypeScript core for the Deno edge
+  runtime ([scripts/bundle-functions.mjs](scripts/bundle-functions.mjs)); CI fails if a bundle is stale.
+
+---
+
+## Tech stack
+
+| | |
+|---|---|
+| **App** | React 19, TypeScript (strict), Vite, React Router 7, Zustand, Tailwind CSS v4, Recharts, lucide-react |
+| **Backend** | Supabase: Postgres, Auth, Row Level Security, Realtime, Edge Functions (Deno) |
+| **AI** | Provider-agnostic adapters (OpenAI, Gemini with Google Search grounding, Claude, OpenRouter, local OpenAI-compatible) behind one `LLMProvider` interface |
+| **Services** | Stripe (billing), Resend + React Email (14 transactional templates), PostHog, Sentry |
+| **Quality** | Vitest + Testing Library (happy-dom), oxlint, GitHub Actions |
+
+## Project structure
+
 ```
 src/
-├── app/          # Router + layout shell
-├── components/   # Shared, domain-agnostic UI primitives (ui/) and layout (layout/)
-├── modules/      # One folder per product module (pages + module-specific components)
-├── services/     # Framework-free logic: storage/, analysis/ (analyzer seam), ai/ (provider seam)
-├── stores/       # Zustand stores: resume, jobs (+analyses), applications, settings
-├── types/        # Domain types — zero dependencies
-├── constants/    # Seed data, skill taxonomy, navigation, application stages
-└── utils/
+├── app/           # Router (lazy routes), layout shell
+├── contexts/      # Auth: session → hydration → realtime
+├── modules/       # One folder per feature (pages + feature components)
+├── components/    # Domain-agnostic UI primitives and layout
+├── stores/        # Zustand stores, persist(), cross-store orchestration
+├── repositories/  # The only code that queries Supabase tables
+├── services/      # Pure domain logic: analysis, generator, discovery, interview prep, metrics, AI
+├── constants/ types/ utils/
+└── styles/        # Design tokens
+packages/email/    # Server-only email module (templates, renderer, Resend transport, retry)
+supabase/
+├── functions/     # Edge Functions
+└── migrations/    # Schema history (0001 → 0016)
 ```
 
-Rules:
+## Getting started
 
-- `services/` never imports React; `types/` imports nothing.
-- `components/ui` is domain-agnostic; module-specific components live inside their module.
-- The analyzer is behind the `JobAnalyzer` interface (`services/analysis/types.ts`). Today it's a
-  deterministic local heuristic; an LLM-backed analyzer can plug in later without touching the UI.
-  Structural guarantee: `match.matched` is always a set intersection of JD skills ∩ resume skills —
-  no analyzer can invent experience.
-
-### AI layer (`services/ai/`)
-
-Provider-agnostic and hybrid by design. Nothing in the app names a vendor.
-
-- **Providers are plugins.** Every vendor implements one `LLMProvider` adapter (`providers/`):
-  Claude, OpenAI, Gemini, OpenRouter, and any local OpenAI-compatible server (Ollama/LM Studio).
-  Adding a vendor is a descriptor in `registry.ts` + an adapter — no UI or task changes. The model
-  field is free text, so new models work the day they ship.
-- **Deterministic owns truth; the LLM owns language.** `services/analysis/` computes scoring,
-  matching, and keywords and never imports `services/ai/`. Tasks in `ai/tasks/` consume that
-  structured output and do only what humans are good at (judgment, rewriting, explanation).
-- **The anti-hallucination guardrail is code, not a prompt** (`guardrails/grounding.ts`). Generated
-  text is scanned with the same taxonomy extractor used for analysis; any skill it names that isn't
-  in the Master Resume ∪ the job description is flagged to the user as unverified. The structured
-  model always wins.
-- **Keys never leave the device.** API keys live in a vault (`vault.ts`) under a non-`careeros:`
-  prefix, so they are structurally excluded from exported backups. Everything degrades gracefully:
-  with no provider configured, all deterministic features work unchanged.
-- First task shipped: **Recruiter Read** — turns the deterministic match report into a recruiter's
-  honest interview verdict (see the Job Analysis page).
-
-### Job Discovery (`/jobs/discovery`)
-
-Real openings flow in from three sources, all through one pipeline:
-`extract (LLM transcribes → code validates) → dedupe (deterministic, vs board/queue/dismissed) →
-local ATS scoring → review queue`. Nothing reaches the board without explicit approval —
-quality over quantity, enforced by flow.
-
-- **Paste Report** (free): paste a Gemini Deep Research run from the Gemini app — its Scheduled
-  Actions can produce one daily. Works with any configured provider, including local models.
-- **Web Sweep** (~cents): a search-grounded completion finds current postings matching your
-  Master Resume + discovery preferences (Settings). Requires a provider with the
-  `supportsWebSearch` capability (Gemini today). Non-capable adapters throw rather than
-  hallucinate listings.
-- **Deep Research** (~$1–3, 5–20 min): an in-app exhaustive research agent on your Gemini key.
-  Async and resumable — the interaction id persists across reloads.
-
-"Daily" in a local-first app = an opt-in staleness banner on the board when the last sweep
-is >24h old. Nothing runs (or spends) in the background.
-
-### Resume Generator (`/generator`)
-
-Deterministic tailoring — the generator **selects, ranks, and reorders** real Master Resume
-content per job; it cannot write a word of its own. Every bullet carries the id of its source
-accomplishment (traceability = the anti-invention guarantee, `types/generator.ts`).
-
-- Relevance scoring mirrors the ATS score's weighting (required×2, frequency), so "relevant"
-  means the same thing in both places (`services/generator/score.ts`).
-- Live **keyword coverage meter**: recomputed from included content on every bullet toggle —
-  trimming a line shows its ATS cost immediately.
-- ATS-safe paper: single column, no tables/icons/colors; print CSS strips all app chrome so
-  Print → Save as PDF ships exactly the preview. Markdown + plain-text exports for web forms.
-- Staleness detection: the document remembers the Master Resume `updatedAt` it was built from.
-
-## Development
+Requirements: Node 22+, Yarn 1, a Supabase project.
 
 ```bash
-npm install
-npm run dev      # start dev server
-npm run build    # typecheck + production build
-npm run lint     # oxlint
+yarn install
+cp .env.example .env   # set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+yarn dev
 ```
 
-## Roadmap
+Database: run `supabase-schema.sql`, then the migrations it lists, in the Supabase SQL editor. Edge
+Functions, secrets and the discovery scheduler are covered step by step in
+[docs/PRODUCTION.md](docs/PRODUCTION.md).
 
-1. ✅ Foundation (scaffold, persistence, local analyzer)
-2. ✅ Master Resume editor (full rich entity model + CRUD)
-3. ✅ Job Opportunities (paste real JDs, must-have/nice-to-have analysis)
-4. ✅ AI provider layer (provider-agnostic adapters, guardrails, key vault, Recruiter Read) +
-   Job Discovery (paste/sweep/Deep Research → review queue) + Resume Generator (deterministic
-   tailoring with live coverage meter, print/PDF + markdown export)
-5. ✅ Application Tracker (board + table views, drag-to-move stages, rich fields — contacts,
-   comp/logistics, follow-ups with overdue surfacing, and a per-application activity timeline)
-6. ✅ Career Metrics + Dashboard v2 (funnel & conversion, response/offer/ghost rates, stage
-   velocity, activity + match-score trends — Recharts on the dark theme; dashboard shows a
-   pipeline + activity preview)
-7. ✅ Interview Preparation (deterministic technical/behavioral/system-design questions with
-   model answers, persisted per-question progress + readiness dashboard, and a grounded AI
-   practice coach) — pulled ahead of #5/#6
-8. Knowledge Base + Repository/Dexie-tables migration
-9. Polish (keyboard navigation, command palette, accessibility, light mode)
+| Script | What it does |
+|---|---|
+| `yarn dev` | Vite dev server |
+| `yarn test` | Vitest (≈490 tests) |
+| `yarn lint` | oxlint, including layer-boundary rules |
+| `yarn build` | Type-check + production build |
+| `yarn build:functions` | Regenerate the bundled Edge Functions (run after editing a `worker.ts`/`handler.ts`) |
+| `yarn deploy:functions` | Rebuild and deploy every Edge Function with the right JWT flag (Supabase CLI) |
+| `yarn email:dev` | Preview email templates |
 
-See `docs/DESIGN_REVIEW.md` for the full architectural review that shapes this roadmap.
+## Testing
+
+Most of the value is in pure functions, so most tests are fast unit tests: the skill extractor and
+matcher, résumé generation and coverage, metrics, discovery (dedupe, strategies, learning, cadence),
+AI response parsers, the grounding guardrail and email mapping/rendering. Component tests (happy-dom)
+cover auth flows, the Kanban board (keyboard moves, drag and drop), the focus trap, the confirm dialog
+and toasts. CI runs lint, tests, the build, `deno check` on the
+hand-written Edge Functions and the bundle freshness check on every push and pull request.
+
+## Known trade-offs
+
+- **No offline queue.** Failed writes are surfaced and reconciled, not retried.
+- **Last write wins** across devices.
+- **JSONB rows aren't schema-validated in the database**; RLS controls who writes, not what.
+- **Knowledge-base relations** (fact → role/project) have no picker yet.
+
+Details and history: [docs/technical-debt.md](docs/technical-debt.md).
+
+## Documentation
+
+| Doc | Topic |
+|---|---|
+| [docs/architecture.md](docs/architecture.md) | Layers, data flow, design system, trade-offs |
+| [docs/database.md](docs/database.md) · [docs/supabase.md](docs/supabase.md) | Schema, RLS, realtime |
+| [docs/ai.md](docs/ai.md) | Providers, tasks, guardrails |
+| [docs/resume-engine.md](docs/resume-engine.md) · [docs/interview-engine.md](docs/interview-engine.md) | Generator and interview prep |
+| [docs/email.md](docs/email.md) | Email architecture |
+| [docs/PRODUCTION.md](docs/PRODUCTION.md) | Go-live runbook |
+| [docs/DESIGN_REVIEW.md](docs/DESIGN_REVIEW.md) · [docs/technical-debt.md](docs/technical-debt.md) | Reviews that shaped the roadmap |

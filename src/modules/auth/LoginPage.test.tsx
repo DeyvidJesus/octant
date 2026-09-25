@@ -4,12 +4,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router-dom'
 import { LoginPage } from './LoginPage'
 
-/**
- * Covers the three modes the sign-in screen now has, and — most importantly — that each one calls the
- * right auth service. The services are what attach the `emailRedirectTo` / `redirectTo` values the email
- * links depend on, so wiring a button to the wrong one produces a working-looking form whose emails
- * dead-end. That is exactly the kind of failure no type check catches.
- */
+// Each mode must call its own auth service, since the services set the redirect URLs email links need.
 
 const signIn = vi.fn()
 const signUp = vi.fn()
@@ -21,7 +16,7 @@ vi.mock('@/services/supabase/auth', () => ({
   sendMagicLink: (...args: unknown[]) => sendMagicLink(...args),
 }))
 
-vi.mock('@/contexts/AuthContext', () => ({
+vi.mock('@/contexts/useAuth', () => ({
   useAuth: () => ({ session: null, user: null, isLoading: false }),
 }))
 
@@ -95,7 +90,7 @@ describe('LoginPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign up' }))
 
     expect(await screen.findByText(/Check your email to confirm/)).toBeInTheDocument()
-    // …and drops back to the sign-in form, since there is nothing else to do until they confirm.
+    // Returns to the sign-in form until the address is confirmed.
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument()
   })
 

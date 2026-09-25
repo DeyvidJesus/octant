@@ -51,8 +51,8 @@ export const FACT_STATUS_LABELS: Record<FactStatus, string> = {
 }
 
 /** Badge tone per status — reuses the app's four Badge tones. */
-export const FACT_STATUS_TONES: Record<FactStatus, 'default' | 'indigo' | 'emerald' | 'red'> = {
-  confirmed: 'emerald',
-  needs_review: 'indigo',
+export const FACT_STATUS_TONES: Record<FactStatus, 'default' | 'info' | 'success' | 'danger'> = {
+  confirmed: 'success',
+  needs_review: 'info',
   todo: 'default',
 }

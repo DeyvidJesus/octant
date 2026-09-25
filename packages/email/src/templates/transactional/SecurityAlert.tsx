@@ -1,10 +1,5 @@
-/**
- * Security Alert — new sign-in, new device, suspicious activity, or a reauthentication code.
- *
- * One template covers all four because the body is identical apart from the headline and the lead
- * sentence; only the reauthentication case adds a code block. Splitting it into four files would
- * duplicate the metadata table and the "secure your account" advice four times.
- */
+// New sign-in, new device, suspicious activity or reauthentication code; only the headline, lead and
+// optional code differ.
 
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'
@@ -19,7 +14,7 @@ import { greetingFor } from '../greeting.ts'
 import { previewBrand, withPreview } from '../preview.ts'
 import { SecurityAlertKind, type SecurityAlertKindValue, type TemplateComponentProps } from '../props.ts'
 
-/** Headline + lead copy per alert kind. Keeps the JSX free of a four-branch conditional. */
+/** Headline and lead copy per alert kind. */
 const COPY: Record<SecurityAlertKindValue, { heading: string; lead: string }> = {
   [SecurityAlertKind.NewSignIn]: {
     heading: 'New sign-in to your account',

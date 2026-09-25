@@ -15,7 +15,7 @@ interface ToastState {
   dismiss: (id: string) => void
 }
 
-/** Minimal, dependency-free toast bus. The persist() boundary uses it to surface save failures. */
+/** Minimal toast bus; `persist()` uses it to surface save failures. */
 export const useToastStore = create<ToastState>()((set) => ({
   toasts: [],
   notify: (message, tone = 'info') =>

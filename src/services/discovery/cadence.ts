@@ -1,9 +1,6 @@
 import type { PlanTier } from '@/constants/plan'
 
-/**
- * How often the background agent runs per plan tier. Pro gets fresh opportunities hourly; free once a
- * day. Pure + tier-keyed so the (untestable-here) worker query and any UI countdown share one source.
- */
+/** Background discovery interval per plan tier, shared by the worker and the UI. */
 export const DISCOVERY_CADENCE_HOURS: Record<PlanTier, number> = {
   free: 24,
   pro: 1,

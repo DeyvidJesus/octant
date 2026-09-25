@@ -51,8 +51,7 @@ describe('formatMoney', () => {
   })
 
   it('degrades instead of throwing on a malformed currency code', () => {
-    // A one-letter code makes Intl throw a RangeError; the fallback keeps one bad value from taking
-    // down a whole webhook for the sake of a formatted string.
+    // A one-letter code makes Intl throw a RangeError.
     expect(formatMoney(4900, 'x', { locale: 'en-US' })).toBe('49 X')
   })
 

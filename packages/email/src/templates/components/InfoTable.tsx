@@ -1,10 +1,4 @@
-/**
- * Label/value rows — invoice details, sign-in metadata, subscription facts.
- *
- * Rendered as a real `<table>` because that is the only layout primitive every email client agrees on.
- * Rows with an `undefined` value are dropped here rather than at each call site, which is what keeps
- * templates free of `{x !== undefined && ...}` noise and stops "undefined" ever reaching a recipient.
- */
+// Label/value rows in a real <table>; rows with an empty value are dropped so "undefined" never renders.
 
 import { Section } from '@react-email/components'
 import { colors, fonts, fontSizes, radii, spacing } from '../../brand/tokens.ts'

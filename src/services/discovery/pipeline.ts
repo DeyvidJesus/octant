@@ -6,14 +6,10 @@ import type { SearchProfile } from '@/types/searchProfile'
 import { toCandidates, type ExtractedJob } from '@/services/ai/tasks/extractJobsCore'
 import { dedupeCandidates, type DedupeContext } from './dedupe'
 
-/**
- * The continuous-discovery pipeline core. Pure and framework-free: it takes an explicit context
- * (no Zustand, no Supabase) and injected adapters, so it runs identically in the browser and in the
- * Deno worker. Stages: generateStrategies → source.search → toCandidates → dedupe → score → persist
- * (incremental). Enrichment (AI explanation/gaps/recommendation) is a later phase.
- */
+// Discovery pipeline core: no Zustand or Supabase, so it runs unchanged in the browser and the Deno worker.
+// Stages: strategies -> search -> candidates -> dedupe -> score -> persist (incremental).
 
-/** Below this description length we don't score — a thin snippet can't produce an honest ATS number. */
+/** Shorter descriptions are not scored; a thin snippet can't produce an honest ATS number. */
 export const MIN_SCORABLE_DESCRIPTION = 200
 
 export interface DiscoveryStrategy {
@@ -68,7 +64,7 @@ export interface RunDiscoveryDeps {
   signal?: AbortSignal
 }
 
-/** Deterministic Phase-1 strategy generation from the structured profile (AI variant lands in Phase 2). */
+/** Deterministic strategy generation from the structured search profile. */
 export function generateStrategies(profile: SearchProfile): DiscoveryStrategy[] {
   const roles = profile.targetRoles.length > 0 ? profile.targetRoles : ['Software Engineer']
   const seniority = profile.seniority !== 'unknown' ? profile.seniority : ''
@@ -106,10 +102,7 @@ export function candidateToEphemeralJob(candidate: DiscoveredCandidate): JobOppo
   }
 }
 
-/**
- * Runs one discovery cycle. Fresh candidates are scored and streamed out via `onCandidate` as they
- * are produced (never a big batch at the end), so the client feed fills incrementally.
- */
+/** Runs one discovery cycle, streaming each fresh scored candidate to `onCandidate` as it is produced. */
 export async function runDiscovery(
   ctx: RunDiscoveryContext,
   deps: RunDiscoveryDeps,

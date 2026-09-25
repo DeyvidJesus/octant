@@ -1,12 +1,6 @@
 import type { LabeledLink } from './resume'
 
-/**
- * A tailored resume: a *selection and ordering* of Master Resume content for
- * one specific job. The generator is deterministic — it may prioritize,
- * reorder, emphasize, and omit, but it cannot write a single word of its own.
- * Every content item carries the id of the Master Resume entity it came from;
- * that traceability IS the anti-invention guarantee.
- */
+/** Master Resume content selected and ordered for one job; every item keeps its source id so nothing is invented. */
 export interface TailoredResume {
   jobId: string
   generatedAt: string

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { lazy, Suspense, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, CheckCircle2, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
@@ -13,9 +13,20 @@ import { INTERVIEW_STAGES, TERMINAL_STAGES } from '@/constants/applicationStages
 import { isDue } from '@/utils/dates'
 import { activityByWeek, funnel } from '@/services/metrics/computeMetrics'
 import { ChartCard } from '@/modules/metrics/components/ChartCard'
-import { FunnelChart } from '@/modules/metrics/components/FunnelChart'
-import { ActivityChart } from '@/modules/metrics/components/ActivityChart'
 import { StatCard } from './components/StatCard'
+
+// Recharts is ~110 KB gzipped; lazy-loading keeps it out of every page's modulepreload list.
+const FunnelChart = lazy(() =>
+  import('@/modules/metrics/components/FunnelChart').then((module) => ({ default: module.FunnelChart })),
+)
+const ActivityChart = lazy(() =>
+  import('@/modules/metrics/components/ActivityChart').then((module) => ({ default: module.ActivityChart })),
+)
+
+/** Reserves the chart's height while its chunk loads, so the grid does not jump. */
+function ChartPlaceholder({ height }: { height: number }) {
+  return <div className="rounded-lg bg-surface-2/40 animate-pulse" style={{ height }} aria-hidden />
+}
 
 function formatPercent(value: number) {
   return `${Math.round(value)}%`
@@ -64,13 +75,13 @@ export function DashboardPage() {
   const technicalReadiness = getAverageMasteryByCategory(interviewSkills, 'technical')
   const behavioralReadiness = getAverageMasteryByCategory(interviewSkills, 'behavioral')
   const architectureReadiness = getAverageMasteryByCategory(interviewSkills, 'architecture')
-  // Skills practiced but not yet mastered — the ones to keep drilling.
+  // Skills practiced but not yet mastered.
   const weakTopicsCount = interviewSkills.filter((skill) => skill.attempts > 0 && skill.mastery < MASTERY_THRESHOLD).length
 
   const funnelSteps = useMemo(() => funnel(applications), [applications])
   const activity = useMemo(() => activityByWeek(applications), [applications])
 
-  // Recommended next steps derived from the user's ACTUAL state — replaces the old hardcoded advice.
+  // Next steps derived from the user's current data.
   const nextSteps = useMemo<NextStep[]>(() => {
     const steps: NextStep[] = []
     const hasKnowledge = knowledgeBase.facts.length > 0 || knowledgeBase.roles.length > 0
@@ -133,7 +144,7 @@ export function DashboardPage() {
       </div>
 
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-white uppercase tracking-widest">Pipeline &amp; activity</h2>
+        <h2 className="text-sm font-semibold text-ink-strong uppercase tracking-widest">Pipeline &amp; activity</h2>
         <Link to="/metrics" className="text-sm text-muted hover:text-ink-2">
           View all metrics →
         </Link>
@@ -142,10 +153,14 @@ export function DashboardPage() {
         {applications.length > 0 ? (
           <>
             <ChartCard title="Pipeline funnel" subtitle="Applications reaching each stage.">
-              <FunnelChart steps={funnelSteps} />
+              <Suspense fallback={<ChartPlaceholder height={funnelSteps.length * 44 + 16} />}>
+                <FunnelChart steps={funnelSteps} />
+              </Suspense>
             </ChartCard>
             <ChartCard title="Activity over time" subtitle="Applications added per week.">
-              <ActivityChart weeks={activity} />
+              <Suspense fallback={<ChartPlaceholder height={220} />}>
+                <ActivityChart weeks={activity} />
+              </Suspense>
             </ChartCard>
           </>
         ) : (
@@ -157,17 +172,17 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <h3 className="text-sm font-medium text-white mb-4">Recommended next steps</h3>
+          <h3 className="text-sm font-medium text-ink-strong mb-4">Recommended next steps</h3>
           {nextSteps.length > 0 ? (
             <ul className="space-y-3">
               {nextSteps.map((step) => (
                 <li key={step.id}>
                   <Link
                     to={step.to}
-                    className="group flex items-start gap-3 text-sm text-ink-3 hover:text-ink transition-colors rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                    className="group flex items-start gap-3 text-sm text-ink-3 hover:text-ink transition-colors rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong"
                   >
                     {step.primary ? (
-                      <Sparkles size={16} className="text-indigo-400 mt-0.5 shrink-0" aria-hidden />
+                      <Sparkles size={16} className="text-info mt-0.5 shrink-0" aria-hidden />
                     ) : (
                       <CheckCircle2 size={16} className="text-ghost mt-0.5 shrink-0" aria-hidden />
                     )}
@@ -179,7 +194,7 @@ export function DashboardPage() {
             </ul>
           ) : (
             <p className="flex items-center gap-2 text-sm text-muted">
-              <CheckCircle2 size={16} className="text-emerald-400 shrink-0" aria-hidden />
+              <CheckCircle2 size={16} className="text-success shrink-0" aria-hidden />
               You're all caught up — nothing needs your attention right now.
             </p>
           )}

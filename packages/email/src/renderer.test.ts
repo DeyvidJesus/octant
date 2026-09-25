@@ -1,11 +1,4 @@
-/**
- * Invariants that must hold for EVERY template.
- *
- * Written as a loop over `TEMPLATE_NAMES` rather than 14 hand-written cases, so a new template is
- * covered the moment it's registered — there is no per-template test to forget. Snapshots are avoided
- * deliberately: they'd churn on every copy tweak and get blindly re-recorded, whereas these assertions
- * encode things that are genuinely never allowed to break.
- */
+// Invariants checked for every registered template; snapshots are avoided on purpose.
 
 import { describe, expect, it } from 'vitest'
 import { renderTemplate } from './renderer.ts'
@@ -77,8 +70,7 @@ describe.each(TEMPLATE_NAMES)('%s', (name) => {
     const { html } = await renderFixture(name)
     expect(html).toContain('<!DOCTYPE html')
     expect(html).toContain('</html>')
-    // React Email renders <Preview> as a hidden div; without one, clients show body boilerplate
-    // as the inbox snippet.
+    // <Preview> renders as a hidden div; without it clients show body boilerplate as the snippet.
     expect(html).toMatch(/display:\s*none/)
   })
 
@@ -105,14 +97,13 @@ describe.each(TEMPLATE_NAMES)('%s', (name) => {
 
   it('renders label/value tables as readable rows in plain text', async () => {
     const { text } = await renderFixture(name)
-    // html-to-text's dataTable formatter is configured in the renderer; without it every InfoTable
-    // collapsed into one run of concatenated labels and values.
+    // Without the renderer's dataTable formatter, InfoTable labels and values run together.
     expect(text).not.toContain('Knowledge BaseAdd')
   })
 
   it('omits the decorative logo tile from the plain-text part', async () => {
     const { text } = await renderFixture(name)
-    // The wordmark already says "Octant"; the tile would otherwise open every email with a bare "O".
+    // Otherwise every text part opens with a bare "O" from the tile.
     expect(text.trimStart().startsWith('O\n')).toBe(false)
   })
 })

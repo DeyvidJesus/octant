@@ -1,12 +1,4 @@
-/**
- * Email footer: support contact, an optional preferences link, and the transactional-mail disclosure.
- *
- * The disclosure line matters legally and for deliverability: these are transactional messages tied to
- * an account action, so they carry no unsubscribe obligation — but saying so plainly reduces spam
- * reports, which is what actually protects the sending domain's reputation. When the caller has an
- * unsubscribe token we still surface a preferences link, because being able to find the setting is
- * better than guessing.
- */
+// Footer with support contact, optional preferences link and a transactional-only note that reduces spam reports.
 
 import { Link, Section, Text } from '@react-email/components'
 import { colors, fonts, fontSizes, spacing } from '../../brand/tokens.ts'
@@ -50,8 +42,7 @@ export function Footer({ brand }: { brand: EmailBrandContext }) {
           </>
         )}
       </Text>
-      {/* No year: a hardcoded one goes stale, and `new Date()` would make rendered output
-          non-deterministic and every snapshot test time-dependent. */}
+      {/* No year: a literal goes stale and `new Date()` would make output non-deterministic. */}
       <Text style={line}>© {brand.appName}</Text>
     </Section>
   )

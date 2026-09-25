@@ -1,49 +1,36 @@
-// Supabase Edge Function: auth-email-hook
-//
-// Phase 15 — Supabase Auth's "Send Email Hook". GoTrue calls this INSTEAD of sending its own email, so
-// enabling the hook replaces every default auth template at once. One endpoint covers six of the
-// fourteen templates: verify-email, password-reset, magic-link, invitation, email-changed (both halves)
-// and the reauthentication security alert.
-//
-// The payload → template mapping lives in `@octant/email` (`integrations/supabaseAuth.ts`) because it is
-// pure and therefore unit-tested; this file holds only what needs a runtime: signature verification,
-// HTTP, and the delivery log.
-//
-// Source of truth: edit `handler.ts`, then run `yarn build:functions` to regenerate `index.ts`.
-//
-// Deploy:  yarn build:functions && supabase functions deploy auth-email-hook --no-verify-jwt
-//          (GoTrue sends a Standard Webhooks signature, NOT a Supabase JWT — verification MUST be off.)
-// Secrets: supabase secrets set SEND_EMAIL_HOOK_SECRET=v1,whsec_... RESEND_API_KEY=re_... \
-//          EMAIL_FROM="Octant <noreply@useoctant.com>" APP_URL=https://app...
-//          (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are injected automatically.)
-// Then enable the hook: Dashboard › Authentication › Hooks › Send Email.
+// auth-email-hook: GoTrue Send Email Hook; verifies the Standard Webhooks signature and sends auth emails.
+// Deploy with --no-verify-jwt (GoTrue doesn't send a JWT); `yarn build:functions` regenerates index.ts.
 
-// Bare specifier on purpose: the bundler rewrites it to a pinned `npm:` URL using the version declared
-// in the root package.json, so there is no second place for that version to drift.
+// The bundler pins this bare specifier to the version in the root package.json.
 import { Webhook } from 'standardwebhooks'
 import { formatDateTime, mapAuthEmail, type AuthHookPayload } from '@octant/email'
 import { createAdminClient } from '../_shared/admin.ts'
 import { sendLogged } from '../_shared/mailer.ts'
 
-/**
- * GoTrue's expected error envelope. Returning it surfaces `message` to the end user and aborts the auth
- * operation, which is the right outcome for a send failure: a user who silently never receives a
- * verification link has no way to tell that anything went wrong.
- */
+// Business errors go back as HTTP 200 with `error.http_code`; on any other status GoTrue drops the body
+// and logs only "Unexpected status code returned from hook".
 function hookError(message: string, httpCode: number): Response {
+  return new Response(JSON.stringify({ error: { http_code: httpCode, message } }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  })
+}
+
+/** Real HTTP status for requests that aren't a valid GoTrue call, such as a bad signature. */
+function transportError(message: string, httpCode: number): Response {
   return new Response(JSON.stringify({ error: { http_code: httpCode, message } }), {
     status: httpCode,
     headers: { 'content-type': 'application/json' },
   })
 }
 
-/** Success is an empty JSON object with 200 — GoTrue then skips its own send. */
+/** Empty JSON with 200 tells GoTrue the email was handled. */
 function hookOk(): Response {
   return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
-  if (req.method !== 'POST') return hookError('Method not allowed.', 405)
+  if (req.method !== 'POST') return transportError('Method not allowed.', 405)
 
   const rawSecret = Deno.env.get('SEND_EMAIL_HOOK_SECRET')
   if (rawSecret === undefined || rawSecret === '') {
@@ -53,8 +40,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const body = await req.text()
 
-  // Verify the Standard Webhooks signature before parsing anything. Supabase issues the secret as
-  // `v1,whsec_<base64>`; the library strips `whsec_` itself, so only the `v1,` prefix needs removing.
+  // Verify before parsing. The secret is `v1,whsec_...`; the library strips `whsec_`, so drop only `v1,`.
   let payload: AuthHookPayload
   try {
     const headers: Record<string, string> = {}
@@ -65,7 +51,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     payload = webhook.verify(body, headers) as AuthHookPayload
   } catch (err) {
     console.error(`[auth-email-hook] signature verification failed: ${String(err)}`)
-    return hookError('Invalid hook signature.', 401)
+    return transportError('Invalid hook signature.', 401)
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
@@ -74,27 +60,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const mapped = mapAuthEmail(payload, {
     supabaseUrl,
-    // Where the verification link lands once GoTrue has established the session.
     defaultRedirectTo: `${appUrl}/auth/callback`,
-    // Formatted here rather than inside the pure mapper, which must stay clock-free to be testable.
+    // Computed here so the mapper stays clock-free and testable.
     occurredAt: formatDateTime(new Date().toISOString()),
     ipAddress: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? undefined,
     userAgent: req.headers.get('user-agent') ?? undefined,
   })
 
   if (mapped === null) {
-    // An action we don't render (a future GoTrue addition, or a payload with no usable token). Ack with
-    // 200 rather than 500: a hard failure here would block the user's auth flow entirely, whereas this
-    // leaves a loud signal in the logs while the flow keeps working.
+    // Unknown action: log it but ack, since failing would block the user's auth flow.
     console.error(
       `[auth-email-hook] no template for action "${payload.email_data?.email_action_type ?? 'unknown'}" — nothing sent.`,
     )
     return hookOk()
   }
 
-  // Everything past this point is wrapped: an uncaught throw here reaches GoTrue as a bare
-  // "Unexpected status code returned from hook: 500" with the cause visible nowhere — which is precisely
-  // how a missing service-role key or a malformed EMAIL_FROM used to present.
+  // Wrapped so any throw becomes a hookError with a readable cause instead of a bare 500.
   try {
     const admin = createAdminClient()
 
@@ -109,8 +90,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     if (outcome.status === 'failed') {
       console.error(`[auth-email-hook] send failed: ${outcome.code} ${outcome.message}`)
-      // Fail loudly: the user is mid-signup/mid-reset and needs to know to try again. The code goes in
-      // the message so it lands in the GoTrue auth log, which is where this gets debugged from.
+      // Fail so the user knows to retry; the code lands in the GoTrue auth log.
       return hookError(`Could not send your email (${outcome.code}). Please try again in a moment.`, 500)
     }
 

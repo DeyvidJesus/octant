@@ -1,10 +1,9 @@
--- Enable UUID extension
+-- Consolidated schema for a fresh project. Afterwards apply migrations 0014, 0015 and 0016 from supabase/migrations;
+-- signup fails without the email tables once the auth email hook is enabled.
+
 create extension if not exists "uuid-ossp";
 
--- Table: jobs
--- Hybrid blob design: a strongly-typed (id, user_id) envelope with the full JobOpportunity domain
--- object in the `data` jsonb column. This matches the repository layer (JobRepository) and the
--- normalized tables (tailored_resumes, discovered_jobs, resume_*). Realtime streams `data` directly.
+-- Tables use an (id, user_id) envelope with the domain object in `data`, matching the repositories.
 create table public.jobs (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
@@ -12,7 +11,6 @@ create table public.jobs (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Table: job_analyses — one ATS analysis per (user, job); `data` holds the JobAnalysis domain object.
 create table public.job_analyses (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
@@ -22,8 +20,7 @@ create table public.job_analyses (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Table: applications — the Application domain object (incl. denormalized company/role and the
--- event timeline) lives in `data`; no hard FK to jobs so an application survives job deletion.
+-- No FK to jobs, so an application survives job deletion.
 create table public.applications (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
@@ -31,7 +28,6 @@ create table public.applications (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Table: settings
 create table public.settings (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null unique,
@@ -39,7 +35,6 @@ create table public.settings (
   preferences jsonb default '{}'::jsonb
 );
 
--- Row Level Security
 alter table public.jobs enable row level security;
 alter table public.job_analyses enable row level security;
 alter table public.applications enable row level security;
@@ -50,20 +45,18 @@ create policy "Users can only access their own job analyses" on public.job_analy
 create policy "Users can only access their own applications" on public.applications for all using (auth.uid() = user_id);
 create policy "Users can only access their own settings" on public.settings for all using (auth.uid() = user_id);
 
--- One analysis per (user, job): lets upsert(onConflict user_id,job_id) replace instead of duplicating.
+-- Upsert target: one analysis per (user, job).
 create unique index if not exists uq_job_analyses_user_job on public.job_analyses (user_id, job_id);
 create index if not exists idx_jobs_user_id on public.jobs (user_id);
 create index if not exists idx_applications_user_id on public.applications (user_id);
 create index if not exists idx_job_analyses_user_id on public.job_analyses (user_id);
 
--- Table: resumes
 create table public.resumes (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null unique,
   knowledge_base jsonb not null default '{}'::jsonb
 );
 
--- Table: tailored_resumes (normalized; one row per (user, job) — Phase 11 prerequisite)
 create table public.tailored_resumes (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
@@ -74,7 +67,6 @@ create table public.tailored_resumes (
   unique (user_id, job_id)
 );
 
--- Table: discoveries
 create table public.discoveries (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null unique,
@@ -91,8 +83,7 @@ create policy "Users can only access their own discoveries" on public.discoverie
 create index if not exists idx_tailored_resumes_user_id on public.tailored_resumes (user_id);
 create index if not exists idx_tailored_resumes_job_id on public.tailored_resumes (job_id);
 
--- Table: discovered_jobs (relational review queue; one row per discovered candidate). `score` is the
--- top-level ranking column; the full DiscoveredCandidate (incl. its JobAnalysis) lives in `data`.
+-- Review queue, one row per candidate; `score` is lifted out of `data` for ranking.
 create table public.discovered_jobs (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
@@ -110,8 +101,7 @@ create policy "Users can only access their own discovered jobs" on public.discov
 create index if not exists idx_discovered_jobs_user_status_created on public.discovered_jobs (user_id, status, created_at);
 create index if not exists idx_discovered_jobs_user_status_score on public.discovered_jobs (user_id, status, score desc);
 
--- Knowledge-base normalization (Phase 5). The four structural/high-churn collections become rows;
--- the remaining collections stay in resumes.knowledge_base as a slim residual document.
+-- Knowledge base collections split out of resumes.knowledge_base (see 0003).
 create table public.resume_organizations (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
@@ -153,8 +143,7 @@ create index if not exists idx_resume_skills_user_id on public.resume_skills (us
 create index if not exists idx_resume_facts_user_id on public.resume_facts (user_id);
 create index if not exists idx_resume_roles_organization_id on public.resume_roles (organization_id);
 
--- Realtime cross-device sync (Phase 7). FULL replica identity lets the user_id filter match DELETE
--- events; publication membership makes Postgres stream the changes.
+-- Realtime sync; FULL replica identity so DELETE events carry user_id for the filter.
 alter table public.jobs replica identity full;
 alter table public.applications replica identity full;
 
@@ -170,8 +159,7 @@ begin
   end if;
 end $$;
 
--- Interview simulation (Phase 10). AI-scored skill mastery + mock interview sessions/answers,
--- replacing the retired interview_preps self-rating blob.
+-- Interview simulation: AI-scored skill mastery and mock interview sessions.
 create table public.user_skills (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
@@ -218,8 +206,7 @@ create index if not exists idx_mock_interviews_user_id on public.mock_interviews
 create index if not exists idx_mock_answers_user_id on public.mock_answers (user_id);
 create index if not exists idx_mock_answers_interview on public.mock_answers (mock_interview_id);
 
--- Monetization & role-based access control (Phase 11).
--- subscriptions records tier; RLS caps free-tier creation (3 jobs, 1 tailored resume), pro unlimited.
+-- Subscriptions and free-tier caps (3 jobs, 1 tailored resume), enforced by RLS.
 create table public.subscriptions (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null unique,
@@ -248,7 +235,7 @@ create or replace function public.within_tailored_resume_limit(new_job_id uuid, 
   returns boolean language sql stable security definer set search_path = public
 as $$ select public.is_pro(uid) or (select count(*) from public.tailored_resumes where user_id = uid and job_id <> new_job_id) < 1; $$;
 
--- Replace broad ownership policies with per-command policies whose INSERT enforces the free-tier cap.
+-- Per-command policies so only INSERT enforces the cap.
 drop policy if exists "Users can only access their own jobs" on public.jobs;
 create policy "jobs_select" on public.jobs for select using (auth.uid() = user_id);
 create policy "jobs_update" on public.jobs for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -261,7 +248,7 @@ create policy "tailored_update" on public.tailored_resumes for update using (aut
 create policy "tailored_delete" on public.tailored_resumes for delete using (auth.uid() = user_id);
 create policy "tailored_insert" on public.tailored_resumes for insert with check (auth.uid() = user_id and public.within_tailored_resume_limit(job_id, auth.uid()));
 
--- AI budget tracking (Phase 12). ai-proxy logs token usage here (service-role writes); owners read.
+-- Token usage written by ai-proxy with the service role; owners read.
 create table public.token_usage_logs (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
@@ -277,8 +264,7 @@ alter table public.token_usage_logs enable row level security;
 create policy "Users can read their own token usage" on public.token_usage_logs for select using (auth.uid() = user_id);
 create index if not exists idx_token_usage_user_created on public.token_usage_logs (user_id, created_at);
 
--- Account deletion hygiene (Phase 13): every user_id FK cascades so deleting an auth user removes
--- all of their rows instead of failing on the constraint. Discovers each FK by name (idempotent).
+-- Recreates every user_id FK with ON DELETE CASCADE, looking up each constraint by name.
 do $$
 declare
   t text;
@@ -311,13 +297,12 @@ begin
   end loop;
 end $$;
 
--- Continuous discovery pipeline (Phase 14). Structured search profile + per-run status log; the
--- discovered_jobs feed streams to the client via realtime.
+-- Discovery pipeline: search profile and per-run status log.
 create table public.search_profiles (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users on delete cascade not null unique,
   data jsonb not null default '{}'::jsonb,
-  -- Projected Master Resume snapshot so the offline worker can score without assembling the KB.
+  -- Lets the offline worker score jobs without assembling the knowledge base.
   scoring_snapshot jsonb,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -339,13 +324,12 @@ alter table public.search_profiles enable row level security;
 alter table public.discovery_runs enable row level security;
 
 create policy "Users can only access their own search profile" on public.search_profiles for all using (auth.uid() = user_id);
--- Owners read + write their own in-session runs; the offline worker writes via the service-role.
+-- Owners write in-session runs; the offline worker uses the service role.
 create policy "Users can access their own discovery runs" on public.discovery_runs for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create index if not exists idx_discovery_runs_user_created on public.discovery_runs (user_id, created_at desc);
 
--- Learning signals (Phase 14): the user's reactions to discovered jobs, aggregated into learned
--- preferences that re-rank the feed and bias future strategies.
+-- User reactions to discovered jobs, aggregated into preferences that re-rank the feed.
 create table public.discovery_signals (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users on delete cascade not null,
@@ -357,7 +341,7 @@ alter table public.discovery_signals enable row level security;
 create policy "Users can access their own discovery signals" on public.discovery_signals for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create index if not exists idx_discovery_signals_user_created on public.discovery_signals (user_id, created_at desc);
 
--- Realtime for the discovery feed + run status (FULL replica identity for DELETE user_id filtering).
+-- Realtime for the discovery feed and run status.
 alter table public.discovered_jobs replica identity full;
 alter table public.discovery_runs replica identity full;
 do $$

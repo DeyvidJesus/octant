@@ -3,15 +3,11 @@ import { Radar, Loader2, Sparkles, AlertCircle } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useDiscoveryStore } from '@/stores/discoveryStore'
-import { runInSessionDiscovery } from '@/services/discovery/executor'
+import { runInSessionDiscovery } from '@/stores/discoveryRunner'
 import { buildDigest } from '@/services/discovery/proactivity'
 import { formatRelative } from '@/utils/dates'
 
-/**
- * The "agent working for your career" surface: live status of the discovery pipeline (idle /
- * searching / scoring / done / error), driven by the store's realtime run state + in-flight
- * progress, plus a manual "Run now". The candidate feed below is already ranked by score.
- */
+/** Live discovery run status with a manual "Run now" button. */
 export function AgentStatusHeader() {
   const currentRun = useDiscoveryStore((s) => s.currentRun)
   const progress = useDiscoveryStore((s) => s.progress)
@@ -48,22 +44,22 @@ export function AgentStatusHeader() {
 
   return (
     <Card className="flex items-center gap-4 border-edge-2">
-      <div className={`rounded-xl p-3 ${running ? 'bg-indigo-400/10' : 'bg-surface-2'}`}>
+      <div className={`rounded-xl p-3 ${running ? 'bg-info/10' : 'bg-surface-2'}`}>
         <Icon
           size={22}
-          className={`${running ? 'animate-spin text-indigo-400' : currentRun?.status === 'failed' ? 'text-red-400' : 'text-ink-2'}`}
+          className={`${running ? 'animate-spin text-info' : currentRun?.status === 'failed' ? 'text-danger' : 'text-ink-2'}`}
           aria-hidden
         />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <h2 className="text-white font-medium">Discovery agent</h2>
+          <h2 className="text-ink-strong font-medium">Discovery agent</h2>
           <span className="text-xs text-faint">· {pendingCount} in review</span>
         </div>
         <p className="text-sm text-muted truncate" aria-live="polite">
           {statusLine}
         </p>
-        {digest && <p className="text-sm text-emerald-400 truncate mt-0.5">{digest}</p>}
+        {digest && <p className="text-sm text-success truncate mt-0.5">{digest}</p>}
       </div>
       <Button onClick={handleRun} disabled={running || starting}>
         {running ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Sparkles size={14} aria-hidden />}

@@ -4,19 +4,8 @@ import { checkGrounding, type GroundingReport } from '../guardrails/grounding'
 import type { AiRunConfig } from '../types'
 import { EXPLAIN_SYSTEM_PROMPT, buildUserPrompt, type ExplainMatchInput } from './explainMatchCore'
 
-/**
- * "Recruiter Read" — Octant's first AI task and the proof of the whole
- * pipeline (provider adapter + guardrail).
- *
- * The deterministic analyzer already produced the *truth*: the match score,
- * which skills overlap, which requirements are missing. This task turns those
- * facts into an experienced recruiter's honest judgment. The LLM never computes
- * the match and is given only real, structured facts; its output is verified by
- * the grounding guardrail before display.
- *
- * The pure prompt builder lives in `explainMatchCore` (no provider import) so the
- * Deno discovery worker can share it; re-exported here for existing callers.
- */
+// "Recruiter Read": the LLM explains the deterministic match result; it never computes the match.
+// Output is checked by the grounding guardrail before display.
 
 export type { ExplainMatchInput } from './explainMatchCore'
 export { EXPLAIN_SYSTEM_PROMPT, buildUserPrompt } from './explainMatchCore'
@@ -42,8 +31,7 @@ export async function explainMatch(input: ExplainMatchInput, config: AiRunConfig
     ],
   })
 
-  // Known facts = every skill the resume can truthfully claim, plus every skill
-  // the job description itself named. Anything outside this set is potentially invented.
+  // Known facts are resume skills plus JD skills; anything else may be invented.
   const known = collectResumeSkills(input.resume)
   for (const skill of input.analysis.detectedStack) known.add(skill.canonical)
 

@@ -43,8 +43,7 @@ describe('buildMatchReport', () => {
   })
 
   it('weights required coverage above nice-to-haves', () => {
-    // All-required overlap should score higher than the same overlap where the
-    // matched skills are only "nice to have".
+    // Required-skill overlap should outscore the same overlap on "nice to have" skills.
     const requiredJd = extractSkills('Requirements: React, TypeScript, Node.js.')
     const preferredJd = extractSkills('Nice to have: React, TypeScript, Node.js.')
     const requiredScore = buildMatchReport(requiredJd, resumeSkills).atsScore

@@ -2,13 +2,9 @@ import { Badge } from '@/components/ui/Badge'
 import { SectionLabel } from '@/components/ui/SectionLabel'
 import type { CoverageReport } from '@/services/generator/coverage'
 
-/**
- * Live ATS coverage of the tailored document. Recomputed on every toggle so
- * trimming a bullet immediately shows its keyword cost — the resume equivalent
- * of a build status.
- */
+/** Live ATS keyword coverage of the tailored resume, recomputed on every toggle. */
 export function CoverageMeter({ coverage }: { coverage: CoverageReport }) {
-  const tone = coverage.score >= 75 ? 'text-emerald-400' : coverage.score >= 45 ? 'text-amber-400' : 'text-red-400'
+  const tone = coverage.score >= 75 ? 'text-success' : coverage.score >= 45 ? 'text-warning' : 'text-danger'
 
   return (
     <div>
@@ -22,7 +18,7 @@ export function CoverageMeter({ coverage }: { coverage: CoverageReport }) {
           <p className="text-xs text-faint mb-1.5">Not covered by included content:</p>
           <div className="flex flex-wrap gap-1.5">
             {coverage.missing.map((skill) => (
-              <Badge key={skill} tone="red">
+              <Badge key={skill} tone="danger">
                 {skill}
               </Badge>
             ))}
@@ -35,7 +31,7 @@ export function CoverageMeter({ coverage }: { coverage: CoverageReport }) {
           <p className="text-xs text-faint mb-1.5">Covered:</p>
           <div className="flex flex-wrap gap-1.5">
             {coverage.covered.map((skill) => (
-              <Badge key={skill} tone="emerald">
+              <Badge key={skill} tone="success">
                 {skill}
               </Badge>
             ))}

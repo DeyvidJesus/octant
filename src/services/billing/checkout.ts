@@ -4,10 +4,7 @@ import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
 /** Same-project Edge Function that creates the Stripe Checkout Session server-side. */
 const CHECKOUT_URL = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/create-checkout-session`
 
-/**
- * Starts the Pro upgrade flow: asks the Edge Function for a Stripe Checkout Session (the secret key
- * stays server-side) and redirects the browser to it. Requires an authenticated session.
- */
+/** Redirects to a Stripe Checkout Session for the Pro upgrade. Needs a session. */
 export async function startProCheckout(): Promise<void> {
   trackEvent(AnalyticsEvent.UpgradeStarted)
 

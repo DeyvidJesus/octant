@@ -13,5 +13,79 @@
   "rules": {
     "react/rules-of-hooks": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/types/**", "src/utils/**", "src/constants/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [{ "name": "react", "message": "Leaf layers (types/utils/constants) are framework-free." }],
+            "patterns": [
+              {
+                "group": ["@/app/*", "@/modules/*", "@/components/*", "@/contexts/*", "@/stores/*", "@/repositories", "@/repositories/*"],
+                "message": "Leaf layers must not depend on UI, state or data access. Dependency flow: modules → stores → repositories/services → types."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/services/**", "src/repositories/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [{ "name": "react", "message": "services/ and repositories/ are framework-free." }],
+            "patterns": [
+              {
+                "group": ["@/app/*", "@/modules/*", "@/components/*", "@/contexts/*", "@/stores/*"],
+                "message": "Lower layers must not import upward. Put orchestration that needs store state in src/stores/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/stores/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/app/*", "@/modules/*", "@/components/*", "@/contexts/*"],
+                "message": "Stores must not depend on UI."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/modules/**", "src/components/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@/services/supabase/client",
+                "message": "UI never talks to Supabase directly: go through a store (which uses a repository)."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@/repositories", "@/repositories/*"],
+                "message": "UI never calls repositories directly: go through a store."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

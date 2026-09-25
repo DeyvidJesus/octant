@@ -11,11 +11,7 @@ interface TailoredResumeRow {
   data: TailoredResume
 }
 
-/**
- * Data-access boundary for tailored resumes, one relational row per job (normalized from the old
- * `generators` blob so RLS can enforce per-user plan limits). RLS-scoped to the current user;
- * throws `AppError` subclasses on failure.
- */
+/** Data access for tailored resumes, one row per job so RLS can enforce plan limits. */
 export class TailoredResumeRepository extends BaseRepository {
   /** Loads all tailored resumes for the user, reassembled into the by-jobId map the store uses. */
   async getTailored(): Promise<TailoredMap> {
@@ -30,7 +26,7 @@ export class TailoredResumeRepository extends BaseRepository {
     return byJobId
   }
 
-  /** Upserts a single tailored resume (targeted write — never the whole collection). */
+  /** Upserts a single tailored resume. */
   async saveTailored(resume: TailoredResume): Promise<void> {
     const userId = this.requireUserId()
     this.unwrap(
@@ -42,7 +38,6 @@ export class TailoredResumeRepository extends BaseRepository {
     )
   }
 
-  /** Deletes the tailored resume for one job. */
   async deleteTailored(jobId: string): Promise<void> {
     const userId = this.requireUserId()
     this.unwrap(
@@ -52,5 +47,5 @@ export class TailoredResumeRepository extends BaseRepository {
   }
 }
 
-/** Shared singleton — import this from stores. The class is exported for testing/DI. */
+/** Shared singleton for stores; the class is exported for tests. */
 export const tailoredResumeRepository = new TailoredResumeRepository()

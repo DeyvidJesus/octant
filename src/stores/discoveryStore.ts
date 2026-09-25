@@ -13,7 +13,7 @@ import { candidateKey } from '@/services/discovery/dedupe'
 import { nowIso } from '@/utils/dates'
 import { discoveryRepository, type DiscoveryMeta } from '@/repositories/DiscoveryRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
-import { persist } from '@/repositories/persist'
+import { persist } from './persist'
 import { useToastStore } from '@/stores/toastStore'
 
 const MAX_DISMISSED_KEYS = 500
@@ -46,12 +46,12 @@ interface DiscoveryState {
   candidates: DiscoveredCandidate[]
   dismissedKeys: string[]
   lastSweepAt: string | null
-  /** When the user last opened the feed (proactive "N new" surface). */
+  /** When the user last opened the feed; drives the "N new" badge. */
   lastSeenAt: string | null
   pendingInteractionId: string | null
   currentRun: DiscoveryRun | null
   progress: DiscoveryProgress | null
-  /** Raw learning signals + the preferences aggregated from them (re-rank + strategy bias). */
+  /** Raw learning signals and the preferences aggregated from them. */
   signals: DiscoverySignal[]
   learnedPreferences: LearnedPreferences
   addCandidates: (fresh: DiscoveredCandidate[]) => void
@@ -77,7 +77,7 @@ export const useDiscoveryStore = create<DiscoveryState>()(
       persist(() => discoveryRepository.saveMeta(meta), context)
     }
 
-    // Proactive notification: fire once per finished background run that produced fresh candidates.
+    // Notify once per finished background run that produced fresh candidates.
     let lastNotifiedRunId: string | null = null
     const maybeNotifyRun = (run: DiscoveryRun) => {
       const done = run.status === 'succeeded' || run.status === 'partial'

@@ -8,11 +8,7 @@ export interface StoredSettings {
   onboardingCompleted: boolean
 }
 
-/**
- * Data-access boundary for user settings. RLS-scoped to the current user via the session mirror
- * (no per-write `auth.getUser()` round-trip), and reads with `maybeSingle()` so a brand-new account
- * with no settings row yet resolves to `null` instead of throwing.
- */
+/** Data access for user settings; a new account with no row reads as null instead of throwing. */
 export class SettingsRepository extends BaseRepository {
   async getSettings(): Promise<StoredSettings | null> {
     const userId = this.requireUserId()
@@ -39,5 +35,5 @@ export class SettingsRepository extends BaseRepository {
   }
 }
 
-/** Shared singleton — import this from stores. The class is exported for testing/DI. */
+/** Shared singleton for stores; the class is exported for tests. */
 export const settingsRepository = new SettingsRepository()

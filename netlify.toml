@@ -2,7 +2,7 @@
   command = "yarn build"
   publish = "dist"
 
-# SPA fallback: toda rota serve o index.html (React Router é client-side)
+# SPA fallback: every route serves index.html for client-side routing.
 [[redirects]]
   from = "/*"
   to = "/index.html"
