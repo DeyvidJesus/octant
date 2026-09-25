@@ -51,6 +51,16 @@ describe('buildMatchReport', () => {
     expect(requiredScore).toBeGreaterThanOrEqual(preferredScore)
   })
 
+  it('pins the ATS formula: required skills weigh count × 2, nice-to-haves count × 1', () => {
+    // React required twice (weight 4), GraphQL nice-to-have once (weight 1); the resume only has React.
+    const jd = extractSkills('Requirements: React. You will ship React features daily.\nNice to have: GraphQL.')
+    expect(jd.map((hit) => [hit.entry.canonical, hit.importance, hit.count])).toEqual([
+      ['React', 'required', 2],
+      ['GraphQL', 'preferred', 1],
+    ])
+    expect(buildMatchReport(jd, new Set(['React'])).atsScore).toBe(80)
+  })
+
   it('returns 0 for a JD with no recognized skills', () => {
     expect(buildMatchReport([], resumeSkills).atsScore).toBe(0)
   })
