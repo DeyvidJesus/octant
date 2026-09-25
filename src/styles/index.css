@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-/* Keep classes from the archived prototype and email templates out of the bundle. */
+/* Keep class-like text from the docs and the email templates out of the bundle. */
 @source not '../../docs';
 @source not '../../packages';
 
