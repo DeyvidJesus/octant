@@ -227,8 +227,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // 3. Render the standardized template to PDF via the remote headless browser.
   const html = buildAtsHtml(resume)
   let pdf: Uint8Array
-  const browser = await puppeteer.connect({ browserWSEndpoint: endpoint })
+  // `connect` lives inside the try: an unreachable browser endpoint must become the 502 below, not an
+  // unhandled rejection that surfaces as a bare 500.
+  let browser: Awaited<ReturnType<typeof puppeteer.connect>> | undefined
   try {
+    browser = await puppeteer.connect({ browserWSEndpoint: endpoint })
     const page = await browser.newPage()
     // The template is fully self-contained (inline CSS, no external fonts/images/scripts), so wait for
     // 'load' rather than 'networkidle0' — network-idle detection can hang on remote browsers and time
@@ -244,7 +247,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonError(`Could not render the PDF. ${String(err)}`.trim(), 502)
   } finally {
     // Disconnect (don't close) — the remote browser session is managed by the provider.
-    await browser.disconnect()
+    await browser?.disconnect()
   }
 
   // 4. Return the binary.

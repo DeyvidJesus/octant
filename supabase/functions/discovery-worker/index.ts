@@ -1119,6 +1119,14 @@ async function selectDueUsers(admin) {
   }
   return due;
 }
+function timingSafeEqual(a, b) {
+  const left = new TextEncoder().encode(a);
+  const right = new TextEncoder().encode(b);
+  if (left.length !== right.length) return false;
+  let diff = 0;
+  for (let i = 0; i < left.length; i++) diff |= left[i] ^ right[i];
+  return diff === 0;
+}
 Deno.serve(async (req) => {
   const cors = corsHeaders(req);
   const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "content-type": "application/json" } });
@@ -1137,7 +1145,7 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get("Authorization");
   let userIds = [];
   let trigger = "scheduled";
-  if (cronSecret && providedSecret && providedSecret === cronSecret) {
+  if (cronSecret && providedSecret && timingSafeEqual(providedSecret, cronSecret)) {
     const body = await req.json().catch(() => ({}));
     userIds = Array.isArray(body.userIds) && body.userIds.length > 0 ? body.userIds.filter((id) => typeof id === "string") : await selectDueUsers(admin);
     trigger = "scheduled";

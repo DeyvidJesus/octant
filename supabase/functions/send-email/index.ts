@@ -1998,13 +1998,10 @@ var INTENTS = {
   Welcome: "welcome",
   /** Follows a successful `auth.updateUser({ password })`. */
   PasswordChanged: "password-changed",
-  /** Courtesy notice to the address a user just moved AWAY from. */
-  EmailChangedNotice: "email-changed-notice",
   /** User-initiated "this wasn't me" / new-device acknowledgement. */
   SecurityAlert: "security-alert"
 };
 var ALLOWED_INTENTS = new Set(Object.values(INTENTS));
-var EMAIL_PATTERN = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 Deno.serve(async (req) => {
   const CORS = corsHeaders(req);
   const json = (body3, status = 200) => new Response(JSON.stringify(body3), { status, headers: { ...CORS, "content-type": "application/json" } });
@@ -2070,22 +2067,6 @@ Deno.serve(async (req) => {
           // double-submit of the same change does not.
           dedupeKey: `pwd:${user.updated_at ?? occurredAt ?? ""}`
         });
-      case INTENTS.EmailChangedNotice: {
-        const previousEmail = body2.previousEmail?.trim();
-        if (previousEmail === void 0 || !EMAIL_PATTERN.test(previousEmail)) {
-          return { status: "failed", code: "EMAIL_VALIDATION", message: "previousEmail is not a valid address." };
-        }
-        return sendLogged(admin, {
-          ...shared,
-          // Goes to the OLD address — the only inbox that can catch an unauthorised change. Sending it
-          // is safe because the address is not the recipient of anything else, and the template
-          // deliberately carries no confirmation link.
-          template: "email-changed",
-          to: previousEmail,
-          props: { name, newEmail: recipient, oldEmail: previousEmail, occurredAt, ipAddress, userAgent },
-          dedupeKey: `email-change:${previousEmail}:${recipient}`
-        });
-      }
       case INTENTS.SecurityAlert:
         return sendLogged(admin, {
           ...shared,

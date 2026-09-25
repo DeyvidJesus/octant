@@ -38,8 +38,6 @@ const INTENTS = {
   Welcome: 'welcome',
   /** Follows a successful `auth.updateUser({ password })`. */
   PasswordChanged: 'password-changed',
-  /** Courtesy notice to the address a user just moved AWAY from. */
-  EmailChangedNotice: 'email-changed-notice',
   /** User-initiated "this wasn't me" / new-device acknowledgement. */
   SecurityAlert: 'security-alert',
 } as const
@@ -50,15 +48,12 @@ const ALLOWED_INTENTS = new Set<string>(Object.values(INTENTS))
 
 interface RequestBody {
   intent?: string
-  /**
-   * The ONLY caller-supplied value that is honoured, and only for `email-changed-notice`: the address
-   * being moved away from, which by definition is no longer on the account and so cannot be read from
-   * the session. Validated below, and used solely as display copy — never as the recipient.
-   */
-  previousEmail?: string
 }
 
-const EMAIL_PATTERN = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/
+// There is deliberately no "email changed" notice here. It would have to be sent to the PREVIOUS
+// address, which the session can no longer vouch for, so the body would have to name the recipient,
+// which is exactly the open relay the rules above forbid. The old inbox is covered by Supabase Auth's
+// secure email change instead: `auth-email-hook` mails the current address on `email_change_current`.
 
 Deno.serve(async (req: Request): Promise<Response> => {
   const CORS = corsHeaders(req)
@@ -140,23 +135,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
           // double-submit of the same change does not.
           dedupeKey: `pwd:${user.updated_at ?? occurredAt ?? ''}`,
         })
-
-      case INTENTS.EmailChangedNotice: {
-        const previousEmail = body.previousEmail?.trim()
-        if (previousEmail === undefined || !EMAIL_PATTERN.test(previousEmail)) {
-          return { status: 'failed' as const, code: 'EMAIL_VALIDATION', message: 'previousEmail is not a valid address.' }
-        }
-        return sendLogged(admin, {
-          ...shared,
-          // Goes to the OLD address — the only inbox that can catch an unauthorised change. Sending it
-          // is safe because the address is not the recipient of anything else, and the template
-          // deliberately carries no confirmation link.
-          template: 'email-changed',
-          to: previousEmail,
-          props: { name, newEmail: recipient, oldEmail: previousEmail, occurredAt, ipAddress, userAgent },
-          dedupeKey: `email-change:${previousEmail}:${recipient}`,
-        })
-      }
 
       case INTENTS.SecurityAlert:
         return sendLogged(admin, {

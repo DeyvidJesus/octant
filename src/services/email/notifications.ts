@@ -23,7 +23,6 @@ const SEND_EMAIL_URL = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/
 export const EmailIntent = {
   Welcome: 'welcome',
   PasswordChanged: 'password-changed',
-  EmailChangedNotice: 'email-changed-notice',
   SecurityAlert: 'security-alert',
 } as const
 
@@ -31,8 +30,6 @@ export type EmailIntentValue = (typeof EmailIntent)[keyof typeof EmailIntent]
 
 interface SendEmailRequest {
   intent: EmailIntentValue
-  /** Only honoured for `email-changed-notice`: the address the account just moved away from. */
-  previousEmail?: string
 }
 
 /**
@@ -87,14 +84,6 @@ export function sendWelcomeEmail(): Promise<boolean> {
 /** Notifies the user that their password changed. Call only after the update actually succeeded. */
 export function sendPasswordChangedEmail(): Promise<boolean> {
   return requestEmail({ intent: EmailIntent.PasswordChanged })
-}
-
-/**
- * Notifies the PREVIOUS address that the account's email was changed — the tripwire for an
- * unauthorised change, since it reaches the inbox the legitimate owner still controls.
- */
-export function sendEmailChangedNotice(previousEmail: string): Promise<boolean> {
-  return requestEmail({ intent: EmailIntent.EmailChangedNotice, previousEmail })
 }
 
 /** Sends a new-device security alert to the account's own address. */

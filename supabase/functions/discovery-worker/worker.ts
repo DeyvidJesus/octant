@@ -24,7 +24,7 @@ import { enrichCandidate } from '@/services/discovery/enrich'
 import { learnPreferences, applyLearnedToProfile, type DiscoverySignal } from '@/services/discovery/signals'
 import { isDueForRun } from '@/services/discovery/cadence'
 import { getAnalyzer } from '@/services/analysis/localHeuristicAnalyzer'
-import { parseJobsJson, normalizeCandidates, toCandidates } from '@/services/ai/tasks/extractJobsCore'
+import { parseJobsJson, normalizeCandidates } from '@/services/ai/tasks/extractJobsCore'
 import { createEmptyKnowledgeBase } from '@/constants/seedData'
 import { projectKnowledgeBase } from '@/services/resume/projection'
 import type { SearchProfile } from '@/types/searchProfile'
@@ -271,6 +271,19 @@ async function selectDueUsers(admin: any): Promise<string[]> {
   return due
 }
 
+/**
+ * Constant-time string comparison for the scheduler secret. A plain `===` returns at the first
+ * differing character, which leaks how much of a guess was right through response timing.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  const left = new TextEncoder().encode(a)
+  const right = new TextEncoder().encode(b)
+  if (left.length !== right.length) return false
+  let diff = 0
+  for (let i = 0; i < left.length; i++) diff |= left[i] ^ right[i]
+  return diff === 0
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   const cors = corsHeaders(req)
   const json = (body: unknown, status = 200): Response =>
@@ -299,7 +312,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   let userIds: string[] = []
   let trigger: 'manual' | 'scheduled' = 'scheduled'
 
-  if (cronSecret && providedSecret && providedSecret === cronSecret) {
+  if (cronSecret && providedSecret && timingSafeEqual(providedSecret, cronSecret)) {
     const body = (await req.json().catch(() => ({}))) as { userIds?: string[] }
     userIds = Array.isArray(body.userIds) && body.userIds.length > 0
       ? body.userIds.filter((id) => typeof id === 'string')

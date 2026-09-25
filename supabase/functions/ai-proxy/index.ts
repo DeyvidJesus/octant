@@ -39,6 +39,9 @@ interface VendorConfig {
 
 const ANTHROPIC_VERSION = '2023-06-01'
 
+/** Hard ceiling on output tokens per request, whatever the client asks for. */
+const MAX_OUTPUT_TOKENS = 8192
+
 // The vendor allowlist. Endpoints are fixed here (never taken from the client) to avoid SSRF.
 const VENDORS: Record<ProviderId, VendorConfig> = {
   openai: {
@@ -102,6 +105,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (payload.webSearch && vendor.wire !== 'gemini') {
     // Matches the frontend guard: only Gemini can ground on live Google Search here.
     return json({ error: `${payload.providerId} does not support web search grounding.` }, 400)
+  }
+  // The monthly budget is checked BEFORE the call, so a single request must not be able to spend far
+  // past it. Clamp the output size; the largest in-app task (résumé import) asks for 4000.
+  if (typeof payload.maxTokens === 'number') {
+    payload.maxTokens = Math.min(Math.max(1, Math.floor(payload.maxTokens)), MAX_OUTPUT_TOKENS)
   }
 
   const apiKey = Deno.env.get(vendor.keyEnv)
