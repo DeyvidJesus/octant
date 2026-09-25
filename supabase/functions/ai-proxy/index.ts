@@ -44,7 +44,7 @@ const VENDORS: Record<ProviderId, VendorConfig> = {
     url: 'https://openrouter.ai/api/v1/chat/completions',
     keyEnv: 'OPENROUTER_API_KEY',
     wire: 'openai',
-    extraHeaders: { 'HTTP-Referer': 'https://career-os.local', 'X-Title': 'CareerOS' },
+    extraHeaders: { 'HTTP-Referer': 'https://useoctant.com', 'X-Title': 'Octant' },
   },
   claude: {
     url: 'https://api.anthropic.com/v1/messages',
