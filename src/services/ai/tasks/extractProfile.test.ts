@@ -64,3 +64,27 @@ describe('buildKnowledgeBaseFromExtraction', () => {
     expect(() => buildKnowledgeBaseFromExtraction('nope')).not.toThrow()
   })
 })
+
+describe('buildKnowledgeBaseFromExtraction ids', () => {
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
+  it('mints UUIDs for skills, organizations and roles (their table columns are uuid)', () => {
+    const { knowledgeBase } = buildKnowledgeBaseFromExtraction({
+      skills: [{ name: 'React' }],
+      experiences: [
+        { company: 'Acme', title: 'Engineer', bullets: ['Shipped things'] },
+        { company: 'Acme', title: 'Senior Engineer', bullets: [] },
+      ],
+    })
+    const ids = [
+      ...knowledgeBase.skills.map((s) => s.id),
+      ...knowledgeBase.organizations.map((o) => o.id),
+      ...knowledgeBase.roles.map((r) => r.id),
+    ]
+    expect(ids.length).toBeGreaterThan(0)
+    for (const id of ids) expect(id).toMatch(UUID)
+    // Two roles at the same company share one organization.
+    expect(knowledgeBase.organizations).toHaveLength(1)
+    expect(new Set(knowledgeBase.roles.map((r) => r.organizationId))).toEqual(new Set([knowledgeBase.organizations[0].id]))
+  })
+})
