@@ -87,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           useJobsStore.getState()._subscribeRealtime(),
           useApplicationsStore.getState()._subscribeRealtime(),
           useDiscoveryStore.getState()._subscribeRealtime(),
+          useSubscriptionStore.getState()._subscribeRealtime(),
         ]
       }
       setIsLoading(false)

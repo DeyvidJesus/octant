@@ -9,6 +9,7 @@ import {
   type KnowledgeBaseResidual,
   type RowDiff,
 } from './knowledgeBaseGraph'
+import { careerFactSchema, knowledgeSkillSchema, organizationSchema, roleSchema } from './schemas'
 
 /** A `{ data }` projection of any normalized row. */
 interface DataRow<T> {
@@ -45,10 +46,10 @@ export class KnowledgeBaseRepository extends BaseRepository {
     const factRows = this.unwrap(factResult, 'load your resume facts') as DataRow<CareerFact>[] | null
 
     return assembleKnowledgeBase(residualRow.knowledge_base, {
-      organizations: (orgRows ?? []).map((row) => row.data),
-      roles: (roleRows ?? []).map((row) => row.data),
-      skills: (skillRows ?? []).map((row) => row.data),
-      facts: (factRows ?? []).map((row) => row.data),
+      organizations: this.parseRows<Organization>(orgRows?.map((row) => row.data), organizationSchema, 'resume_organizations'),
+      roles: this.parseRows<Role>(roleRows?.map((row) => row.data), roleSchema, 'resume_roles'),
+      skills: this.parseRows<KnowledgeSkill>(skillRows?.map((row) => row.data), knowledgeSkillSchema, 'resume_skills'),
+      facts: this.parseRows<CareerFact>(factRows?.map((row) => row.data), careerFactSchema, 'resume_facts'),
     })
   }
 

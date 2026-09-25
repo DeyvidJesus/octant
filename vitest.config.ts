@@ -12,7 +12,13 @@ export default defineConfig({
   test: {
     // Default to node; component tests opt into happy-dom with a `// @vitest-environment happy-dom` docblock.
     environment: 'node',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'packages/*/src/**/*.test.ts', 'packages/*/src/**/*.test.tsx'],
+    include: [
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+      'packages/*/src/**/*.test.ts',
+      'packages/*/src/**/*.test.tsx',
+      'supabase/tests/**/*.test.ts',
+    ],
     setupFiles: ['./src/test/setup.ts'],
   },
 })

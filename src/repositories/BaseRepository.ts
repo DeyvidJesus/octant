@@ -1,7 +1,10 @@
 import type { PostgrestError, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { supabase } from '@/services/supabase/client'
+import type { ZodType } from 'zod'
 import { getSessionUserId } from '@/services/supabase/session'
+import { Sentry } from '@/services/monitoring/sentry'
 import { RepositoryError, UnauthenticatedError } from './errors'
+import { parseDocuments } from './schemas'
 
 /** Minimal shape of a Supabase query/command result the repositories unwrap. */
 interface SupabaseResult<T> {
@@ -43,10 +46,21 @@ export abstract class BaseRepository {
     return result.data
   }
 
+  /** Validates JSONB documents read from `table`: repaired ones are returned, invalid ones reported and dropped. */
+  protected parseRows<T>(docs: unknown[] | null | undefined, schema: ZodType, table: string): T[] {
+    const { valid, rejected } = parseDocuments<T>(docs ?? [], schema)
+    if (rejected.length > 0) {
+      console.warn(`[repository] dropped ${rejected.length} invalid row(s) from ${table}`, rejected)
+      Sentry.captureMessage(`Invalid JSONB rows in ${table}`, { level: 'warning', extra: { rejected } })
+    }
+    return valid
+  }
+
   /** Streams changes to a `{ id, user_id, data }` table for the current user; no-op without a session. */
   // DELETE events only match the user_id filter because the table uses REPLICA IDENTITY FULL.
   protected subscribeToOwnedTable<T>(
     table: string,
+    schema: ZodType,
     onChange: (change: RealtimeChange<T>) => void,
   ): () => void {
     const userId = getSessionUserId()
@@ -63,8 +77,8 @@ export abstract class BaseRepository {
             if (typeof id === 'string') onChange({ type: 'delete', id })
             return
           }
-          const row = payload.new
-          if (row?.data) onChange({ type: 'upsert', row: row.data })
+          const [doc] = this.parseRows<T>(payload.new?.data ? [payload.new.data] : [], schema, table)
+          if (doc) onChange({ type: 'upsert', row: doc })
         },
       )
       .subscribe()

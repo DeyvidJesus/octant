@@ -1,6 +1,7 @@
 import type { Application } from '@/types/application'
 import { supabase } from '@/services/supabase/client'
 import { BaseRepository } from './BaseRepository'
+import { applicationSchema } from './schemas'
 
 /** Row shape persisted in `public.applications` — the domain object lives in the `data` JSONB column. */
 interface ApplicationRow {
@@ -17,7 +18,7 @@ export class ApplicationRepository extends BaseRepository {
       await supabase.from('applications').select('*').eq('user_id', userId),
       'load your applications',
     ) as ApplicationRow[] | null
-    return (rows ?? []).map((row) => row.data)
+    return this.parseRows<Application>(rows?.map((row) => row.data), applicationSchema, 'applications')
   }
 
   async upsertApplication(application: Application): Promise<void> {
@@ -43,7 +44,7 @@ export class ApplicationRepository extends BaseRepository {
     onUpsert: (application: Application) => void
     onDelete: (id: string) => void
   }): () => void {
-    return this.subscribeToOwnedTable<Application>('applications', (change) => {
+    return this.subscribeToOwnedTable<Application>('applications', applicationSchema, (change) => {
       if (change.type === 'upsert') handlers.onUpsert(change.row)
       else handlers.onDelete(change.id)
     })
