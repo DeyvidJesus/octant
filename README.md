@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/DeyvidJesus/octant/actions/workflows/ci.yml/badge.svg)](https://github.com/DeyvidJesus/octant/actions/workflows/ci.yml)
 
+**Live:** [useoctant.com](https://useoctant.com/login)
+
 **A career operating system for software engineers.** You describe your career once, in a structured
 knowledge base, and Octant derives everything else from it: how well you match each job, a résumé
 tailored to that job, interview preparation for it, the application pipeline, and the metrics of your
@@ -10,6 +12,8 @@ search. An agent keeps looking for new openings while you're offline.
 The design principle behind all of it: **deterministic code owns the truth, the LLM only owns the
 language.** Scores, matches and résumé content are computed from your real data; AI explains, drafts
 questions or grades answers, and its output is checked by code before you see it.
+
+![Dashboard](docs/screenshots/dashboard.png)
 
 ---
 
@@ -25,6 +29,35 @@ questions or grades answers, and its output is checked by code before you see it
 | **Interview prep** | Technical, behavioral (STAR) and system-design questions from the job's stack and your gaps. An AI coach grades your answers; mastery per skill accumulates over time. |
 | **Metrics** | Funnel and conversion, response/offer/ghost rates, time in stage, weekly activity, match-score distribution. |
 | **Plans** | Free and Pro via Stripe Checkout and Customer Portal. Limits are enforced by the database, not just the UI. |
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/job-analysis.png" alt="Job analysis: must-have and nice-to-have skills, matched in green and missing in red"></td>
+    <td><img src="docs/screenshots/resume-generator.png" alt="Résumé generator with a live keyword-coverage meter and toggleable bullets"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Job analysis: required vs. nice-to-have, matched vs. missing</sub></td>
+    <td align="center"><sub>Résumé generator: toggle a bullet, watch coverage change</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/job-board.png" alt="Discovery agent review queue with ATS scores and recommendations"></td>
+    <td><img src="docs/screenshots/applications-board.png" alt="Kanban board of applications"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Discovery agent: nothing reaches the board without approval</sub></td>
+    <td align="center"><sub>Application tracker (drag and drop or keyboard)</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/interview-prep.png" alt="Interview prep with readiness per category and the AI coach"></td>
+    <td><img src="docs/screenshots/metrics.png" alt="Career metrics: rates, funnel, outcomes, time in stage"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Interview prep and AI coach</sub></td>
+    <td align="center"><sub>Career metrics</sub></td>
+  </tr>
+</table>
+
+<sub>Screenshots use a fictional demo persona, rendered locally with the Supabase backend mocked.</sub>
 
 ## How it stays honest
 
