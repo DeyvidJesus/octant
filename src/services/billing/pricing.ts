@@ -12,10 +12,7 @@ export interface PlanPricing {
   interval: 'day' | 'week' | 'month' | 'year' | null
 }
 
-/**
- * Fetches the Pro price straight from Stripe (via the Edge Function) so the site never hardcodes it.
- * Requires an authenticated session. Returns null on any failure so the UI can degrade gracefully.
- */
+/** Live Pro price from Stripe so it is never hardcoded. Needs a session; null on any failure. */
 export async function fetchPlanPricing(): Promise<PlanPricing | null> {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
@@ -35,7 +32,7 @@ export async function fetchPlanPricing(): Promise<PlanPricing | null> {
   }
 }
 
-/** Formats a Stripe price for display, e.g. `{ amount: 2900, currency: 'brl', interval: 'month' }` → "R$ 29.00/month" (currency per the browser locale). */
+/** e.g. 2900 brl monthly -> "R$ 29.00/month", formatted in the browser locale. */
 export function formatPlanPricing(pricing: PlanPricing): string {
   const money = new Intl.NumberFormat(undefined, {
     style: 'currency',

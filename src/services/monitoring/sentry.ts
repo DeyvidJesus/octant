@@ -1,11 +1,6 @@
 import * as Sentry from '@sentry/react'
 
-/**
- * Crash + unhandled-rejection reporting. Env-gated on `VITE_SENTRY_DSN`: with no DSN this is a
- * complete no-op (local dev, tests, CI). `Sentry.init` installs global `error` and
- * `unhandledrejection` handlers, so uncaught frontend crashes and rejected promises are captured
- * automatically; the React `ErrorBoundary` (wired in main.tsx) reports render-time crashes too.
- */
+/** Installs global error and unhandled-rejection reporting; a no-op without `VITE_SENTRY_DSN`. */
 export function initSentry(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN
   if (!dsn) return

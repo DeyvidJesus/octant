@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-/**
- * Guards the design system: UI code styles with semantic tokens (`text-danger`, `bg-inverse`,
- * `text-ink-strong`…) defined in index.css, never with raw palette classes. A raw `text-red-400` or
- * `bg-white` would silently drift from the theme, so this fails the suite instead.
- */
+// UI code must use semantic tokens from index.css, never raw palette classes like `text-red-400`.
 
 const sources = import.meta.glob<string>('/src/{app,components,modules}/**/*.tsx', {
   query: '?raw',

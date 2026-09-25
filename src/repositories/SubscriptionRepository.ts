@@ -6,10 +6,7 @@ interface SubscriptionRow {
   tier: PlanTier
 }
 
-/**
- * Read-only access to the current user's subscription tier. Writes happen only server-side in the
- * Stripe webhook (service role); clients can never change their own tier.
- */
+/** Read-only tier access; only the Stripe webhook (service role) can write it. */
 export class SubscriptionRepository extends BaseRepository {
   /** The user's tier, defaulting to 'free' when no subscription row exists. */
   async getTier(): Promise<PlanTier> {
@@ -22,5 +19,5 @@ export class SubscriptionRepository extends BaseRepository {
   }
 }
 
-/** Shared singleton — import this from stores. The class is exported for testing/DI. */
+/** Shared singleton for stores; the class is exported for tests. */
 export const subscriptionRepository = new SubscriptionRepository()

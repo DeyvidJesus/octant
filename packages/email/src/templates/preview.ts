@@ -1,13 +1,4 @@
-/**
- * Preview plumbing for the React Email dev server (`yarn email:dev`).
- *
- * The CLI renders each template file and reads sample props off a `PreviewProps` static. Attaching that
- * static directly trips TypeScript (a function type has no such property), so `withPreview` does the
- * cast once, in a typed way, instead of every template reaching for `any`.
- *
- * `previewBrand` is the shared brand context for previews — it keeps sample data out of the templates
- * themselves, so nothing in a template's body has a development-only default.
- */
+// Preview helpers for the React Email dev server; `withPreview` types the `PreviewProps` static once.
 
 import type { ReactElement } from 'react'
 import type { EmailBrandContext } from './props.ts'

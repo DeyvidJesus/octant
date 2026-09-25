@@ -1,19 +1,11 @@
 @import 'tailwindcss';
 
-/* Tailwind v4 scans the whole repo for class names. The archived prototype and the email templates
- * are not part of the app, so keep their classes out of the bundle. */
+/* Keep classes from the archived prototype and email templates out of the bundle. */
 @source not '../../docs';
 @source not '../../packages';
 
-/*
- * Octant design tokens — the visual identity extracted from the original
- * prototype. Dark, minimal, terminal-inspired. These are the ONLY places the
- * palette hex values live; components use the semantic utility names.
- *
- * Mirrored (by hand, deliberately) in packages/email/src/brand/tokens.ts. Email
- * clients strip CSS variables, so the email layer needs literal hex values and
- * cannot import from here — and it is server-only besides.
- */
+/* Design tokens: the only place palette values live. Mirrored by hand in
+ * packages/email/src/brand/tokens.ts, since email clients strip CSS variables. */
 @theme {
   --color-base: #0a0a0a; /* app background */
   --color-surface: #111111; /* cards */
@@ -28,16 +20,12 @@
   --color-faint: #666666; /* faint text */
   --color-ghost: #444444; /* decorative marks */
 
-  /* Brand accent. Taken from public/favicon.svg, which was previously the only
-   * brand-coloured asset in the repo and referenced nowhere in the theme. Used
-   * by the email templates; available to the UI but not yet applied anywhere, so
-   * adding it changes nothing visually. */
+  /* Brand accent from the favicon; used by the email templates, not yet by the UI. */
   --color-accent: #863bff;
   --color-accent-deep: #7e14ff;
   --color-accent-ink: #ffffff;
 
-  /* Emphasis and inversion. The dark theme's "loudest" colours, named by role so
-   * components never hard-code white/black. */
+  /* Emphasis and inversion, named by role so components never hard-code white/black. */
   --color-ink-strong: #ffffff; /* headings, emphasized text, focus rings */
   --color-inverse: #ffffff; /* primary CTA / active tab surface */
   --color-inverse-hover: oklch(92.8% 0.006 264.531); /* inverse surface on hover */
@@ -45,9 +33,7 @@
   --color-scrim: #000000; /* modal/drawer backdrop, always used with opacity */
   --color-paper: #ffffff; /* printed resume sheet (ResumePaper keeps its own neutral ink) */
 
-  /* Status intents. Each has a base (text/icons), -strong (solid fills, emphasized
-   * borders), -soft (text on tinted surfaces) and -deep (tinted surfaces/borders, used
-   * with opacity). Values are Tailwind's emerald/red/amber/indigo steps. */
+  /* Status intents: base, -strong, -soft, -deep (Tailwind emerald/red/amber/indigo). */
   --color-success: oklch(76.5% 0.177 163.223);
   --color-success-strong: oklch(69.6% 0.17 162.48);
   --color-success-soft: oklch(84.5% 0.143 164.978);
@@ -100,7 +86,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Slim scrollbar matching the prototype's custom-scrollbar aesthetic */
+/* Slim scrollbar */
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: var(--color-edge-2) transparent;

@@ -1,11 +1,4 @@
-/**
- * Application-level error hierarchy.
- *
- * Repositories translate low-level persistence failures (Supabase / Postgres) into these
- * strongly-typed, user-surfaceable errors so the rest of the app never has to reason about
- * `PostgrestError` shapes or transport details. Mirrors the existing `AiError` convention in
- * `src/services/ai/types.ts`.
- */
+// Typed, user-facing errors that repositories raise instead of leaking `PostgrestError`.
 
 /** Base class for all recoverable, user-surfaceable application errors. */
 export class AppError extends Error {

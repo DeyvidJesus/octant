@@ -78,8 +78,7 @@ export const useJobsStore = create<JobsState>()(
     },
     _subscribeRealtime: () =>
       jobRepository.subscribeToJobs({
-        // Idempotent by id: replace an existing job, else prepend. This also absorbs the realtime
-        // echo of this device's own writes (the row is simply replaced by an identical value).
+        // Idempotent by id, which also absorbs the realtime echo of this device's own writes.
         onUpsert: (job) =>
           set((state) => ({
             jobs: state.jobs.some((existing) => existing.id === job.id)

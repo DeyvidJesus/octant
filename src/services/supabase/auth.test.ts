@@ -2,15 +2,7 @@
 // (needed for `window.location.origin`, which the redirect URLs are built from)
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-/**
- * These tests exist because of a real bug: `sendMagicLink` sets `shouldCreateUser: false`, which makes
- * GoTrue reject unknown addresses with `otp_disabled` ("Signups not allowed for otp"). Surfacing that
- * rejection turned the sign-in form into an account-enumeration oracle — the success message was written
- * to reveal nothing, and the error path revealed everything.
- *
- * The non-enumeration property has to hold in the SERVICE, not the UI, so a future caller cannot
- * reintroduce the leak by forgetting to special-case it. That is what these assertions pin down.
- */
+// Pins non-enumeration in the service layer: unknown-address errors must not reach callers.
 
 const signInWithOtp = vi.fn()
 const resend = vi.fn()

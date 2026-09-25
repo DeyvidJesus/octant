@@ -3,13 +3,9 @@ import type { CandidateOrigin, DiscoveredCandidate } from '@/types/discovery'
 import { createId } from '@/utils/id'
 import { nowIso } from '@/utils/dates'
 
-/**
- * Pure extraction core — the deterministic half of the job-extraction seam, with NO provider/network
- * imports. Split out of `extractJobs.ts` so it can be shared by the browser AND the Deno discovery
- * worker (which imports it via the deno.json import map) without dragging in the Supabase client.
- */
+// Deterministic half of job extraction. No provider or network imports: the Deno worker imports this file.
 
-/** Deep Research reports can be very long; cap what we send to the model. */
+/** Deep Research reports can be very long; cap what is sent to the model. */
 export const MAX_INPUT_CHARS = 60_000
 /** A pathological model response can't flood the queue. */
 export const MAX_CANDIDATES = 50
@@ -51,10 +47,7 @@ export function buildExtractPrompt(reportText: string): string {
   return `REPORT:\n\n${reportText}`
 }
 
-/**
- * Deterministic parse of the model's reply: tolerate a fenced or prose-wrapped
- * array, but nothing looser than that. Throws when no JSON array is found.
- */
+/** Tolerates a fenced or prose-wrapped array, nothing looser; throws when no JSON array is found. */
 export function parseJobsJson(text: string): unknown {
   const start = text.indexOf('[')
   const end = text.lastIndexOf(']')
@@ -93,10 +86,7 @@ function cleanUrl(value: unknown): string | undefined {
   }
 }
 
-/**
- * Hand-rolled validation of the parsed array: entries without a company AND role
- * are dropped with a warning — code decides what survives, not the model.
- */
+/** Validates the parsed array; entries missing company or role are dropped with a warning. */
 export function normalizeCandidates(raw: unknown): { jobs: ExtractedJob[]; warnings: string[] } {
   const warnings: string[] = []
   if (!Array.isArray(raw)) return { jobs: [], warnings: ['Model output was not an array.'] }

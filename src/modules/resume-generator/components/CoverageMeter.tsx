@@ -2,11 +2,7 @@ import { Badge } from '@/components/ui/Badge'
 import { SectionLabel } from '@/components/ui/SectionLabel'
 import type { CoverageReport } from '@/services/generator/coverage'
 
-/**
- * Live ATS coverage of the tailored document. Recomputed on every toggle so
- * trimming a bullet immediately shows its keyword cost — the resume equivalent
- * of a build status.
- */
+/** Live ATS keyword coverage of the tailored resume, recomputed on every toggle. */
 export function CoverageMeter({ coverage }: { coverage: CoverageReport }) {
   const tone = coverage.score >= 75 ? 'text-success' : coverage.score >= 45 ? 'text-warning' : 'text-danger'
 

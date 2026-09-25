@@ -1,10 +1,4 @@
-/**
- * Trial Expired — the trial ended without a payment method, so the account is back on the free plan.
- *
- * Same caveat as TrialEnding: trials don't exist in the product yet, so nothing triggers this. The
- * webhook branch that would fire it (a `customer.subscription.updated` leaving `trialing`) is wired and
- * tested, and starts working the moment `trial_period_days` is set at checkout.
- */
+// Trial ended without payment and the account is back on free. Fires once checkout sets `trial_period_days`.
 
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'

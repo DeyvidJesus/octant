@@ -6,12 +6,7 @@ import type {
   Role,
 } from '@/types/resume'
 
-/**
- * Pure (I/O-free) helpers for the knowledge-base normalization: splitting the graph into the four
- * relational collections + a residual document, reassembling it, and computing per-row diffs so a
- * single edit persists as a single-row write. Kept separate from `KnowledgeBaseRepository` so this
- * data-loss-sensitive logic can be unit-tested without Supabase.
- */
+// Pure split/assemble/diff helpers for the knowledge base, kept I/O-free so they can be unit-tested.
 
 /** The knowledge base minus the four normalized collections — persisted as the residual JSONB. */
 export type KnowledgeBaseResidual = Omit<
@@ -50,15 +45,8 @@ export interface RowDiff<T> {
   deleteIds: string[]
 }
 
-/**
- * Computes the row-level diff between two versions of a collection, keyed by id. A row is upserted
- * only when it is new or its serialized payload changed, so editing one entity in a large
- * collection yields exactly one upsert.
- *
- * Change detection uses JSON serialization. Both sides originate from the same persisted baseline
- * (or in-memory seed) and edits are produced by object spread, so key ordering is stable between
- * an unchanged row's two versions — an unchanged row serializes identically and is skipped.
- */
+/** Row-level diff keyed by id; a row is upserted only when new or its JSON payload changed. */
+// JSON comparison is safe because edits use object spread, which keeps key order stable.
 export function diffById<T extends { id: string }>(prev: T[], next: T[]): RowDiff<T> {
   const prevById = new Map(prev.map((entity) => [entity.id, entity]))
   const nextIds = new Set(next.map((entity) => entity.id))
@@ -72,10 +60,7 @@ export function diffById<T extends { id: string }>(prev: T[], next: T[]): RowDif
   return { upserts, deleteIds }
 }
 
-/**
- * True when any residual collection differs, ignoring the always-advancing `updatedAt`. Lets a
- * pure facts/roles/skills/orgs edit skip re-writing the residual document entirely.
- */
+/** True when the residual changed, ignoring `updatedAt`, so table-only edits skip rewriting it. */
 export function residualChanged(prev: KnowledgeBaseResidual, next: KnowledgeBaseResidual): boolean {
   return JSON.stringify({ ...prev, updatedAt: '' }) !== JSON.stringify({ ...next, updatedAt: '' })
 }

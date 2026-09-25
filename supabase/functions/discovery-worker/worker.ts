@@ -1,20 +1,5 @@
-// Supabase Edge Function: discovery-worker
-//
-// Phase 14 (Discovery redesign) — the async execution engine for continuous discovery. A plain HTTP
-// endpoint so ANY scheduler drives it (GitHub Actions, Trigger.dev, Inngest, pg_cron+pg_net) — the
-// code never depends on a specific scheduler. Two auth modes:
-//   • Bearer <supabase-jwt>          → run for that one user (manual / in-session boost).
-//   • header x-discovery-secret: <s> → scheduled batch (service-role). With no `userIds` in the body
-//                                      it selects DUE users itself (per-plan cadence).
-//
-// It reuses the SAME pure domain core as the browser via the deno.json import map (`@/` → ../../../src
-// + sloppy-imports), validated by the discovery spike: runDiscovery, strategy generation, the
-// deterministic analyzer, dedupe and extraction normalisation all run here unchanged. Offline scoring
-// uses the client-published `scoring_snapshot` (projected Master Resume) so the KB isn't reassembled.
-//
-// Deploy:  supabase functions deploy discovery-worker
-// Secrets: supabase secrets set DISCOVERY_CRON_SECRET=... GEMINI_API_KEY=...
-//          FREE_TIER_MONTHLY_TOKEN_LIMIT optional (default 100000; 0 disables).
+// discovery-worker: runs job discovery for one user (Bearer JWT) or a scheduled batch of due users
+// (x-discovery-secret header). Reuses the app's domain code from src/ via the deno.json `@/` import map.
 
 import { createAdminClient, createUserClient } from '../_shared/admin.ts'
 import { corsHeaders } from '../_shared/cors.ts'
@@ -32,14 +17,12 @@ import type { MasterResume } from '@/types/resume'
 import type { DiscoveredCandidate } from '@/types/discovery'
 import type { PlanTier } from '@/constants/plan'
 
-// Overridable so a future Google model deprecation is a secret change, not a redeploy of code.
+// Env-overridable so a model deprecation needs no code change.
 const GEMINI_MODEL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta'
 const MAX_CANDIDATES_PER_RUN = 30
 const MAX_USERS_PER_TICK = 25
 const ENRICH_TOP_K = 5
-
-// ── Gemini transport (server key; direct — the worker IS the trusted server) ──────────────────────
 
 async function geminiGenerate(
   apiKey: string,
@@ -87,7 +70,7 @@ const EXTRACT_PROMPT_HEAD = [
   '',
 ].join('\n')
 
-/** Server-side grounded source: grounded search → extraction (pure normalise). Tokens reported out. */
+/** Job source: grounded Gemini search, then a second call to extract JSON. Reports tokens via onTokens. */
 function createServerGeminiSource(apiKey: string, onTokens: (n: number) => void): JobSource {
   return {
     id: 'grounded-gemini-server',
@@ -102,9 +85,7 @@ function createServerGeminiSource(apiKey: string, onTokens: (n: number) => void)
   }
 }
 
-// ── Budget guard (mirrors ai-proxy: free tier capped per calendar month; pro unlimited) ───────────
-
-/** Monthly token cap for a tier: Free 100k, Pro 2M by default; env-overridable; 0 = unlimited. */
+/** Same monthly cap as ai-proxy: Free 100k, Pro 2M, overridable via *_TIER_MONTHLY_TOKEN_LIMIT; 0 = unlimited. */
 function monthlyLimitFor(tier: PlanTier): number {
   const raw = tier === 'pro'
     ? Deno.env.get('PRO_TIER_MONTHLY_TOKEN_LIMIT')
@@ -128,8 +109,6 @@ async function tierOverBudget(admin: any, userId: string, tier: PlanTier): Promi
   const used = (rows ?? []).reduce((s: number, r: { total_tokens?: number }) => s + (r.total_tokens ?? 0), 0)
   return used >= limit
 }
-
-// ── Per-user run ──────────────────────────────────────────────────────────────────────────────────
 
 // deno-lint-ignore no-explicit-any
 async function runForUser(admin: any, apiKey: string, userId: string, trigger: string): Promise<void> {
@@ -158,10 +137,10 @@ async function runForUser(admin: any, apiKey: string, userId: string, trigger: s
   }
 
   try {
-    // Resume for scoring: the client-published snapshot, or an empty projection (low but honest score).
+    // Score against the client-published snapshot, or an empty resume if none exists.
     const resume = (profileRow?.scoring_snapshot ?? projectKnowledgeBase(createEmptyKnowledgeBase())) as MasterResume
 
-    // Dedupe context via service-role.
+    // Dedupe context.
     const [{ data: jobRows }, { data: pendingRows }, { data: discoveryRow }] = await Promise.all([
       admin.from('jobs').select('data').eq('user_id', userId),
       admin.from('discovered_jobs').select('data').eq('user_id', userId).eq('status', 'pending'),
@@ -173,7 +152,7 @@ async function runForUser(admin: any, apiKey: string, userId: string, trigger: s
     const existingCandidates = (pendingRows ?? []).map((r: { data: DiscoveredCandidate }) => r.data)
     const dismissedKeys = (discoveryRow?.state?.dismissedKeys ?? []) as string[]
 
-    // Learned preferences (from past reactions) bias the profile before strategy generation.
+    // Preferences learned from past reactions bias the profile before strategy generation.
     const { data: signalRows } = await admin
       .from('discovery_signals')
       .select('action, features')
@@ -183,7 +162,7 @@ async function runForUser(admin: any, apiKey: string, userId: string, trigger: s
     const prefs = learnPreferences((signalRows ?? []) as DiscoverySignal[])
     const learnedProfile = applyLearnedToProfile(profile, prefs)
 
-    // AI strategies (server key), deterministic fallback inside.
+    // Falls back to deterministic strategies if the AI call fails.
     const strategies = await generateStrategiesWithAi(learnedProfile, async (prompt) => {
       const r = await geminiGenerate(apiKey, prompt, false)
       onTokens(r.tokens)
@@ -207,7 +186,7 @@ async function runForUser(admin: any, apiKey: string, userId: string, trigger: s
       },
     )
 
-    // Intelligence: enrich the top-K most relevant new candidates (grounded explanation + action).
+    // Enrich the top-K new candidates with an explanation and suggested action.
     const enrichComplete = async (system: string, user: string): Promise<string> => {
       const r = await geminiGenerate(apiKey, `${system}\n\n${user}`, false)
       onTokens(r.tokens)
@@ -226,7 +205,7 @@ async function runForUser(admin: any, apiKey: string, userId: string, trigger: s
         .eq('id', patched.id)
     }
 
-    // Best-effort token accounting so the budget guard sees the worker's spend.
+    // Record spend so the budget guard counts the worker's usage.
     if (tokens > 0) {
       await admin.from('token_usage_logs').insert({
         user_id: userId, provider: 'gemini', model: GEMINI_MODEL,
@@ -247,7 +226,7 @@ async function runForUser(admin: any, apiKey: string, userId: string, trigger: s
   }
 }
 
-/** Selects users due for a scheduled run: has a search profile + last run older than their cadence. */
+/** Users with a search profile whose last successful run is older than their plan's cadence. */
 // deno-lint-ignore no-explicit-any
 async function selectDueUsers(admin: any): Promise<string[]> {
   const { data: profiles } = await admin.from('search_profiles').select('user_id').limit(500)
@@ -271,10 +250,7 @@ async function selectDueUsers(admin: any): Promise<string[]> {
   return due
 }
 
-/**
- * Constant-time string comparison for the scheduler secret. A plain `===` returns at the first
- * differing character, which leaks how much of a guess was right through response timing.
- */
+/** Constant-time comparison for the scheduler secret, so timing doesn't leak partial matches. */
 function timingSafeEqual(a: string, b: string): boolean {
   const left = new TextEncoder().encode(a)
   const right = new TextEncoder().encode(b)
@@ -295,9 +271,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const apiKey = Deno.env.get('GEMINI_API_KEY')
   if (!apiKey) return json({ error: 'Server is missing GEMINI_API_KEY.' }, 500)
 
-  // Resolved through the shared helper rather than reading SUPABASE_SERVICE_ROLE_KEY directly: on a
-  // project using the new API key system that variable can be absent, and an empty key makes
-  // `createClient` throw an opaque "supabaseKey is required".
   let admin
   try {
     admin = createAdminClient()
@@ -333,7 +306,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: 'Missing authorization.' }, 401)
   }
 
-  // Process sequentially to bound concurrent AI cost; each user's failures are isolated to their run.
+  // Sequential to bound concurrent AI cost; runForUser isolates each user's failures.
   for (const userId of userIds) {
     await runForUser(admin, apiKey, userId, trigger)
   }

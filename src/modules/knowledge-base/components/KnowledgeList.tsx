@@ -17,15 +17,8 @@ interface KnowledgeListProps<T extends { id: string }> {
   isVisible?: (item: T) => boolean
 }
 
-/**
- * Add / edit / delete chrome for a knowledge collection. Unlike the resume
- * EntityList, it supports a search filter that hides non-matching items without
- * ever truncating the underlying collection — every mutation maps back to the
- * full array by id.
- *
- * Items start collapsed (title row only) and expand on click. Newly added items
- * expand automatically so the user can start editing immediately.
- */
+/** Collapsible add/edit/delete list for a knowledge collection. */
+// Search only hides items; every mutation maps back to the full array by id.
 export function KnowledgeList<T extends { id: string }>({
   items,
   onChange,
@@ -65,8 +58,7 @@ export function KnowledgeList<T extends { id: string }>({
         const isExpanded = expandedIds.has(item.id)
         return (
           <div key={item.id} className="border border-edge rounded-lg bg-base overflow-hidden">
-            {/* Toggle and Delete are siblings: a button inside a button is invalid HTML and makes the
-                inner one unreachable for assistive tech. */}
+            {/* Toggle and Delete are siblings because nested buttons are invalid HTML. */}
             <div className="flex items-center gap-3 pr-3 hover:bg-surface/50 transition-colors">
               <button
                 type="button"

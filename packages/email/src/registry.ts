@@ -1,15 +1,5 @@
-/**
- * The template registry: name → { subject, component }.
- *
- * This is the seam that makes the whole package non-duplicative. Because it is typed as
- * `Record<TemplateName, …>` over `TemplateDefinitions`, TypeScript refuses to compile if a template is
- * added to the map without props, or props without a registry entry. `EmailService` then needs no
- * per-template logic at all — its 14 public methods all funnel through one `dispatch`.
- *
- * Subjects live HERE rather than inside each component, because a subject is not part of the rendered
- * document: it has to be readable without rendering (for logging and tests), and it must never contain
- * markup. Keeping them together also makes the whole inbox voice reviewable in one screen.
- */
+// Template name to { subject, component }. The mapped type fails to compile if a template lacks props or
+// an entry; subjects live here so they can be computed without rendering and never contain markup.
 
 import type { ComponentType } from 'react'
 import { BillingSuccess } from './templates/transactional/BillingSuccess.tsx'
@@ -36,20 +26,15 @@ import {
 } from './templates/props.ts'
 
 export interface TemplateDefinition<N extends TemplateName> {
-  /** Built from the props, so subjects can carry real detail (amounts, plan names, day counts). */
   subject: (props: TemplateDefinitions[N], brand: EmailBrandContext) => string
   component: ComponentType<TemplateComponentProps<N>>
-  /**
-   * Whether the message is a security/account notice that must be delivered regardless of a user's
-   * notification preferences. Every template here is transactional, but stating it explicitly means a
-   * future marketing template cannot be added without someone deciding.
-   */
+  /** Delivered regardless of notification preferences; explicit so new templates must decide. */
   critical: boolean
 }
 
 type Registry = { [N in TemplateName]: TemplateDefinition<N> }
 
-/** Subject-line copy per alert kind, so `security-alert` gets a specific subject, not a generic one. */
+/** Subject per security alert kind. */
 const SECURITY_ALERT_SUBJECTS: Record<string, string> = {
   [SecurityAlertKind.NewSignIn]: 'New sign-in to your account',
   [SecurityAlertKind.NewDevice]: 'A new device signed in to your account',
@@ -140,5 +125,5 @@ export const templateRegistry: Registry = {
   },
 }
 
-/** Every registered template name. Used by the invariant tests and the HTML export script. */
+/** Every registered template name (used by tests and the HTML export script). */
 export const TEMPLATE_NAMES = Object.keys(templateRegistry) as TemplateName[]

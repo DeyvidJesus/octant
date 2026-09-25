@@ -2,13 +2,7 @@ import type { JobAnalysis } from '@/types/analysis'
 import type { TailoredResume } from '@/types/generator'
 import { extractSkills } from '@/services/analysis/extract'
 
-/**
- * Live ATS coverage of the *generated* document: which JD skills does the
- * currently-included content actually mention? Recomputed as the user toggles
- * bullets, so trimming a resume line shows its keyword cost immediately.
- * Same weighting as the analyzer's atsScore (required×2, frequency-weighted),
- * so the two numbers are comparable.
- */
+// ATS coverage of the included tailored content, weighted like the analyzer's atsScore so the two compare.
 
 export interface CoverageReport {
   /** 0-100, weighted share of JD skills present in the included content. */

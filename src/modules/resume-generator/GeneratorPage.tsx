@@ -8,10 +8,7 @@ import { useJobsStore } from '@/stores/jobsStore'
 import { useGeneratorStore } from '@/stores/generatorStore'
 import { formatDate } from '@/utils/dates'
 
-/**
- * Pick a target: tailoring starts from an analyzed job, best matches first —
- * apply where the odds are highest.
- */
+/** Lists analyzed jobs to tailor a resume for, best matches first. */
 export function GeneratorPage() {
   const jobs = useJobsStore((state) => state.jobs)
   const analyses = useJobsStore((state) => state.analyses)

@@ -1,19 +1,5 @@
-// Bundles Edge Functions that share TypeScript with the rest of the repo into self-contained modules.
-//
-// WHY THIS EXISTS: the Supabase edge-runtime (Deno) does NOT honor `sloppy-imports` at runtime, so it
-// can't resolve the extensionless `@/...` imports the shared `src/` core uses, nor the bare
-// `@octant/email` workspace specifier (Deno has no node_modules resolution for workspace names). We keep
-// ONE source of truth per function (`worker.ts` / `handler.ts`) and bundle it here into the deployed
-// `index.ts`: all local/pure code is inlined, and only Deno-native specifiers stay external.
-//
-// The npm dependencies of the email module are NOT inlined. They are rewritten to pinned `npm:` URLs so
-// Deno resolves them itself, which matters most for `@react-email/render`: its package exports declare a
-// dedicated `deno` condition pointing at an edge-safe build that uses `react-dom/server.browser`.
-// Inlining it would instead bake in the Node build and pull in Node-only internals. Versions are read
-// from the root package.json, so there is one place to bump them.
-//
-// Run:  yarn build:functions
-// Then: supabase functions deploy <name> [--no-verify-jwt]
+// Bundles each Edge Function's worker.ts/handler.ts into the deployed index.ts. Run: yarn build:functions
+// Deno cannot resolve the extensionless `@/` imports or the `@octant/email` workspace name, so they are inlined.
 
 import * as esbuild from 'esbuild'
 import fs from 'node:fs/promises'
@@ -24,10 +10,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const functionsDir = path.join(root, 'supabase/functions')
 const rootPkgPath = path.join(root, 'package.json')
 
-/**
- * One entry per bundled function. `entry` is the hand-edited source; `out` is the generated file that
- * `supabase functions deploy` actually uploads.
- */
+// `entry` is the hand-edited source; the generated index.ts next to it is what gets deployed.
 const TARGETS = [
   { name: 'discovery-worker', entry: 'worker.ts' },
   { name: 'auth-email-hook', entry: 'handler.ts' },
@@ -36,12 +19,8 @@ const TARGETS = [
   { name: 'stripe-webhook', entry: 'handler.ts' },
 ]
 
-/**
- * Bare npm specifiers that must stay external, resolved by Deno rather than inlined.
- *
- * `react-dom/server` is listed explicitly (not just `react-dom`) because `@react-email/render` imports
- * the subpath directly, and esbuild matches specifiers, not packages.
- */
+// Rewritten to `npm:` URLs so Deno picks the edge build (e.g. @react-email/render's `deno` export).
+// esbuild matches specifiers, not packages, so subpaths like react-dom/server are listed separately.
 const EXTERNAL_NPM = [
   'resend',
   'react',
@@ -53,13 +32,7 @@ const EXTERNAL_NPM = [
   '@react-email/render',
 ]
 
-/**
- * Splits a bare specifier into its package name and its subpath, handling scoped packages.
- *
- *   react/jsx-runtime        -> { packageName: 'react',                   subpath: '/jsx-runtime' }
- *   react-dom/server         -> { packageName: 'react-dom',               subpath: '/server' }
- *   @react-email/components  -> { packageName: '@react-email/components', subpath: '' }
- */
+// 'react/jsx-runtime' -> { packageName: 'react', subpath: '/jsx-runtime' }; handles scoped packages.
 function splitNpmSpecifier(specifier) {
   const segments = specifier.split('/')
   const nameSegments = specifier.startsWith('@') ? segments.slice(0, 2) : segments.slice(0, 1)
@@ -68,7 +41,7 @@ function splitNpmSpecifier(specifier) {
   return { packageName, subpath: subpath === '' ? '' : `/${subpath}` }
 }
 
-/** Reads the pinned version for each external specifier from the root package.json. */
+// Versions come from the root package.json so there is one place to bump them.
 async function resolveNpmVersions() {
   const manifest = JSON.parse(await fs.readFile(rootPkgPath, 'utf8'))
   const declared = { ...manifest.dependencies, ...manifest.devDependencies }
@@ -83,22 +56,13 @@ async function resolveNpmVersions() {
         `scripts/bundle-functions.mjs: "${packageName}" is external but not declared in package.json.`,
       )
     }
-    // Keep the declared range — Deno accepts `npm:pkg@^1.2.3`.
+    // Deno accepts ranges like `npm:pkg@^1.2.3`.
     versions.set(specifier, range)
   }
   return versions
 }
 
-/**
- * Rewrites bare npm specifiers to `npm:<name>@<version><subpath>` and marks them external, so the emitted
- * module imports exactly what Deno can resolve. Without this the bundler would try to inline
- * `react-dom/server`.
- *
- * The version goes after the PACKAGE NAME, not at the end of the specifier: Deno rejects
- * `npm:react/jsx-runtime@^19.2.7` ("Invalid package specifier") and wants
- * `npm:react@^19.2.7/jsx-runtime`. Getting this wrong only surfaces at `supabase functions deploy`
- * time, so `assertDenoSpecifiers` below checks every emitted bundle instead of trusting it.
- */
+// Emits `npm:<name>@<version><subpath>`; Deno rejects the version after a subpath (npm:react/jsx-runtime@^19).
 function npmExternalPlugin(versions) {
   return {
     name: 'npm-external',
@@ -117,13 +81,7 @@ function npmExternalPlugin(versions) {
   }
 }
 
-/**
- * Validates every `npm:` specifier the bundle emits, so a malformed one fails HERE rather than at
- * `supabase functions deploy` time — which is a slow, remote, and much less obvious place to find out.
- *
- * Deno requires the version to sit on the package name: `npm:react@^19/jsx-runtime`, never
- * `npm:react/jsx-runtime@^19`. It also requires a version on anything we pin at all.
- */
+// Checks every emitted `npm:` specifier here, since a malformed one otherwise only fails at deploy time.
 async function assertDenoSpecifiers(outfile, functionName) {
   const emitted = await fs.readFile(outfile, 'utf8')
   const specifiers = [...emitted.matchAll(/from\s*"(npm:[^"]+)"/g)].map((match) => match[1])
@@ -131,7 +89,7 @@ async function assertDenoSpecifiers(outfile, functionName) {
   for (const specifier of new Set(specifiers)) {
     const body = specifier.slice('npm:'.length)
     const isScoped = body.startsWith('@')
-    // Strip the leading `@` of a scope so the version `@` is the only one we look for.
+    // Drop the scope's `@` so the only `@` left is the version separator.
     const searchable = isScoped ? body.slice(1) : body
     const at = searchable.indexOf('@')
     if (at === -1) {
@@ -139,7 +97,7 @@ async function assertDenoSpecifiers(outfile, functionName) {
         `${functionName}: "${specifier}" has no version requirement. Add the package to package.json and to EXTERNAL_NPM.`,
       )
     }
-    // Everything before the version must be the bare package name — no slash may precede it.
+    // Only the package name may precede the version.
     const beforeVersion = searchable.slice(0, at)
     const nameSegments = beforeVersion.split('/')
     const expectedSegments = isScoped ? 2 : 1
@@ -167,11 +125,9 @@ async function bundle(target, versions) {
     format: 'esm',
     platform: 'neutral',
     target: 'esnext',
-    // React Email templates are TSX; the automatic runtime avoids needing a JSX pragma per file.
     jsx: 'automatic',
     jsxImportSource: 'react',
-    // Leave the runtime-provided specifiers alone; inline everything else (our pure `src/` core and the
-    // email package's own modules).
+    // Runtime-provided specifiers stay external; everything else is inlined.
     external: ['jsr:*', 'npm:*', 'node:*', 'https://*'],
     alias: {
       '@': path.join(root, 'src'),

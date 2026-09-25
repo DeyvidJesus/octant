@@ -1,12 +1,7 @@
 import type { SeniorityLevel } from './analysis'
 import type { WorkMode } from './job'
 
-/**
- * The structured inputs that drive continuous discovery. This replaces the coarse free-text
- * `DiscoveryPrefs` as the source of truth for search strategy. Blank/empty fields fall back to
- * values derived from the Master Resume (see `deriveSearchProfile`), so discovery works before the
- * user ever opens settings.
- */
+/** Structured discovery inputs; empty fields fall back to values derived from the Master Resume. */
 export interface SearchProfile {
   /** Job titles to target, e.g. ["Software Engineer", "Full Stack Engineer"]. */
   targetRoles: string[]

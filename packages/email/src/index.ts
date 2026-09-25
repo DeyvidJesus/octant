@@ -1,24 +1,12 @@
-/**
- * `@octant/email` — the public surface.
- *
- * Consumers (Supabase Edge Functions, scripts) import from here and nowhere else. Nothing below this
- * barrel is part of the contract, which is what keeps the Resend SDK an implementation detail: there is
- * no export path that reaches it.
- *
- * This package is SERVER-ONLY. It must never be imported from `src/` — it pulls in `resend` and
- * `react-dom/server`, and the app bundle has no business containing either. The app talks to email
- * through the `send-email` Edge Function instead (`src/services/email/notifications.ts`).
- */
+// Public surface of `@octant/email`. Server-only: never import it from `src/`, since it pulls in `resend`
+// and `react-dom/server`; the app sends email through the `send-email` Edge Function.
 
-// ── Service ───────────────────────────────────────────────────────────────────────────────────────
 export { EmailService, createEmailService } from './EmailService.ts'
 export type { EmailServiceDeps, CreateEmailServiceOptions } from './EmailService.ts'
 
-// ── Configuration ─────────────────────────────────────────────────────────────────────────────────
 export { loadEmailConfig, extractAddress, EMAIL_CONFIG_DEFAULTS } from './config.ts'
 export type { EmailConfig, LoadedEmailConfig, EnvReader } from './config.ts'
 
-// ── Errors ────────────────────────────────────────────────────────────────────────────────────────
 export {
   EmailError,
   EmailConfigError,
@@ -31,7 +19,6 @@ export {
   describeEmailError,
 } from './errors.ts'
 
-// ── Transports (ports + adapters) ─────────────────────────────────────────────────────────────────
 export type {
   EmailTransport,
   EmailSuppressionStore,
@@ -54,12 +41,10 @@ export {
 } from './transport/retry.ts'
 export type { RetryPolicy, RetryDeps } from './transport/retry.ts'
 
-// ── Rendering ─────────────────────────────────────────────────────────────────────────────────────
 export { renderTemplate, createBrandContext } from './renderer.ts'
 export { templateRegistry, TEMPLATE_NAMES } from './registry.ts'
 export type { TemplateDefinition } from './registry.ts'
 
-// ── Value types ───────────────────────────────────────────────────────────────────────────────────
 export type {
   OutboundEmail,
   RenderedEmail,
@@ -68,7 +53,6 @@ export type {
   TransportResult,
 } from './types.ts'
 
-// ── Template contracts ────────────────────────────────────────────────────────────────────────────
 export { SecurityAlertKind } from './templates/props.ts'
 export type {
   EmailBrandContext,
@@ -76,7 +60,6 @@ export type {
   TemplateComponentProps,
   TemplateDefinitions,
   TemplateName,
-  // Per-template props, so callers can type their own builders.
   WelcomeProps,
   VerifyEmailProps,
   PasswordResetProps,
@@ -93,7 +76,6 @@ export type {
   PasswordChangedProps,
 } from './templates/props.ts'
 
-// ── Provider integrations (pure payload → template mappings) ───────────────────────────────────────
 export {
   AuthEmailAction,
   buildVerificationUrl,
@@ -121,7 +103,6 @@ export type {
   StripeSubscriptionLike,
 } from './integrations/stripeBilling.ts'
 
-// ── Formatting helpers (shared with the Edge Functions that build props) ───────────────────────────
 export {
   daysBetween,
   formatDate,

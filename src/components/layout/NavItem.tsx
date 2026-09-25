@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import type { NavEntry } from '@/constants/navigation'
 
-/** Optional count badge (e.g. unseen discovery opportunities) shown on the right of the item. */
+/** Sidebar link with an optional count badge (e.g. unseen discoveries). */
 export function NavItem({ entry, badge }: { entry: NavEntry; badge?: number }) {
   const Icon = entry.icon
   return (

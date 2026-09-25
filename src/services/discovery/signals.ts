@@ -3,12 +3,8 @@ import type { SeniorityLevel } from '@/types/analysis'
 import type { DiscoveredCandidate } from '@/types/discovery'
 import type { SearchProfile } from '@/types/searchProfile'
 
-/**
- * Continuous learning (Phase 4). Every reaction the user has to a discovered job (approve / dismiss /
- * save / apply / mark interesting) is captured as a feature row; a DETERMINISTIC aggregation turns
- * those into learned preferences that (a) re-rank the feed and (b) bias future search strategies. No
- * extra AI cost — the model isn't in this loop; it just consumes the augmented profile.
- */
+// User reactions to discovered jobs are aggregated deterministically (no AI) into preferences
+// that re-rank the feed and bias future search strategies.
 
 export type SignalAction = 'approved' | 'dismissed' | 'saved' | 'applied' | 'interested'
 
@@ -97,11 +93,7 @@ function preferredTechnologies(prefs: LearnedPreferences): string[] {
     .slice(0, MAX_LEARNED_TECHS)
 }
 
-/**
- * Biases a resolved SearchProfile with what we've learned: preferred technologies are folded in, and
- * repeatedly-dismissed companies are excluded. Both deterministic and AI strategy generation consume
- * the augmented profile, so learning flows into search with zero extra AI calls.
- */
+/** Adds preferred technologies and excludes repeatedly dismissed companies. */
 export function applyLearnedToProfile(profile: SearchProfile, prefs: LearnedPreferences): SearchProfile {
   const learnedTechs = preferredTechnologies(prefs).filter((t) => !profile.technologies.includes(t))
   const excludeCompanies = prefs.dislikedCompanies.filter((c) => !profile.excludeKeywords.includes(c))
@@ -117,10 +109,7 @@ export function applyLearnedToProfile(profile: SearchProfile, prefs: LearnedPref
 const MAX_RANK_ADJUSTMENT = 20
 const DISLIKED_COMPANY_PENALTY = 30
 
-/**
- * The ranking score used to sort the feed: the deterministic ATS score nudged by learned preferences.
- * Unscored candidates (no matchScore) stay at the bottom.
- */
+/** Feed sort key: ATS score nudged by learned preferences; unscored candidates sort last. */
 export function rankScore(candidate: DiscoveredCandidate, prefs: LearnedPreferences): number {
   if (candidate.matchScore === undefined) return -1
   let adjustment = 0

@@ -1,30 +1,24 @@
-/**
- * Transport-agnostic value types.
- *
- * Nothing here mentions Resend. `OutboundEmail` is what any provider adapter must be able to send,
- * and `SendResult` is what every `EmailService.send*` method returns — so swapping providers, or
- * running against `InMemoryTransport` in tests, changes no caller.
- */
+// Transport-agnostic value types; nothing here is Resend-specific.
 
 import type { TemplateName } from './templates/props.ts'
 
-/** The output of rendering one template: what actually goes on the wire. */
+/** The output of rendering one template. */
 export interface RenderedEmail {
   subject: string
   html: string
-  /** Plain-text alternative, generated from the same React tree — never hand-maintained. */
+  /** Plain-text alternative, generated from the same React tree. */
   text: string
 }
 
 /** A fully addressed, fully rendered message, ready for a transport. */
 export interface OutboundEmail extends RenderedEmail {
-  /** Single recipient by design: transactional email is always 1:1, which keeps logging honest. */
+  /** Single recipient by design: transactional email is 1:1. */
   to: string
   /** RFC 5322 sender, e.g. `Octant <noreply@useoctant.com>`. */
   from: string
   replyTo?: string
   headers?: Record<string, string>
-  /** Provider-side analytics labels. Values must be ASCII alphanumeric/underscore/dash. */
+  /** Provider-side labels; values must be ASCII letters, digits, underscore or dash. */
   tags?: Array<{ name: string; value: string }>
 }
 
@@ -32,19 +26,15 @@ export interface OutboundEmail extends RenderedEmail {
 export interface TransportResult {
   /** Provider-side message id, when the provider issues one. */
   id: string | null
-  /** Adapter name, recorded in `email_log.metadata` so we can tell real sends from no-ops. */
+  /** Adapter name, recorded in `email_log.metadata` to tell real sends from no-ops. */
   provider: string
 }
 
 /** Per-send options a caller may override. */
 export interface SendOptions {
-  /**
-   * Distinguishes two legitimately different sends of the same template to the same person (e.g. two
-   * separate password resets). Folded into the idempotency key; identical values collapse into one
-   * send, both at the provider and in `email_log`.
-   */
+  /** Separates distinct sends of one template to one person (e.g. two resets); part of the idempotency key. */
   dedupeKey?: string
-  /** Owner of the message, when known. Recorded on the log row and used in the idempotency key. */
+  /** Owner of the message; used in the idempotency key instead of the address. */
   userId?: string
   /** Overrides the configured Reply-To for this message only. */
   replyTo?: string
@@ -61,9 +51,9 @@ export interface SendResult {
   template: TemplateName
   to: string
   subject: string
-  /** The key that de-duplicated this send, persisted so the caller can write it to `email_log`. */
+  /** The key that de-duplicated this send, for the caller to write to `email_log`. */
   idempotencyKey: string
-  /** True when no provider call happened because email is not configured in this environment. */
+  /** True when no provider call happened because email is not configured. */
   skipped: boolean
   provider: string
 }

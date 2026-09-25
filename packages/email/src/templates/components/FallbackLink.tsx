@@ -1,10 +1,4 @@
-/**
- * The "button not working?" block that follows every action CTA.
- *
- * Factored out because six templates need it verbatim — repeating the sentence and the `TokenBlock` in
- * each one is exactly the duplication this package exists to avoid. Optionally renders the raw token
- * too, for clients that rewrite URLs so aggressively the link itself is unusable.
- */
+// "Button not working?" block after each CTA: the raw link, plus the one-time code when there is one.
 
 import { Paragraph } from './typography.tsx'
 import { TokenBlock } from './TokenBlock.tsx'

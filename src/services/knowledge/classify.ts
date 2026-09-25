@@ -1,11 +1,7 @@
 import type { CareerFact, FactType, UnclassifiedFact } from '@/types/resume'
 import { createId } from '@/utils/id'
 
-/**
- * Promotes a raw, unclassified note into a typed CareerFact. The promoted fact
- * lands as `needs_review` (not silently confirmed) so it still passes through a
- * human check before it can flow into the resume projection.
- */
+/** Promotes an inbox note to a typed fact as `needs_review`, so a human confirms it before use. */
 export function classifyFact(unclassified: UnclassifiedFact, type: FactType): CareerFact {
   return {
     id: createId(),

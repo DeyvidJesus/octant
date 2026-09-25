@@ -1,13 +1,5 @@
-/**
- * Email Changed — serves BOTH halves of an address change:
- *
- *   • `confirmUrl` present  → the confirmation sent to the NEW address (Supabase's `email_change`).
- *   • `confirmUrl` absent   → the courtesy notice sent to the OLD address, which is the half that
- *                             actually catches an account takeover. Whoever still controls the previous
- *                             inbox is the only person who can notice an unauthorised change.
- *
- * One template, because everything except the CTA and one sentence is shared.
- */
+// Address change: with `confirmUrl` it confirms the new address; without it, it warns the old address,
+// which is what catches an account takeover.
 
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'

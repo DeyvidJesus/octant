@@ -1,11 +1,6 @@
 import type { AiProviderDescriptor, AiProviderId } from '@/types/ai'
 
-/**
- * The provider catalog. Adding a vendor is a matter of adding a descriptor here
- * and an adapter in `providers/` — no UI or task code changes. Model lists are
- * suggestions only; the model field is free text so new models work the day
- * they ship, without a release of Octant.
- */
+/** Provider catalog. Model lists are suggestions; the model field is free text so new models work immediately. */
 export const AI_PROVIDERS: AiProviderDescriptor[] = [
   {
     id: 'claude',

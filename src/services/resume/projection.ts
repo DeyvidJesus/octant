@@ -14,11 +14,7 @@ const RESUME_FACT_TYPES = new Set([
   'technical_capability',
 ])
 
-/**
- * The only bridge from the persisted knowledge base to existing resume
- * consumers. Its filters are intentionally strict: pending work and
- * unreviewed migration output can never become a resume claim.
- */
+/** Knowledge base to resume view. Only confirmed entries pass, so unreviewed data never becomes a claim. */
 export function projectKnowledgeBase(knowledgeBase: CareerKnowledgeBase): ResumeProjection {
   const facts = knowledgeBase.facts.filter((fact) => fact.status === 'confirmed')
   const skillById = new Map(knowledgeBase.skills.map((skill) => [skill.id, skill]))

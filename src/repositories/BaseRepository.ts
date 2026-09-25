@@ -21,17 +21,9 @@ interface OwnedRow<T> {
   data: T
 }
 
-/**
- * Shared plumbing for all repositories: session resolution and uniform error translation.
- * Concrete repositories own their table names and row mapping; they never leak the raw
- * Supabase client or its error types to callers.
- */
+/** Session resolution and error translation shared by all repositories. Never leaks Supabase types. */
 export abstract class BaseRepository {
-  /**
-   * Resolves the signed-in user's id from the in-memory session mirror — synchronous, with no
-   * network call. Every query is RLS-scoped to it, so a missing session is an error rather than
-   * an empty result. The mirror is kept current by `AuthContext` via `onAuthStateChange`.
-   */
+  /** Reads the user id from the session mirror kept by `AuthContext` (no network call). */
   protected requireUserId(): string {
     const userId = getSessionUserId()
     if (!userId) {
@@ -40,10 +32,7 @@ export abstract class BaseRepository {
     return userId
   }
 
-  /**
-   * Unwraps a Supabase result, converting any `PostgrestError` into a `RepositoryError`.
-   * `action` is a short human phrase completing "Could not <action>." for the message.
-   */
+  /** Unwraps a Supabase result; `action` completes the message "Could not <action>." */
   protected unwrap<T>(result: SupabaseResult<T>, action: string): T {
     if (result.error) {
       throw new RepositoryError(`Could not ${action}. ${result.error.message}`.trim(), {
@@ -54,14 +43,8 @@ export abstract class BaseRepository {
     return result.data
   }
 
-  /**
-   * Subscribes to INSERT/UPDATE/DELETE on a `{ id, user_id, data }` table for the current user and
-   * dispatches normalized {@link RealtimeChange} events. Returns an unsubscribe function. A no-op
-   * (returns an empty teardown) when there is no active session.
-   *
-   * The subscription is scoped to `user_id` both by the channel filter and by RLS. Deletes rely on
-   * REPLICA IDENTITY FULL (migration 0004) so the old row carries `user_id` for the filter to match.
-   */
+  /** Streams changes to a `{ id, user_id, data }` table for the current user; no-op without a session. */
+  // DELETE events only match the user_id filter because the table uses REPLICA IDENTITY FULL.
   protected subscribeToOwnedTable<T>(
     table: string,
     onChange: (change: RealtimeChange<T>) => void,

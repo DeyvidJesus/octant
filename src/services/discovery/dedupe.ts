@@ -1,11 +1,7 @@
 import type { JobOpportunity } from '@/types/job'
 import type { DiscoveredCandidate } from '@/types/discovery'
 
-/**
- * Deterministic duplicate detection for discovered jobs. AI research runs
- * repeat themselves day after day; without this, the review queue silently
- * fills with the same postings. Pure string logic — no AI involved.
- */
+// Deterministic duplicate detection; repeated research runs would otherwise refill the queue with the same jobs.
 
 /** Trailing legal-form tokens that don't identify a company. */
 const COMPANY_SUFFIXES = new Set(['inc', 'incorporated', 'llc', 'ltd', 'ltda', 'gmbh', 'sa', 'corp', 'co'])
@@ -33,11 +29,7 @@ export function candidateKey(company: string, role: string): string {
   return `${stripCompanySuffix(normalizeText(company))}::${normalizeText(role)}`
 }
 
-/**
- * Canonical form for URL comparison: job boards identify postings by path
- * (greenhouse `/jobs/{id}`, lever `/company/{id}`); query params and hashes
- * are tracking noise. Unparseable URLs simply don't participate in matching.
- */
+/** Host + path only: job boards identify postings by path, and query/hash are tracking noise. */
 export function normalizeUrl(url: string | undefined): string | undefined {
   if (!url) return undefined
   try {
@@ -65,12 +57,7 @@ export interface DedupeResult {
   }
 }
 
-/**
- * Filters a batch down to genuinely new candidates. A batch item is a
- * duplicate if its company+role key OR its normalized URL matches the board,
- * the current queue, a previously dismissed key, or an earlier item in the
- * same batch. Counters feed the import summary ("7 added · 3 duplicates…").
- */
+/** Drops items whose company+role key or URL matches the board, queue, dismissed keys, or earlier batch items. */
 export function dedupeCandidates(batch: DiscoveredCandidate[], ctx: DedupeContext): DedupeResult {
   const boardKeys = new Set(ctx.existingJobs.map((job) => candidateKey(job.company, job.role)))
   const boardUrls = new Set(ctx.existingJobs.map((job) => normalizeUrl(job.url)).filter(Boolean))

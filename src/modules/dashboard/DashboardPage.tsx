@@ -15,9 +15,7 @@ import { activityByWeek, funnel } from '@/services/metrics/computeMetrics'
 import { ChartCard } from '@/modules/metrics/components/ChartCard'
 import { StatCard } from './components/StatCard'
 
-// Recharts is ~110 KB gzipped. The dashboard is the landing route, so importing its charts statically
-// put that chunk in the modulepreload list of EVERY page (login included). Loaded lazily, it arrives
-// after the dashboard's first paint and never on routes without charts.
+// Recharts is ~110 KB gzipped; lazy-loading keeps it out of every page's modulepreload list.
 const FunnelChart = lazy(() =>
   import('@/modules/metrics/components/FunnelChart').then((module) => ({ default: module.FunnelChart })),
 )
@@ -77,13 +75,13 @@ export function DashboardPage() {
   const technicalReadiness = getAverageMasteryByCategory(interviewSkills, 'technical')
   const behavioralReadiness = getAverageMasteryByCategory(interviewSkills, 'behavioral')
   const architectureReadiness = getAverageMasteryByCategory(interviewSkills, 'architecture')
-  // Skills practiced but not yet mastered — the ones to keep drilling.
+  // Skills practiced but not yet mastered.
   const weakTopicsCount = interviewSkills.filter((skill) => skill.attempts > 0 && skill.mastery < MASTERY_THRESHOLD).length
 
   const funnelSteps = useMemo(() => funnel(applications), [applications])
   const activity = useMemo(() => activityByWeek(applications), [applications])
 
-  // Recommended next steps derived from the user's ACTUAL state — replaces the old hardcoded advice.
+  // Next steps derived from the user's current data.
   const nextSteps = useMemo<NextStep[]>(() => {
     const steps: NextStep[] = []
     const hasKnowledge = knowledgeBase.facts.length > 0 || knowledgeBase.roles.length > 0

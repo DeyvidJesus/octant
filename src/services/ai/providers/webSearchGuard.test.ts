@@ -5,7 +5,7 @@ import { localProvider } from './local'
 import { geminiProvider } from './gemini'
 import { AiError, type CompletionRequest } from '../types'
 
-// Gemini now routes through the `ai-proxy` Edge Function (key server-side), so it needs a session.
+// Gemini routes through `ai-proxy`, so it needs a session.
 vi.mock('@/services/supabase/client', () => ({
   supabase: {
     auth: {

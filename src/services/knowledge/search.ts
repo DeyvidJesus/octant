@@ -8,11 +8,7 @@ import type {
   UnclassifiedFact,
 } from '@/types/resume'
 
-/**
- * In-memory search over knowledge-base entities. At single-user scale a
- * client-side scan is correct; a persistent token index only becomes necessary at
- * the "thousands of documents" scale the design review defers (roadmap follow-up).
- */
+// Client-side scan over knowledge-base entities; fine at single-user scale, no index needed.
 
 /** True when every whitespace-separated token in `query` appears in `text`. */
 export function matchesQuery(text: string, query: string): boolean {

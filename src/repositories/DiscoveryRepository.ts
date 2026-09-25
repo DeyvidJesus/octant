@@ -40,15 +40,12 @@ function toRun(row: DiscoveryRunRow): DiscoveryRun {
   }
 }
 
-/**
- * Small, bounded review metadata retained in the `discoveries.state` blob after normalization.
- * Deliberately excludes candidate arrays — those are now rows in `discovered_jobs`.
- */
+/** Small review metadata kept in `discoveries.state`; candidates live in `discovered_jobs`. */
 export interface DiscoveryMeta {
   dismissedKeys: string[]
   lastSweepAt: string | null
   pendingInteractionId: string | null
-  /** When the user last opened the feed — drives the "N new since you last looked" proactive surface. */
+  /** When the user last opened the feed; drives the "N new" badge. */
   lastSeenAt?: string | null
 }
 
@@ -62,19 +59,12 @@ interface DiscoveredJobRow {
   created_at: string
 }
 
-/** Page size for the paginated pending-queue read. Keeps any single request bounded. */
+/** Page size for reading the pending queue, so no single request is unbounded. */
 const PAGE_SIZE = 200
 
-/**
- * Data-access boundary for job discovery. The review queue is a relational table (one row per
- * scraped candidate); triage actions are targeted INSERT/UPDATE statements, never a whole-array
- * upload. RLS-scoped to the current user; throws `AppError` subclasses on failure.
- */
+/** Data access for job discovery: one row per candidate, triaged with targeted writes. RLS-scoped. */
 export class DiscoveryRepository extends BaseRepository {
-  /**
-   * Loads every pending candidate for the user, paging through with `.range()` so a single
-   * request never has to return thousands of rows. Ordered newest-first to match the review queue.
-   */
+  /** Loads every pending candidate, newest first, paging with `.range()`. */
   async getPendingCandidates(): Promise<DiscoveredCandidate[]> {
     const userId = this.requireUserId()
     const candidates: DiscoveredCandidate[] = []
@@ -127,10 +117,7 @@ export class DiscoveryRepository extends BaseRepository {
     this.unwrap(await supabase.from('discovered_jobs').insert(rows), 'save the discovered jobs')
   }
 
-  /**
-   * Flips the status of specific candidates (approve → 'approved', dismiss → 'rejected').
-   * A single targeted UPDATE over the given ids — never a re-upload of the whole queue.
-   */
+  /** Sets the status of the given candidates in one UPDATE. */
   async setStatus(ids: string[], status: DiscoveredJobStatus): Promise<void> {
     if (ids.length === 0) return
     const userId = this.requireUserId()
@@ -139,8 +126,6 @@ export class DiscoveryRepository extends BaseRepository {
       'update the discovered jobs',
     )
   }
-
-  // ── Learning signals ────────────────────────────────────────────────────────────────────────────
 
   /** Records one reaction (approve/dismiss/save/apply/interested) with the candidate's features. */
   async recordSignal(action: SignalAction, features: SignalFeatures): Promise<void> {
@@ -179,21 +164,14 @@ export class DiscoveryRepository extends BaseRepository {
   /** Persists the small review-metadata blob. Bounded in size (no candidate arrays). */
   async saveMeta(meta: DiscoveryMeta): Promise<void> {
     const userId = this.requireUserId()
-    // `discoveries.user_id` is UNIQUE — upsert on that conflict target so repeated saves UPDATE the
-    // single row instead of trying to INSERT a duplicate (which errored with 23505).
+    // `discoveries.user_id` is UNIQUE; without this conflict target repeat saves fail with 23505.
     this.unwrap(
       await supabase.from('discoveries').upsert({ user_id: userId, state: meta }, { onConflict: 'user_id' }),
       'save your discovery settings',
     )
   }
 
-  // ── Realtime: stream the discovery feed + run status to the client ──────────────────────────────
-
-  /**
-   * Streams changes to the user's discovered_jobs. A row is dispatched to `onUpsert` while it is
-   * still 'pending' (it belongs in the feed) and to `onRemove` once approved/rejected or deleted —
-   * so cross-device triage and worker-inserted candidates both reflect live. Returns an unsubscribe.
-   */
+  /** Streams discovered_jobs: pending rows go to `onUpsert`, triaged or deleted rows to `onRemove`. */
   subscribeToDiscovered(handlers: {
     onUpsert: (candidate: DiscoveredCandidate) => void
     onRemove: (id: string) => void
@@ -248,7 +226,7 @@ export class DiscoveryRepository extends BaseRepository {
     }
   }
 
-  /** Most recent runs, newest first — for the agent status header + history. */
+  /** Most recent runs, newest first. */
   async getRecentRuns(limit = 5): Promise<DiscoveryRun[]> {
     const userId = this.requireUserId()
     const rows = this.unwrap(
@@ -295,5 +273,5 @@ export class DiscoveryRepository extends BaseRepository {
   }
 }
 
-/** Shared singleton — import this from stores. The class is exported for testing/DI. */
+/** Shared singleton for stores; the class is exported for tests. */
 export const discoveryRepository = new DiscoveryRepository()

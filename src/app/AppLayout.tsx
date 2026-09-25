@@ -19,9 +19,7 @@ export function AppLayout() {
   // Close the mobile drawer on navigation.
   useEffect(() => setNavOpen(false), [location.pathname])
 
-  // Mark the discovery feed as seen when the user LEAVES the board, so the sidebar badge and the
-  // "N new since you last looked" digest count only what arrived after this visit. Marking on arrival
-  // would hide the digest the moment it is shown.
+  // Mark the feed seen on leaving the board, not on arrival, or the "N new" digest would vanish at once.
   const markFeedSeen = useDiscoveryStore((state) => state.markSeen)
   const previousPath = useRef(location.pathname)
   useEffect(() => {
@@ -29,16 +27,14 @@ export function AppLayout() {
     previousPath.current = location.pathname
   }, [location.pathname, markFeedSeen])
 
-  // Session heartbeat: once the app is open (stores hydrated by ProtectedRoute), let the discovery
-  // agent quietly advance if the user is due per their cadence. Runs once per app open; cadence-gated.
+  // Once per app open, run discovery if the user's cadence says it is due.
   useEffect(() => {
     const timer = setTimeout(() => maybeRunSessionHeartbeat(), 2500)
     return () => clearTimeout(timer)
   }, [])
 
   return (
-    // print: overrides let a full document (e.g. a tailored resume) flow across
-    // pages instead of being clipped to one screen-height viewport.
+    // print: overrides let a long document flow across pages instead of clipping to the viewport.
     <div className="flex h-screen bg-base text-ink font-sans overflow-hidden print:h-auto print:overflow-visible print:bg-paper">
       <OnboardingModal />
 
@@ -54,7 +50,7 @@ export function AppLayout() {
       <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden print:overflow-visible">
-        {/* Mobile top bar with the drawer toggle (hidden from md: up, where the rail is permanent). */}
+        {/* Mobile top bar; hidden from md: up, where the rail is permanent. */}
         <header className="md:hidden flex items-center gap-3 border-b border-edge bg-base px-4 h-14 shrink-0 print:hidden">
           <button
             type="button"

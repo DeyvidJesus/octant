@@ -1,19 +1,5 @@
-/**
- * Turns a template name + props into `{ subject, html, text }`.
- *
- * This is the only place React Email's `render` is called, and the only place the plain-text conversion
- * is configured. Both matter:
- *
- *   • Every message ships BOTH parts. A transactional email with no text/plain alternative is scored as
- *     more spam-like, and some corporate gateways strip HTML outright — an html-only send then arrives
- *     blank.
- *   • The text part is generated from the same React tree as the HTML, so it can never drift. There is
- *     no hand-maintained text version to forget to update.
- *
- * `htmlToTextOptions` is tuned rather than left at defaults: without `dataTable`, every `InfoTable`
- * collapses into one unreadable run of concatenated labels and values ("1 · Knowledge BaseAdd your
- * roles…"), and without skipping the logo tile the text opens with a stray "O" above the wordmark.
- */
+// Renders a template to `{ subject, html, text }`. The text part comes from the same React tree, and
+// html-to-text is tuned so InfoTables stay readable and the logo tile is skipped.
 
 import { render } from '@react-email/render'
 import { createElement, type ComponentType } from 'react'
@@ -28,14 +14,14 @@ const HTML_TO_TEXT_OPTIONS = {
   selectors: [
     // Render label/value tables as aligned rows instead of one concatenated string.
     { selector: 'table', format: 'dataTable' as const },
-    // Decorative-only nodes (the logo tile) add noise to a plain-text reading.
+    // Decorative nodes such as the logo tile.
     { selector: `.${TEXT_SKIP_CLASS}`, format: 'skip' as const },
-    // `<img>` has no text value here — every image in these templates is decorative.
+    // Every image in these templates is decorative.
     { selector: 'img', format: 'skip' as const },
   ],
 }
 
-/** Builds the brand context handed to every template. Callers never assemble this by hand. */
+/** Brand context handed to every template. */
 export function createBrandContext(input: {
   appName: string
   appUrl: string
@@ -50,10 +36,7 @@ export function createBrandContext(input: {
   }
 }
 
-/**
- * Renders one template. Generic over the template name, so passing props that don't match the named
- * template is a compile error rather than a broken email.
- */
+/** Renders one template; props that don't match the named template are a compile error. */
 export async function renderTemplate<N extends TemplateName>(
   name: N,
   props: TemplateDefinitions[N],
@@ -70,12 +53,7 @@ export async function renderTemplate<N extends TemplateName>(
   }
 
   try {
-    // `createElement` rather than JSX: this module stays a `.ts` file so it can be imported from
-    // non-JSX contexts (the Edge Function handlers) without pulling in a JSX pragma.
-    //
-    // The cast is unavoidable and safe: with both the component and the props behind the generic `N`,
-    // TypeScript can't prove they line up, but the `Registry` type in registry.ts already guarantees
-    // that entry `N` accepts exactly `TemplateComponentProps<N>`.
+    // TypeScript can't correlate component and props through `N`; the `Registry` type guarantees they match.
     const component = definition.component as unknown as ComponentType<Record<string, unknown>>
     const element = createElement(component, { ...props, brand } as unknown as Record<string, unknown>)
     const [html, text] = await Promise.all([

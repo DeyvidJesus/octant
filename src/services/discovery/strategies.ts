@@ -1,14 +1,8 @@
 import type { SearchProfile } from '@/types/searchProfile'
 import { generateStrategies, type DiscoveryStrategy } from './pipeline'
 
-/**
- * AI-backed search-strategy generation. The LLM turns the full structured profile into several
- * DIVERSE query angles (different role framings, stacks, niches) so discovery casts a wider, smarter
- * net than a single deterministic query. Transport is injected (`complete`) so this runs unchanged in
- * the browser (via ai-proxy) and in the Deno worker (server key). Any failure falls back to the
- * deterministic `generateStrategies` — the agent never stalls on an AI hiccup, and cost stays bounded
- * (one small call per run).
- */
+// AI-generated diverse search queries, one small call per run. Transport is injected so this runs
+// in the browser and the Deno worker; any failure falls back to `generateStrategies`.
 
 /** Injected completion: takes a prompt, returns raw text. */
 export type CompleteFn = (prompt: string, opts?: { temperature?: number; maxTokens?: number }) => Promise<string>
@@ -71,9 +65,7 @@ export function parseStrategies(text: string): DiscoveryStrategy[] {
   return strategies
 }
 
-/**
- * Generates strategies via AI, falling back to the deterministic builder on any error or empty result.
- */
+/** Falls back to the deterministic builder on any error or empty result. */
 export async function generateStrategiesWithAi(
   profile: SearchProfile,
   complete: CompleteFn,

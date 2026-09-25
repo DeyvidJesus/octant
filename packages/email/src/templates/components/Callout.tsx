@@ -1,9 +1,4 @@
-/**
- * A bordered notice block for warnings, confirmations and "wasn't you?" advice.
- *
- * Colours come from `toneStyles`, whose backgrounds are pre-blended opaque hex — email clients don't
- * reliably support alpha compositing, so `rgba()` over a dark surface is not an option.
- */
+// Bordered notice block; colours are opaque hex because email clients don't reliably composite rgba().
 
 import { Section } from '@react-email/components'
 import type { ReactNode } from 'react'

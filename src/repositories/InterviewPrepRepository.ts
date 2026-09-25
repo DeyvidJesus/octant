@@ -33,12 +33,7 @@ export interface UpsertSkillInput {
   attempts: number
 }
 
-/**
- * Data-access boundary for the interview simulation: per-skill mastery (`user_skills`) and mock
- * interview sessions/answers (`mock_interviews`, `mock_answers`). RLS-scoped; throws `AppError`
- * subclasses on failure. Resolves the current user from the in-memory session mirror (no per-write
- * `auth.getUser()` round-trip — the Phase 3 pattern this store previously lacked).
- */
+/** Data access for skill mastery and mock interviews. RLS-scoped; throws `AppError` subclasses. */
 export class InterviewPrepRepository extends BaseRepository {
   async getUserSkills(): Promise<UserSkill[]> {
     const userId = this.requireUserId()
@@ -95,7 +90,7 @@ export class InterviewPrepRepository extends BaseRepository {
     )
   }
 
-  /** Upserts a skill's blended mastery. Uses the real (user_id, skill) unique constraint. */
+  /** Upserts a skill's blended mastery on the (user_id, skill) unique constraint. */
   async upsertSkillMastery(input: UpsertSkillInput): Promise<void> {
     const userId = this.requireUserId()
     const now = new Date().toISOString()
@@ -117,5 +112,5 @@ export class InterviewPrepRepository extends BaseRepository {
   }
 }
 
-/** Shared singleton — import this from stores. The class is exported for testing/DI. */
+/** Shared singleton for stores; the class is exported for tests. */
 export const interviewPrepRepository = new InterviewPrepRepository()

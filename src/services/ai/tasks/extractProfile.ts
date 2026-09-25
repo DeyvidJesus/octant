@@ -12,14 +12,8 @@ import { createId } from '@/utils/id'
 import { getProvider } from '../providers'
 import { AiError, type AiRunConfig, type ChatMessage } from '../types'
 
-/**
- * Onboarding resume import. The user pastes their résumé text; the model TRANSCRIBES it into a flat
- * JSON structure, and deterministic code below assembles a CareerKnowledgeBase from it.
- *
- * Same division of labor as `extractJobs`: the LLM only transcribes what it can see, never invents.
- * Everything it produces lands as `needs_review` with provenance pointing back at the pasted résumé,
- * so nothing flows into resumes/matching until the user confirms it in the Knowledge Base.
- */
+// Onboarding import: the model transcribes pasted résumé text to JSON and code builds the knowledge base.
+// Everything lands as `needs_review`, so nothing is used until the user confirms it.
 
 const MAX_INPUT_CHARS = 40_000
 const MAX_SKILLS = 80
@@ -84,10 +78,7 @@ function slug(value: string): string {
   return value.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item'
 }
 
-/**
- * Deterministic assembly of a CareerKnowledgeBase from the (untrusted) model output. Everything is
- * `needs_review`; statements/skills are only what the résumé contained; ids and provenance are ours.
- */
+/** Builds a knowledge base from untrusted model output; ids and provenance are assigned here, not by the model. */
 export function buildKnowledgeBaseFromExtraction(raw: unknown): {
   knowledgeBase: CareerKnowledgeBase
   counts: ExtractProfileResult['counts']

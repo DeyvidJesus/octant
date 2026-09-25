@@ -1,10 +1,6 @@
 import type { Application, ApplicationStage } from '@/types/application'
 
-/**
- * Deterministic, framework-free career analytics derived from tracked
- * applications and their timestamped stage-change events. All functions are
- * pure so they are unit-testable without the store.
- */
+// Pure career analytics derived from applications and their stage-change events.
 
 /** Ordered active pipeline stages that form the funnel (terminal stages excluded). */
 export const FUNNEL_STAGES: ApplicationStage[] = [
@@ -28,22 +24,14 @@ export interface FunnelStep {
   conversion: number
 }
 
-/**
- * Terminal stages imply a minimum funnel progress even without recorded
- * history: `accepted` implies an offer; `rejected`/`ghosted` imply the app was
- * at least applied. `withdrawn` is ambiguous (you can withdraw a saved one), so
- * it relies on recorded history only.
- */
+// Minimum funnel progress implied by a terminal stage. `withdrawn` is omitted: a saved app can be withdrawn.
 const TERMINAL_IMPLIED: Partial<Record<ApplicationStage, ApplicationStage>> = {
   accepted: 'offer',
   rejected: 'applied',
   ghosted: 'applied',
 }
 
-/**
- * The furthest funnel index an application reached, inferred from its stage
- * history (stage-change events + current stage) and terminal-stage implications.
- */
+/** Furthest funnel index reached, from current stage, stage-change events and terminal implications. */
 export function furthestFunnelIndex(app: Application): number {
   let max = -1
   const consider = (stage?: ApplicationStage) => {
@@ -116,11 +104,7 @@ export interface RateSummary {
   ghostRate: number
 }
 
-/**
- * A submitted application "got a response" if it progressed past `applied`
- * (reached screening or beyond) or ended rejected. Saved-but-never-applied
- * entries are excluded from the denominator.
- */
+/** A response means reaching screening or being rejected. Never-applied entries are excluded from the denominator. */
 export function rates(applications: Application[]): RateSummary {
   const submitted = applications.filter((app) => furthestFunnelIndex(app) >= FUNNEL_INDEX.applied)
   const total = submitted.length
@@ -147,10 +131,7 @@ export interface StageDuration {
   samples: number
 }
 
-/**
- * Average time spent in each stage, measured between consecutive stage-change
- * events. The duration is attributed to the stage being left (`fromStage`).
- */
+/** Average days per stage between consecutive stage changes, attributed to the stage being left. */
 export function timeInStage(applications: Application[]): StageDuration[] {
   const totals = new Map<ApplicationStage, { days: number; samples: number }>()
 

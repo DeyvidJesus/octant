@@ -1,9 +1,4 @@
-/**
- * Password Changed — confirmation after a successful password update.
- *
- * Sent even though the user just did it deliberately: if they didn't, this email is the only signal they
- * will get, and it arrives while the reset link they need is still usable.
- */
+// Confirmation after a password update; if it wasn't the user, this is their only signal.
 
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'

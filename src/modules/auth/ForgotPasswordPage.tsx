@@ -1,10 +1,4 @@
-/**
- * "Forgot password" — requests the reset email.
- *
- * The success message is intentionally identical whether or not the address has an account. Confirming
- * "no such user" would turn this form into an account-enumeration oracle, which is exactly how attackers
- * build target lists. Supabase's API is silent about it too, so the UI must not be more helpful.
- */
+// The success message is the same whether or not the account exists, to prevent account enumeration.
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -31,7 +25,7 @@ export function ForgotPasswordPage() {
       trackEvent(AnalyticsEvent.PasswordResetRequested)
       setSent(true)
     } catch (err) {
-      // Only genuine transport/config failures reach here — a missing account is not an error.
+      // A missing account is not an error; only transport or config failures reach here.
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     } finally {
       setLoading(false)

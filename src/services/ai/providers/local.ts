@@ -3,10 +3,7 @@ import { completeOpenAiCompatible } from './openAiCompatible'
 
 const DEFAULT_ENDPOINT = 'http://localhost:11434/v1/chat/completions'
 
-/**
- * Any local OpenAI-compatible server (Ollama, LM Studio, llama.cpp). No key,
- * nothing leaves the machine. The user points `baseUrl` at their server.
- */
+/** Any local OpenAI-compatible server (Ollama, LM Studio, llama.cpp), addressed by `baseUrl`. */
 export const localProvider: LLMProvider = {
   id: 'local',
   complete: (request) =>

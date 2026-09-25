@@ -6,12 +6,7 @@ import { getProvider } from '../providers'
 import { checkGrounding, type GroundingReport } from '../guardrails/grounding'
 import { AiError, type AiRunConfig, type ChatMessage } from '../types'
 
-/**
- * "Interview Coach" — a strict senior-engineer interviewer pass over one
- * practice answer. The model critiques only against the selected job, the
- * expected answer, and documented Master Resume evidence; deterministic
- * guardrails flag invented skills before the result is trusted by the UI.
- */
+// Strict interviewer critique of one practice answer; the grounding check flags invented skills.
 
 export interface InterviewCoachInput {
   job: Pick<JobOpportunity, 'company' | 'role' | 'description'>

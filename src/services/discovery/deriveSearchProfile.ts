@@ -46,10 +46,7 @@ function topTechnologies(kb: CareerKnowledgeBase): string[] {
     .slice(0, MAX_DERIVED_TECHNOLOGIES)
 }
 
-/**
- * Builds an initial SearchProfile from the Master Resume, migrating any legacy free-text
- * DiscoveryPrefs. Used to seed a brand-new `search_profiles` row so discovery is useful immediately.
- */
+/** Seeds a new SearchProfile from the Master Resume, migrating legacy free-text DiscoveryPrefs. */
 export function deriveSearchProfile(
   kb: CareerKnowledgeBase,
   legacy?: DiscoveryPrefs,
@@ -78,10 +75,7 @@ export function deriveSearchProfile(
   }
 }
 
-/**
- * The profile the pipeline actually runs on: the user's stored profile with any empty field filled
- * from the resume-derived defaults. Stored non-empty values always win.
- */
+/** The stored profile with empty fields filled from resume-derived defaults. */
 export function resolveSearchProfile(
   stored: SearchProfile | null,
   kb: CareerKnowledgeBase,

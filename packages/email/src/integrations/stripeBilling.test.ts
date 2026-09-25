@@ -61,8 +61,7 @@ function event(type: string, object: StripeSubscriptionLike | StripeInvoiceLike,
 
 describe('BILLING_EVENT_TYPES', () => {
   it('lists exactly the events the Stripe endpoint must enable', () => {
-    // This array is what the manual setup checklist and the webhook's handler table are built from —
-    // if they drift, emails silently stop firing.
+    // If this drifts from the endpoint setup, emails silently stop firing.
     expect(BILLING_EVENT_TYPES).toEqual([
       'customer.subscription.created',
       'customer.subscription.updated',

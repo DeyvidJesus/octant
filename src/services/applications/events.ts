@@ -1,11 +1,7 @@
 import type { Application, ApplicationEvent, ApplicationEventKind, ApplicationStage } from '@/types/application'
 import { createId } from '@/utils/id'
 
-/**
- * Pure builders/reducers for an application's activity timeline. Framework-free
- * and timestamp-injected so they are unit-testable without instantiating the
- * store. Each returns a `Partial<Application>` patch to merge.
- */
+// Pure timeline builders with injected timestamps; each returns a `Partial<Application>` patch.
 
 export function makeEvent(
   kind: ApplicationEventKind,
@@ -24,7 +20,7 @@ export function changeStage(app: Application, toStage: ApplicationStage, at: str
   if (app.stage === toStage) return {}
   const event = makeEvent('stage_change', at, { fromStage: app.stage, toStage })
   const patch: Partial<Application> = { stage: toStage, events: appendEvent(app.events, event) }
-  // First move into an active stage seeds appliedAt if not already set.
+  // The first move to `applied` seeds appliedAt.
   if (!app.appliedAt && toStage === 'applied') patch.appliedAt = at
   return patch
 }

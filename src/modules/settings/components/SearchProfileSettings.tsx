@@ -14,10 +14,7 @@ const SENIORITY_LABELS: Record<string, string> = {
   unknown: 'Any / from resume', junior: 'Junior', mid: 'Mid', senior: 'Senior', staff: 'Staff', lead: 'Lead',
 }
 
-/**
- * Structured inputs that steer the discovery agent. Empty fields fall back to values derived from the
- * Master Resume, so what's shown here is the *effective* profile (stored values over resume-derived).
- */
+/** Discovery search inputs; empty fields show values derived from the Master Resume. */
 export function SearchProfileSettings() {
   const stored = useSearchProfileStore((s) => s.profile)
   const update = useSearchProfileStore((s) => s.updateProfile)

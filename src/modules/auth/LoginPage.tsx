@@ -9,16 +9,7 @@ import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Field } from '@/components/ui/Field'
 
-/**
- * Sign in / sign up / magic link.
- *
- * Auth calls now go through `src/services/supabase/auth.ts` rather than touching `supabase.auth` inline,
- * because each one has to pass an explicit redirect URL for the email links to land on the right route.
- * Keeping those destinations in the service means this component can't get them subtly wrong.
- *
- * Signup also captures a name — nothing did before, so every transactional email opened with the
- * anonymous "Hi there,".
- */
+// Auth calls go through `services/supabase/auth.ts`, which owns the redirect URLs for email links.
 type Mode = 'signin' | 'signup' | 'magic'
 
 const MODE_COPY: Record<Mode, { subtitle: string; submit: string; pending: string }> = {
@@ -37,7 +28,6 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
-  // Already signed in → no reason to show the login form.
   if (!isLoading && session) return <Navigate to="/" replace />
 
   const copy = MODE_COPY[mode]

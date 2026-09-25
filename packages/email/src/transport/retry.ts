@@ -1,14 +1,5 @@
-/**
- * Retry policy for provider calls.
- *
- * Pure and fully deterministic: `sleep` and `random` are injected, so the tests run instantly and
- * assert exact delays instead of tolerating a range. The codebase had no retry utility before this
- * (only single corrective re-prompts in the AI tasks), so this is intentionally small and local
- * rather than a general-purpose framework.
- *
- * Retrying is only safe because every send carries an idempotency key — see `ResendTransport`. Without
- * one, a timeout after the provider already queued the message would deliver it twice.
- */
+// Retry for provider calls; `sleep` and `random` are injected so tests assert exact delays.
+// Only safe because every send carries an idempotency key, otherwise a timeout could deliver twice.
 
 import { EmailError, EmailRateLimitError, EmailTransportError } from '../errors.ts'
 
@@ -38,32 +29,22 @@ export const defaultRetryDeps: RetryDeps = {
   random: Math.random,
 }
 
-/**
- * Exponential backoff with full jitter: the delay lands somewhere in [50%, 100%] of the capped
- * exponential value. Jitter matters because a provider outage makes every pending send retry in
- * lockstep otherwise, re-creating the thundering herd that caused the 5xx.
- */
+/** Capped exponential backoff, jittered to 50-100% so sends don't retry in lockstep after an outage. */
 export function backoffDelay(attempt: number, policy: RetryPolicy, random: () => number): number {
   const exponential = policy.baseDelayMs * 2 ** Math.max(0, attempt - 1)
   const capped = Math.min(policy.maxDelayMs, exponential)
   return Math.round(capped * (0.5 + 0.5 * random()))
 }
 
-/**
- * Whether re-issuing the identical request could plausibly succeed.
- *
- * Known email errors carry the answer already (decided at the transport boundary, where the provider's
- * status code was still visible). An UNKNOWN throw is treated as retryable: in practice that means a
- * `fetch` TypeError from a dropped connection, where the request may never have reached the provider.
- */
+/** Transport errors carry their own flag; unknown throws (usually dropped connections) are retryable. */
 export function isRetryable(error: unknown): boolean {
   if (error instanceof EmailTransportError) return error.retryable
-  // Any other typed email error (config, validation, render, suppressed) is a permanent refusal.
+  // Config, validation, render and suppressed errors are permanent.
   if (error instanceof EmailError) return false
   return true
 }
 
-/** How long to wait before `attempt`, honouring a provider-supplied Retry-After when present. */
+/** Honours a provider Retry-After (capped at maxDelayMs), otherwise uses backoff. */
 function delayFor(attempt: number, error: unknown, policy: RetryPolicy, random: () => number): number {
   if (error instanceof EmailRateLimitError && error.retryAfterMs !== null) {
     return Math.min(error.retryAfterMs, policy.maxDelayMs)
@@ -71,10 +52,7 @@ function delayFor(attempt: number, error: unknown, policy: RetryPolicy, random: 
   return backoffDelay(attempt, policy, random)
 }
 
-/**
- * Runs `operation`, retrying transient failures per `policy`. Rethrows the LAST error once attempts
- * are exhausted (not the first), so the surfaced message reflects the final state of the provider.
- */
+/** Retries transient failures per `policy` and rethrows the last error once attempts run out. */
 export async function withRetry<T>(
   operation: (attempt: number) => Promise<T>,
   policy: RetryPolicy = DEFAULT_RETRY_POLICY,
@@ -98,6 +76,6 @@ export async function withRetry<T>(
     }
   }
 
-  // Unreachable: the loop either returns or throws. Present so TS sees a total function.
+  // Unreachable; keeps TypeScript happy.
   throw lastError
 }

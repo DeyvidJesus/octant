@@ -1,16 +1,5 @@
-/**
- * Sample props for every template — ONE set, used by three consumers:
- *
- *   • the React Email dev server (`yarn email:dev`), via each template's `PreviewProps` static,
- *   • the invariant tests in `renderer.test.ts`,
- *   • the static HTML export (`yarn email:export`).
- *
- * Reading them back off the default exports rather than redeclaring them is the point: sample data that
- * exists twice drifts, and a preview that renders fine while the test fixture is stale (or vice versa)
- * is worse than no preview at all.
- *
- * The `Record` is typed over `TemplateName`, so a new template cannot be added without a fixture.
- */
+// One set of sample props, read off each template's `PreviewProps`, shared by the dev server, the tests
+// and the HTML export so they cannot drift.
 
 import BillingSuccessPreview from './transactional/BillingSuccess.tsx'
 import EmailChangedPreview from './transactional/EmailChanged.tsx'
@@ -47,7 +36,7 @@ export const templateFixtures: Fixtures = {
   'password-changed': PasswordChangedPreview.PreviewProps,
 }
 
-/** The fixture for one template, with the injected `brand` removed — the shape a caller supplies. */
+/** The fixture for one template. */
 export function fixturePropsFor<N extends TemplateName>(name: N): TemplateComponentProps<N> {
   return templateFixtures[name]
 }

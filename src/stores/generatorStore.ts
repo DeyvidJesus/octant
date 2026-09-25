@@ -5,11 +5,7 @@ import { UnauthenticatedError } from '@/repositories/errors'
 import { persist } from './persist'
 import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
 
-/**
- * Tailored resumes, one per job. Documents are snapshots — regenerating from
- * the Master Resume replaces them. Toggles flip `included` flags in place so
- * a curation session survives reloads.
- */
+/** Tailored resumes, one per job. Regenerating replaces the snapshot; toggles persist `included` flags. */
 interface GeneratorState {
   tailored: Record<string, TailoredResume>
   saveTailored: (resume: TailoredResume) => void
@@ -28,7 +24,6 @@ export const useGeneratorStore = create<GeneratorState>()(
     saveTailored: (resume) => {
       set((state) => ({ tailored: { ...state.tailored, [resume.jobId]: resume } }))
       trackEvent(AnalyticsEvent.ResumeGenerated, { jobId: resume.jobId })
-      // One targeted row upsert — not the whole collection.
       persist(() => tailoredResumeRepository.saveTailored(resume), 'generator.saveTailored')
     },
 

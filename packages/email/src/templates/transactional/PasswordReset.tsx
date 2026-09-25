@@ -1,9 +1,4 @@
-/**
- * Password Reset — Supabase Auth's `recovery` action.
- *
- * Shows the request metadata (IP, device, time) when the hook provides it: for a reset email, "was this
- * you?" is the whole security question, and the recipient can only answer it with that context.
- */
+// Supabase `recovery` action; shows request IP, device and time so the recipient can judge "was this you?".
 
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'

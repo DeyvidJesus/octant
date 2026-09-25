@@ -46,8 +46,7 @@ export function InterviewPrepPage() {
   const resume = useResumeStore((state) => state.resume)
   const skills = useInterviewPrepStore((state) => state.skills)
 
-  // Keyed by the job they were generated for: switching `?jobId=` does not remount this page, so plain
-  // state would keep showing the previous job's questions (and a late response could land on the wrong job).
+  // Keyed by job: changing `?jobId=` doesn't remount the page, so unkeyed state would show stale questions.
   const [aiResult, setAiResult] = useState<{ jobId: string; questions: PrepQuestion[] } | null>(null)
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<{ jobId: string; message: string } | null>(null)

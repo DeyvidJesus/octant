@@ -1,10 +1,4 @@
-/**
- * Greeting and pluralisation helpers.
- *
- * Trivial on their own, but 14 templates each inlining `name ? \`Hi ${name},\` : 'Hi there,'` is 14
- * chances to word it differently. Centralising also means a blank-but-present name (`"  "`) degrades to
- * the neutral greeting instead of rendering "Hi ,".
- */
+// Shared greeting and pluralisation, so a blank name degrades to "Hi there," instead of "Hi ,".
 
 /** `Hi Ana,` when a usable name exists, otherwise `Hi there,`. */
 export function greetingFor(name?: string): string {
@@ -12,7 +6,7 @@ export function greetingFor(name?: string): string {
   return trimmed !== undefined && trimmed !== '' ? `Hi ${trimmed},` : 'Hi there,'
 }
 
-/** `1 day` / `3 days`. Avoids the "1 days" bug appearing in one template but not the others. */
+/** `1 day` / `3 days`. */
 export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${Math.abs(count) === 1 ? singular : plural}`
 }

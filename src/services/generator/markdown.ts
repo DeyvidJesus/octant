@@ -1,10 +1,6 @@
 import type { TailoredResume } from '@/types/generator'
 
-/**
- * Text exporters. Markdown for humans and tools; plain text for pasting into
- * ATS web forms (which routinely mangle rich formatting). Only included
- * content is exported — what you see in the preview is exactly what ships.
- */
+// Markdown and plain-text exporters (plain text is for ATS web forms). Only included content is exported.
 
 function bulletLine(text: string, metric: string | undefined, prefix: string): string {
   return `${prefix} ${text}${metric ? ` (${metric})` : ''}`

@@ -18,10 +18,7 @@ interface JobAnalysisRow {
   data: JobAnalysis
 }
 
-/**
- * Data-access boundary for the jobs domain (opportunities + their ATS analyses).
- * All methods are RLS-scoped to the current user and throw `AppError` subclasses on failure.
- */
+/** Data access for jobs and their ATS analyses. RLS-scoped; throws `AppError` subclasses. */
 export class JobRepository extends BaseRepository {
   async getJobs(): Promise<JobOpportunity[]> {
     const userId = this.requireUserId()
@@ -69,11 +66,7 @@ export class JobRepository extends BaseRepository {
     return byJobId
   }
 
-  /**
-   * Streams cross-device changes to the current user's jobs. `onUpsert` fires for INSERT/UPDATE,
-   * `onDelete` for DELETE. Returns an unsubscribe function. Analyses are not streamed (they are
-   * generated on demand); only the `jobs` table is watched.
-   */
+  /** Streams cross-device changes to the user's jobs (analyses are not streamed). Returns an unsubscribe. */
   subscribeToJobs(handlers: {
     onUpsert: (job: JobOpportunity) => void
     onDelete: (id: string) => void
@@ -86,8 +79,7 @@ export class JobRepository extends BaseRepository {
 
   async upsertAnalysis(analysis: JobAnalysis): Promise<void> {
     const userId = this.requireUserId()
-    // One analysis per (user, job): the `uq_job_analyses_user_job` unique index (migration 0009)
-    // lets this replace an existing analysis instead of accumulating duplicate rows.
+    // One analysis per (user, job), enforced by the `uq_job_analyses_user_job` unique index.
     this.unwrap(
       await supabase.from('job_analyses').upsert(
         {
@@ -103,5 +95,5 @@ export class JobRepository extends BaseRepository {
   }
 }
 
-/** Shared singleton — import this from stores. The class is exported for testing/DI. */
+/** Shared singleton for stores; the class is exported for tests. */
 export const jobRepository = new JobRepository()

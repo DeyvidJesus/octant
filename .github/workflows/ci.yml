@@ -25,15 +25,15 @@ jobs:
       - name: Install
         run: yarn install --frozen-lockfile
 
-      # oxlint, including the layer-boundary rules in .oxlintrc.json
+      # oxlint, including the layer-boundary rules in .oxlintrc.json.
       - name: Lint
         run: yarn lint
 
-      # Vitest: pure domain logic, component tests (happy-dom) and the design-token guard
+      # Domain logic, component tests (happy-dom) and the design-token guard.
       - name: Test
         run: yarn test
 
-      # tsc -b (type check) + vite build
+      # tsc -b, then vite build.
       - name: Build
         run: yarn build
 
@@ -41,8 +41,7 @@ jobs:
         with:
           deno-version: v2.x
 
-      # Hand-written Edge Functions are Deno code the app's tsc never sees. (The five bundled ones are
-      # esbuild output with types stripped, and their sources are covered by the build above.)
+      # Hand-written Edge Functions are Deno code tsc never sees; bundled ones are covered by the build.
       - name: Type-check Edge Functions
         run: |
           deno check --no-config \
@@ -52,8 +51,7 @@ jobs:
             supabase/functions/create-portal-session/index.ts \
             supabase/functions/get-plan-pricing/index.ts
 
-      # The Supabase edge runtime cannot resolve the shared `@/` sources, so five functions deploy a
-      # generated bundle. Fail if a source changed without regenerating it (`yarn build:functions`).
+      # Fails if a bundled function's source changed without rerunning `yarn build:functions`.
       - name: Edge Function bundles are up to date
         run: |
           yarn build:functions

@@ -15,13 +15,7 @@ function focusableWithin(root: HTMLElement): HTMLElement[] {
   )
 }
 
-/**
- * Keeps keyboard focus inside a modal while `active`: Tab and Shift+Tab wrap around its focusable
- * elements instead of escaping to the page behind the backdrop. On activation, focus moves into the
- * modal unless something inside already has it (an `autoFocus` button keeps its focus). On deactivation,
- * focus returns to whatever had it before the modal opened, so keyboard users are not dropped at the top
- * of the page.
- */
+/** Traps Tab focus inside a modal while `active`, then restores focus to the previous element. */
 export function useFocusTrap(ref: RefObject<HTMLElement | null>, active: boolean): void {
   useEffect(() => {
     const root = ref.current

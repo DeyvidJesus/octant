@@ -1,11 +1,4 @@
--- 0005_interview_prep_tables.sql
--- Phase 10: Dynamic Interview Simulation.
---
--- Replaces the single `interview_preps.state` JSONB blob (per-question MANUAL self-rating) with a
--- relational, AI-scored model:
---   * user_skills     — per-skill mastery (0-100), driven by AI answer scores, not self-rating.
---   * mock_interviews — one practice session, optionally tied to a job.
---   * mock_answers    — one answered question: the answer, the AI score, and the coach feedback.
+-- Replaces the interview_preps self-rating blob with AI-scored tables: user_skills, mock_interviews, mock_answers.
 
 create table if not exists public.user_skills (
   id uuid primary key default uuid_generate_v4(),
@@ -44,7 +37,6 @@ alter table public.user_skills enable row level security;
 alter table public.mock_interviews enable row level security;
 alter table public.mock_answers enable row level security;
 
--- CREATE POLICY has no IF NOT EXISTS; drop-then-create keeps this idempotent and safe after baseline.
 drop policy if exists "Users can only access their own user skills" on public.user_skills;
 create policy "Users can only access their own user skills" on public.user_skills for all using (auth.uid() = user_id);
 
@@ -59,5 +51,4 @@ create index if not exists idx_mock_interviews_user_id on public.mock_interviews
 create index if not exists idx_mock_answers_user_id on public.mock_answers (user_id);
 create index if not exists idx_mock_answers_interview on public.mock_answers (mock_interview_id);
 
--- Retire the old per-question self-rating blob (replaced by the tables above).
 drop table if exists public.interview_preps cascade;

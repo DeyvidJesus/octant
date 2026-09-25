@@ -36,8 +36,7 @@ export function GeneratorEditorPage() {
   const [exportError, setExportError] = useState<string | null>(null)
   const bootstrapped = useRef(false)
 
-  // Bootstrap: analyze (local, instant) if needed, then generate if needed.
-  // Both are deterministic and non-destructive, so no confirmation required.
+  // Analyze, then generate, if needed; both are deterministic and non-destructive.
   useEffect(() => {
     if (!job || bootstrapped.current) return
     bootstrapped.current = true
@@ -47,8 +46,7 @@ export function GeneratorEditorPage() {
         current = await getAnalyzer().analyze({ job, resume })
         saveAnalysis(current)
       }
-      // Don't auto-generate a NEW tailored resume for a free user already at the cap — the DB would
-      // reject the insert. An existing one (this job already tailored) is always editable.
+      // Skip auto-generating a new resume at the free cap, since the DB would reject the insert.
       if (!tailored && !tailoredResumeLimitReached(tier, tailoredCount)) {
         saveTailored(generateTailoredResume(resume, current))
       }
@@ -125,7 +123,7 @@ export function GeneratorEditorPage() {
 
   return (
     <div className="flex flex-col lg:flex-row lg:h-full animate-fade-in print:h-auto print:block">
-      {/* Controls — never printed */}
+      {/* Controls, hidden in print */}
       <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-edge bg-base lg:overflow-y-auto custom-scrollbar p-6 shrink-0 space-y-8 print:hidden">
         <div>
           <button
@@ -175,7 +173,7 @@ export function GeneratorEditorPage() {
         </p>
       </div>
 
-      {/* Paper preview — the only thing that prints */}
+      {/* Paper preview, the only printed element */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-base print:overflow-visible print:p-0 print:bg-paper">
         <ResumePaper tailored={tailored} onToggleBullet={handleToggle} onToggleProject={handleToggleProject} />
       </div>

@@ -23,25 +23,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Active realtime unsubscribe handles. Torn down before every (re)subscribe so a token refresh
-    // — which re-fires onAuthStateChange — never leaks duplicate channels.
+    // Torn down before every resubscribe so token refreshes never leak duplicate channels.
     let realtimeCleanups: Array<() => void> = []
     const teardownRealtime = () => {
       realtimeCleanups.forEach((cleanup) => cleanup())
       realtimeCleanups = []
     }
 
-    // The user id we've already hydrated for. `undefined` = not yet initialized. Keyed on user id
-    // (not the access token) so a TOKEN_REFRESHED event for the same user does NOT re-run the nine
-    // fetches or re-subscribe — and so both getSession() and onAuthStateChange's INITIAL_SESSION
-    // (which fire on load) only hydrate once. Set synchronously before any await to win that race.
+    // Hydrated user id (undefined = not yet). Keyed on user, not token, so refreshes and the duplicate
+    // INITIAL_SESSION event don't re-hydrate; set before any await to win that race.
     let currentUserId: string | null | undefined = undefined
     let disposed = false
 
     const syncData = async (session: Session | null) => {
       const nextUserId = session?.user?.id ?? null
-      // Mirror the user id into the module-level session holder BEFORE any repository call, so the
-      // repository layer resolves it synchronously (no per-write `auth.getUser()` network round-trip).
+      // Must run before any repository call, which reads the user id from this mirror.
       setSessionUserId(nextUserId)
       setSession(session)
       setUser(session?.user ?? null)
@@ -61,18 +57,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       currentUserId = nextUserId
 
-      // Welcome email. There is no server-side trigger for it: GoTrue's Send Email Hook only fires for
-      // outbound AUTH mail, and a database trigger on auth.users would mean putting a service-role
-      // secret inside Postgres. So the client nudges it on the first authenticated render after the
-      // address is confirmed, and the `send-email` function makes it exactly-once via
-      // `email_log.idempotency_key`. Fire-and-forget: it must never delay or block hydration.
+      // Welcome email has no server trigger, so the client requests it; `send-email` dedupes via
+      // `email_log.idempotency_key`. Fire-and-forget so it never blocks hydration.
       if (session?.user?.email_confirmed_at != null) {
         void sendWelcomeEmail()
       }
 
       teardownRealtime()
-      // Wipe the previous user's in-memory data on every transition (sign-out AND user switch) so
-      // nothing bleeds across sessions on a shared browser.
+      // Wipe the previous user's data on sign-out and on user switch.
       resetAllStores()
 
       if (nextUserId) {
@@ -87,9 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           useSubscriptionStore.getState()._fetchFromSupabase?.(),
           useSearchProfileStore.getState()._fetchFromSupabase?.(),
         ])
-        // The fetches took a while: bail if this effect was torn down (StrictMode's double run, unmount)
-        // or the user changed meanwhile (a sign-out right after sign-in). Otherwise a stale run would
-        // subscribe a second set of channels, or subscribe the previous user's.
+        // Bail if the effect was torn down or the user changed during the fetches, or a stale run
+        // would subscribe duplicate channels (or the previous user's).
         if (disposed || currentUserId !== nextUserId) return
         // Subscribe after the initial load so realtime deltas apply on top of a hydrated store.
         realtimeCleanups = [
@@ -101,12 +92,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false)
     }
 
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       syncData(session)
     })
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       syncData(session)
     })

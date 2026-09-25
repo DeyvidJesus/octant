@@ -8,10 +8,7 @@ import { useDiscoveryStore } from './discoveryStore'
 import { useSubscriptionStore } from './subscriptionStore'
 import { useSearchProfileStore } from './searchProfileStore'
 
-/**
- * Wipes every store back to its empty initial state. Called on sign-out and on a user switch so one
- * account's data never lingers in memory for the next session on a shared browser (audit finding H2).
- */
+/** Resets every store on sign-out or user switch so no account's data lingers in memory. */
 export function resetAllStores(): void {
   useJobsStore.getState().reset()
   useApplicationsStore.getState().reset()

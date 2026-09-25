@@ -6,10 +6,7 @@ export interface TaxonomyHit {
   /** The alias that actually appeared in the text (most frequent one). */
   term: string
   count: number
-  /**
-   * 'required' if mentioned in any must-have context, else 'preferred'.
-   * A skill named in both contexts is treated as required (stronger signal).
-   */
+  /** 'required' if mentioned in any must-have context, else 'preferred'. */
   importance: RequirementImportance
 }
 
@@ -17,10 +14,7 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-/**
- * Matches an alias on "term boundaries": not preceded/followed by a
- * word-ish character. Plain \b fails for aliases like "c#", ".net", "ci/cd".
- */
+// Custom term boundaries, since plain \b fails for aliases like "c#", ".net", "ci/cd".
 function countOccurrences(text: string, alias: string): number {
   const pattern = new RegExp(`(?<![a-z0-9#+.])${escapeRegex(alias)}(?![a-z0-9#+])`, 'g')
   return (text.match(pattern) ?? []).length
@@ -37,13 +31,8 @@ interface Line {
   mode: RequirementImportance
 }
 
-/**
- * Splits the JD into fine segments (on both line breaks and sentence
- * boundaries) and tags each with required/preferred based on the nearest
- * preceding heading, plus inline "a plus"-style markers. Splitting on
- * sentences too means a single-line description with "Requirements: … Nice to
- * have: …" is still classified section-by-section.
- */
+// Splits on lines and sentences so a one-line "Requirements: ... Nice to have: ..." JD still
+// gets per-section required/preferred tags.
 function segmentLines(lower: string): Line[] {
   const raw = lower.split(/\n|(?<=[.;])\s+/)
   const lines: Line[] = []

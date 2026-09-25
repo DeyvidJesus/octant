@@ -1,14 +1,7 @@
 import type { TailoredBullet, TailoredResume } from '@/types/generator'
 
-/**
- * The rendered document: deliberately plain — single column, no tables, no
- * icons, no color-coding — because ATS parsers eat exactly this and nothing
- * fancier. Always light, independent of the app theme, so screen preview and
- * print output are the same artifact.
- *
- * On screen, every bullet/project carries a checkbox to include/exclude it;
- * excluded content renders dimmed here and not at all in print/export.
- */
+// Plain single-column layout so ATS parsers can read it; always light so preview matches print.
+// Excluded items render dimmed on screen and are omitted from print.
 interface ResumePaperProps {
   tailored: TailoredResume
   onToggleBullet: (accomplishmentId: string) => void
@@ -24,7 +17,6 @@ export function ResumePaper({ tailored, onToggleBullet, onToggleProject }: Resum
       id="resume-paper"
       className="bg-paper text-neutral-900 rounded-lg shadow-2xl px-10 py-9 max-w-[52rem] text-[13.5px] leading-relaxed print:shadow-none print:rounded-none print:px-0 print:py-0 print:max-w-none"
     >
-      {/* Header */}
       <header className="mb-5">
         <h1 className="text-2xl font-bold tracking-tight">{header.name}</h1>
         <p className="text-[15px] font-medium text-neutral-700">{header.role}</p>

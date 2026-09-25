@@ -7,11 +7,7 @@ import { runInSessionDiscovery } from '@/stores/discoveryRunner'
 import { buildDigest } from '@/services/discovery/proactivity'
 import { formatRelative } from '@/utils/dates'
 
-/**
- * The "agent working for your career" surface: live status of the discovery pipeline (idle /
- * searching / scoring / done / error), driven by the store's realtime run state + in-flight
- * progress, plus a manual "Run now". The candidate feed below is already ranked by score.
- */
+/** Live discovery run status with a manual "Run now" button. */
 export function AgentStatusHeader() {
   const currentRun = useDiscoveryStore((s) => s.currentRun)
   const progress = useDiscoveryStore((s) => s.progress)

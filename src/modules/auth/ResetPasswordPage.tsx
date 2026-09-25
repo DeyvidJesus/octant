@@ -1,13 +1,4 @@
-/**
- * Where a recovery link finishes: set a new password.
- *
- * The recovery link has already established a session by the time this renders (GoTrue does it during the
- * redirect), so `updateUser({ password })` is all that's needed — there is no token to handle here.
- *
- * Ordering matters on submit: the "your password changed" notice is sent only AFTER the update succeeds.
- * Sending it first would tell a user their password changed when it hadn't, which for a security email is
- * worse than sending nothing.
- */
+// Recovery links arrive with a session already set by GoTrue, so only `updateUser({ password })` is needed.
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -47,8 +38,7 @@ export function ResetPasswordPage() {
     setLoading(true)
     try {
       await updatePassword(password)
-      // Only now — the notice must describe something that actually happened. Fire-and-forget so a
-      // mail hiccup can't strand the user on a form whose submission already succeeded.
+      // Sent only after the update succeeds; fire-and-forget so a mail failure can't block the user.
       void sendPasswordChangedEmail()
       navigate('/', { replace: true })
     } catch (err) {
@@ -58,7 +48,7 @@ export function ResetPasswordPage() {
     }
   }
 
-  // No session means the link was never opened (or has expired) — there is nothing to reset here.
+  // No session means the link was never opened or has expired.
   if (!isLoading && !session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-base py-12 px-4">

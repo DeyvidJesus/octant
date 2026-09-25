@@ -1,9 +1,4 @@
-/**
- * Subscription Created — "welcome to Pro", sent on `customer.subscription.created`.
- *
- * Distinct from BillingSuccess on purpose: this one is about what the plan unlocks, the receipt is about
- * money. Merging them would mean one email trying to do both jobs badly.
- */
+// `customer.subscription.created`: what the plan unlocks, kept separate from the BillingSuccess receipt.
 
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'

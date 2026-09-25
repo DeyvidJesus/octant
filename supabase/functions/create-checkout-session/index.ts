@@ -1,12 +1,4 @@
-// Supabase Edge Function: create-checkout-session
-//
-// Phase 11 — creates a Stripe Checkout Session for the Pro subscription. The Stripe secret key stays
-// server-side; the frontend just redirects to the returned URL. The signed-in user's id is attached
-// to the subscription's metadata so the webhook can map the resulting subscription back to the user.
-//
-// Deploy:  supabase functions deploy create-checkout-session
-// Secrets: supabase secrets set STRIPE_SECRET_KEY=sk_... STRIPE_PRICE_ID=price_... APP_URL=https://app...
-// (SUPABASE_URL / SUPABASE_ANON_KEY are injected automatically. JWT verification stays ON.)
+// create-checkout-session: returns a Stripe Checkout URL for the Pro plan to a JWT-verified caller.
 
 import Stripe from 'npm:stripe@16'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
@@ -18,7 +10,6 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
 })
 
 Deno.serve(async (req: Request): Promise<Response> => {
-  // Per request, not module-level: a fixed header can only ever serve one origin.
   const CORS_HEADERS = corsHeaders(req)
   const json = (body: unknown, status = 200): Response =>
     new Response(JSON.stringify(body), {
@@ -50,7 +41,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       line_items: [{ price: priceId, quantity: 1 }],
       client_reference_id: user.id,
       customer_email: user.email ?? undefined,
-      // Stamp the user id onto the SUBSCRIPTION so subscription.* webhook events carry it.
+      // On the subscription itself so subscription.* webhook events carry the user id.
       subscription_data: { metadata: { user_id: user.id } },
       allow_promotion_codes: true,
       success_url: `${appUrl}/settings?checkout=success`,

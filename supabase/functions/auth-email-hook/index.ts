@@ -5,7 +5,7 @@ import { Webhook } from "npm:standardwebhooks@^1.0.0";
 
 // packages/email/src/errors.ts
 var EmailError = class extends Error {
-  /** Stable machine-readable code for branching / telemetry (never the raw message). */
+  /** Stable machine-readable code for branching and telemetry. */
   code;
   constructor(message, options) {
     super(message, { cause: options?.cause });
@@ -114,7 +114,7 @@ var colors = {
   accentDeep: "#7e14ff",
   /** Text on top of the accent. */
   accentInk: "#ffffff",
-  /** Status colours, taken from `src/modules/metrics/chartTheme.ts` so charts and email agree. */
+  /** Status colours, matching `src/modules/metrics/chartTheme.ts`. */
   success: "#0ca30c",
   warning: "#fab219",
   danger: "#d03b3b",
@@ -173,7 +173,7 @@ function createUrls(appUrl) {
   return {
     dashboard: join(appUrl, "/"),
     settings: join(appUrl, "/settings"),
-    // The plan card lives on the settings page; keep the deep link honest rather than inventing a route.
+    // The plan card lives on the settings page; there is no separate billing route.
     billing: join(appUrl, "/settings?tab=plan"),
     security: join(appUrl, "/settings?tab=security"),
     login: join(appUrl, "/login"),
@@ -197,8 +197,7 @@ var base = {
   textDecoration: "none",
   textAlign: "center",
   borderRadius: radii.sm,
-  // Vertical padding on an <a> is unreliable in Outlook; React Email compensates internally, and the
-  // explicit padding here is what every other client uses.
+  // React Email handles Outlook's padding quirks; this padding is for every other client.
   padding: "12px 22px",
   display: "inline-block"
 };
@@ -1339,9 +1338,9 @@ var HTML_TO_TEXT_OPTIONS = {
   selectors: [
     // Render label/value tables as aligned rows instead of one concatenated string.
     { selector: "table", format: "dataTable" },
-    // Decorative-only nodes (the logo tile) add noise to a plain-text reading.
+    // Decorative nodes such as the logo tile.
     { selector: `.${TEXT_SKIP_CLASS}`, format: "skip" },
-    // `<img>` has no text value here — every image in these templates is decorative.
+    // Every image in these templates is decorative.
     { selector: "img", format: "skip" }
   ]
 };
@@ -1400,8 +1399,7 @@ var PERMANENT_CODES = /* @__PURE__ */ new Set([
 var TRANSIENT_CODES = /* @__PURE__ */ new Set([
   "application_error",
   "internal_server_error",
-  // A concurrent replay of our own idempotency key: the first attempt is still in flight, so backing
-  // off and asking again is exactly right.
+  // Our own idempotency key is still in flight from an earlier attempt, so back off and retry.
   "concurrent_idempotent_requests"
 ]);
 var RATE_LIMIT_CODES = /* @__PURE__ */ new Set(["rate_limit_exceeded", "daily_quota_exceeded", "monthly_quota_exceeded"]);
@@ -1574,7 +1572,6 @@ var EmailService = class {
     this.retryPolicy = deps.config.retry ?? DEFAULT_RETRY_POLICY;
     this.retryDeps = deps.retryDeps ?? defaultRetryDeps;
   }
-  // ── Auth ────────────────────────────────────────────────────────────────────────────────────────
   sendWelcome(to, props, options) {
     return this.dispatch("welcome", to, props, options);
   }
@@ -1590,7 +1587,6 @@ var EmailService = class {
   sendInvitation(to, props, options) {
     return this.dispatch("invitation", to, props, options);
   }
-  // ── Account security ────────────────────────────────────────────────────────────────────────────
   sendSecurityAlert(to, props, options) {
     return this.dispatch("security-alert", to, props, options);
   }
@@ -1600,7 +1596,6 @@ var EmailService = class {
   sendPasswordChanged(to, props, options) {
     return this.dispatch("password-changed", to, props, options);
   }
-  // ── Billing ─────────────────────────────────────────────────────────────────────────────────────
   sendBillingSuccess(to, props, options) {
     return this.dispatch("billing-success", to, props, options);
   }
@@ -1619,26 +1614,15 @@ var EmailService = class {
   sendPaymentFailed(to, props, options) {
     return this.dispatch("payment-failed", to, props, options);
   }
-  // ── Internals ───────────────────────────────────────────────────────────────────────────────────
-  /**
-   * Escape hatch for callers that hold a template name as data (the auth hook maps Supabase's
-   * `email_action_type` to one, the billing webhook maps a Stripe event type). Still fully typed: the
-   * props must match the named template.
-   */
+  /** For callers holding the template name as data (auth hook, billing webhook); props stay typed. */
   send(template, to, props, options) {
     return this.dispatch(template, to, props, options);
   }
-  /** True when a real provider is wired up. Callers can skip building props when it isn't. */
+  /** True when a real provider is wired up. */
   get isConfigured() {
     return this.config.apiKey !== void 0;
   }
-  /**
-   * The subject a send WOULD use, without rendering the body.
-   *
-   * Exists so a caller can write its `email_log` claim row (which needs a subject) BEFORE attempting
-   * delivery. Claiming first is what makes the log an idempotency ledger rather than a post-hoc record:
-   * the unique constraint on `idempotency_key` rejects the second concurrent attempt.
-   */
+  /** Subject without rendering the body, so callers can write their `email_log` claim row before sending. */
   subjectFor(template, props, options) {
     return templateRegistry[template].subject(props, this.brandContext(options?.preferencesUrl));
   }
@@ -1650,10 +1634,7 @@ var EmailService = class {
       preferencesUrl
     });
   }
-  /**
-   * Stable per-send key. Two sends collapse into one iff template, recipient/user and dedupeKey match.
-   * The readable prefix is kept so the key is diagnosable in provider logs; the hash carries the rest.
-   */
+  /** Same template + user (or recipient) + dedupeKey gives the same key, so retries and duplicate webhooks collapse. */
   buildIdempotencyKey(template, to, options) {
     const subject = options?.userId ?? to.toLowerCase();
     const dedupe = options?.dedupeKey ?? "default";
@@ -1675,7 +1656,7 @@ var EmailService = class {
       html: rendered.html,
       text: rendered.text,
       headers: {
-        // Tells conforming clients not to auto-reply (out-of-office) to transactional mail.
+        // Stops out-of-office auto-replies to transactional mail.
         "X-Auto-Response-Suppress": "All",
         "Auto-Submitted": "auto-generated"
       },
@@ -1734,7 +1715,7 @@ var DEFAULTS = {
   domain: "useoctant.com",
   from: "Octant <noreply@useoctant.com>",
   supportEmail: "support@useoctant.com",
-  /** Vite's dev server origin — only ever used locally, and always warned about. */
+  /** Vite dev server origin; using it always produces a warning. */
   appUrl: "http://localhost:5173"
 };
 var SENDER_PATTERN = /^(?:[^<>]*<\s*[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+\s*>|[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+)$/;
@@ -1811,9 +1792,9 @@ var AuthEmailAction = {
   MagicLink: "magiclink",
   Invite: "invite",
   EmailChange: "email_change",
-  /** Sent to the address being LEFT, when "secure email change" is enabled. */
+  /** Sent to the old address when "secure email change" is enabled. */
   EmailChangeCurrent: "email_change_current",
-  /** Sent to the address being ADOPTED. */
+  /** Sent to the new address. */
   EmailChangeNew: "email_change_new",
   Reauthentication: "reauthentication"
 };
@@ -1908,8 +1889,7 @@ function mapAuthEmail(payload, context) {
         to: currentEmail,
         props: { inviteUrl: linkFor(action), expiresInDays: 7 }
       };
-    // The address being ADOPTED gets the confirmation link. `email_change` is the single-confirmation
-    // variant; `email_change_new` is the second half of the secure two-step flow.
+    // The new address gets the confirmation link (single-step `email_change` or secure `email_change_new`).
     case AuthEmailAction.EmailChange:
     case AuthEmailAction.EmailChangeNew: {
       const recipient = newEmail !== "" ? newEmail : currentEmail;
@@ -1929,8 +1909,8 @@ function mapAuthEmail(payload, context) {
         }
       };
     }
-    // The address being LEFT gets a notice with NO confirmation link — it is the takeover tripwire, and
-    // handing it a working link would let an attacker complete the change from the inbox they stole.
+    // The old address gets a notice without a link: a working link would let someone who stole that
+    // inbox complete the change.
     case AuthEmailAction.EmailChangeCurrent: {
       if (currentEmail === "") return null;
       return {
@@ -2144,9 +2124,8 @@ Deno.serve(async (req) => {
   if (supabaseUrl === "") return hookError("Server is missing SUPABASE_URL.", 500);
   const mapped = mapAuthEmail(payload, {
     supabaseUrl,
-    // Where the verification link lands once GoTrue has established the session.
     defaultRedirectTo: `${appUrl}/auth/callback`,
-    // Formatted here rather than inside the pure mapper, which must stay clock-free to be testable.
+    // Computed here so the mapper stays clock-free and testable.
     occurredAt: formatDateTime((/* @__PURE__ */ new Date()).toISOString()),
     ipAddress: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? void 0,
     userAgent: req.headers.get("user-agent") ?? void 0

@@ -9,7 +9,7 @@ import { FREE_LIMITS, remainingJobSlots } from '@/constants/plan'
 import { createId } from '@/utils/id'
 import { nowIso } from '@/utils/dates'
 
-/** Pure mapping — same trim/`|| undefined` idiom as JobFormPage.handleSubmit. */
+/** Maps a candidate to a job with the same trim rules as JobFormPage.handleSubmit. */
 export function candidateToJob(candidate: DiscoveredCandidate): JobOpportunity {
   return {
     id: createId(),
@@ -27,12 +27,8 @@ export function candidateToJob(candidate: DiscoveredCandidate): JobOpportunity {
   }
 }
 
-/**
- * Moves approved candidates from the review queue onto the board, up to the plan's remaining job
- * slots. Candidates beyond the cap stay in the queue: approving them would mark them approved, then the
- * RLS cap would reject the job insert and the opportunity would vanish from both lists.
- * Returns the created jobs in candidate order (single-approve uses the id to navigate to analysis).
- */
+/** Moves candidates onto the board up to the plan's free job slots; the rest stay queued. */
+// Approving past the cap would lose them: the RLS cap rejects the job insert after they leave the queue.
 export function approveCandidates(candidates: DiscoveredCandidate[]): JobOpportunity[] {
   const tier = useSubscriptionStore.getState().tier
   const slots = remainingJobSlots(tier, useJobsStore.getState().jobs.length)

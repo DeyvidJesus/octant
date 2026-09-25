@@ -6,8 +6,7 @@ import { UnauthenticatedError } from '@/repositories/errors'
 import { persist } from './persist'
 
 interface SettingsState {
-  /** Legacy free-text discovery prefs, kept only so older rows round-trip. Discovery now reads
-   * `search_profiles` (edited in SearchProfileSettings). */
+  /** Legacy discovery prefs kept so older rows round-trip; discovery now reads `search_profiles`. */
   discovery: DiscoveryPrefs
   onboardingCompleted: boolean
   completeOnboarding: () => void
@@ -41,14 +40,7 @@ export const useSettingsStore = create<SettingsState>()(
   })
 )
 
-/**
- * Resolve the current selection into a runnable config.
- *
- * Vendor keys live server-side in the `ai-proxy` Edge Function (Phase 6), so the client no longer
- * needs a `VITE_OPENAI_API_KEY` to enable AI features — the proxy injects the key and authorizes by
- * the user's JWT. Returns a default hosted config; the proxy surfaces a clear error if its key is
- * unset. (`apiKey` is intentionally omitted — proxied providers ignore any client key.)
- */
+/** Returns the default hosted AI config. No `apiKey`: `ai-proxy` holds vendor keys and authorizes by JWT. */
 export function resolveAiRunConfig(): AiRunConfig {
   return { providerId: 'openai', model: 'gpt-4o' }
 }

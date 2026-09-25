@@ -1,19 +1,6 @@
-/**
- * Money and date formatting for email props.
- *
- * Templates take pre-formatted strings, so this is where the formatting happens — once, for every caller.
- * Kept here rather than in an Edge Function because it's pure and therefore testable, and because the
- * billing webhook and any future digest job must format identically.
- *
- * `Intl` is available in Node, Deno and browsers, so there's no dependency to add.
- */
+// Money and date formatting for email props, shared by every caller so output is identical.
 
-/**
- * Currencies with no minor unit. Stripe reports amounts in the smallest unit, which for these means the
- * amount is already whole — dividing by 100 would silently under-report the charge by 100×.
- *
- * @see https://docs.stripe.com/currencies#zero-decimal
- */
+/** Stripe zero-decimal currencies: amounts are already whole, so dividing by 100 would under-report. */
 const ZERO_DECIMAL_CURRENCIES = new Set([
   'bif', 'clp', 'djf', 'gnf', 'jpy', 'kmf', 'krw', 'mga', 'pyg', 'rwf',
   'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf',
@@ -37,18 +24,14 @@ export function fromMinorUnits(amountMinor: number, currency: string): number {
   return amountMinor / 100
 }
 
-/**
- * Formats a provider amount for display, e.g. `R$ 49.00` / `¥ 4900`.
- * Returns `undefined` for a missing amount, so callers can leave the row out entirely rather than
- * printing a zero that reads like "you owe nothing".
- */
+/** Formats a minor-unit amount; `undefined` when missing so callers omit the row instead of showing zero. */
 export function formatMoney(
   amountMinor: number | null | undefined,
   currency: string | null | undefined,
   options?: FormattingOptions,
 ): string | undefined {
   if (amountMinor === null || amountMinor === undefined || !Number.isFinite(amountMinor)) return undefined
-  // `?? 'usd'` alone would miss an empty string, which is not nullish and yields a currency-less "49 ".
+  // An empty string is not nullish, so `??` alone would not catch it.
   const trimmed = (currency ?? '').trim()
   const code = (trimmed === '' ? 'USD' : trimmed).toUpperCase()
   try {
@@ -56,12 +39,10 @@ export function formatMoney(
       style: 'currency',
       currency: code,
     }).format(fromMinorUnits(amountMinor, code))
-    // Intl separates some currency codes from the amount with U+00A0. Normalising to a plain space keeps
-    // the value predictable for tests and avoids a stray non-breaking space in the plain-text part.
+    // Intl sometimes inserts U+00A0; a plain space keeps tests and the text part predictable.
     return formatted.replace(/ /g, ' ')
   } catch {
-    // An unknown/invalid currency code would otherwise throw and take the whole webhook down for the
-    // sake of one formatted string.
+    // An invalid currency code must not throw and take the webhook down.
     return `${fromMinorUnits(amountMinor, code)} ${code}`
   }
 }

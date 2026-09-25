@@ -1,10 +1,6 @@
 import type { DiscoveredCandidate } from '@/types/discovery'
 
-/**
- * Phase 5 (Career agent) — the proactive surface. These pure helpers let the app show "the agent
- * worked for you while you were away" (unseen counts, a digest) instead of making the user run a
- * search. `lastSeenAt` is the timestamp the user last opened the feed.
- */
+// Unseen counts and digest for the feed. `lastSeenAt` is when the user last opened it.
 
 /** How many pending candidates arrived since the user last looked at the feed. */
 export function countUnseen(candidates: Pick<DiscoveredCandidate, 'foundAt'>[], lastSeenAt: string | null): number {

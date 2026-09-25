@@ -1,36 +1,10 @@
-// Supabase Edge Function: resend-webhook
-//
-// Phase 15 — closes the delivery loop. Resend reports what actually happened to each message AFTER the
-// API accepted it, which is the only way to distinguish "we sent it" from "they received it". Without
-// this, `email_log.status` would sit at 'sent' forever and a silently bouncing address would never
-// surface.
-//
-// Two jobs:
-//   1. Advance `email_log.status` for the matching `provider_message_id`.
-//   2. On a hard bounce or a spam complaint, add the address to Resend's own suppression list. This is
-//      the part that protects the sending domain: continuing to mail an address that bounced is what
-//      turns a good sender reputation into a bad one, and reputation damage affects EVERY user's
-//      password resets, not just this one.
-//
-// Suppression is stored in Resend rather than a local table on purpose — one source of truth, and the
-// provider already enforces it at send time.
-//
-// Source of truth: edit `handler.ts`, then run `yarn build:functions` to regenerate `index.ts`.
-//
-// Deploy:  yarn build:functions && supabase functions deploy resend-webhook --no-verify-jwt
-//          (Resend sends a Svix/Standard-Webhooks signature, not a Supabase JWT.)
-// Secrets: supabase secrets set RESEND_WEBHOOK_SECRET=whsec_... RESEND_API_KEY=re_...
+// resend-webhook: verifies Resend's signature, advances email_log.status, and suppresses hard bounces and
+// complaints in Resend. Deploy with --no-verify-jwt; `yarn build:functions` regenerates index.ts.
 
 import { createResendSuppressions, createResendWebhookVerifier } from '@octant/email'
 import { createAdminClient } from '../_shared/admin.ts'
 
-/**
- * Resend event type → the `email_log.status` it implies.
- *
- * Only terminal-ish transitions are mapped. `email.opened` / `email.clicked` are deliberately ignored:
- * they require tracking pixels, say nothing about deliverability, and recording them on transactional
- * mail is needless surveillance of people reading their own password resets.
- */
+// Resend event type to email_log.status. Opens and clicks are ignored on purpose (no tracking).
 const STATUS_BY_EVENT: Record<string, string> = {
   'email.sent': 'sent',
   'email.delivered': 'delivered',
@@ -40,13 +14,10 @@ const STATUS_BY_EVENT: Record<string, string> = {
   'email.suppressed': 'suppressed',
 }
 
-/** Events after which we must stop mailing the address entirely. */
+/** Events after which the address must not be mailed again. */
 const SUPPRESSING_EVENTS = new Set(['email.bounced', 'email.complained'])
 
-/**
- * Ordering guard. Webhook deliveries can arrive out of order, so a late `email.sent` must not overwrite
- * an already-recorded `delivered` or `bounced`. Higher wins.
- */
+/** Deliveries can arrive out of order; a status only replaces a lower-ranked one. */
 const STATUS_RANK: Record<string, number> = {
   queued: 0,
   skipped: 1,
@@ -90,8 +61,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const body = await req.text()
 
-  // Verified through the package's verifier port, which wraps the Resend SDK's own Standard Webhooks
-  // implementation — no hand-rolled HMAC comparison, and the SDK stays confined to `ResendTransport.ts`.
+  // Uses the Resend SDK's Standard Webhooks verifier, wrapped by @octant/email.
   let event: ResendWebhookEvent
   try {
     const verifier = createResendWebhookVerifier({ apiKey })
@@ -104,7 +74,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const eventType = event.type ?? ''
   const nextStatus = STATUS_BY_EVENT[eventType]
   if (nextStatus === undefined) {
-    // Ack so Resend stops retrying an event we intentionally ignore.
+    // Ack ignored events so Resend stops retrying them.
     return json({ received: true, ignored: eventType })
   }
 
@@ -115,7 +85,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     admin = createAdminClient()
   } catch (err) {
-    // 500 so Resend redelivers once the credential is set — otherwise the delivery status is lost.
+    // 500 so Resend redelivers once the credential is set, instead of losing the status.
     const detail = err instanceof Error ? err.message : String(err)
     console.error(`[resend-webhook] ${detail}`)
     return json({ error: detail }, 500)
@@ -129,11 +99,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .maybeSingle()
 
     if (existing === null || existing === undefined) {
-      // A message we have no record of — most likely sent from the Resend dashboard, or from an
-      // environment pointed at the same API key. Not an error.
+      // Unknown message, e.g. sent from the Resend dashboard or another environment. Not an error.
       console.info(`[resend-webhook] no email_log row for message ${messageId} (${eventType})`)
     } else if ((STATUS_RANK[nextStatus] ?? 0) <= (STATUS_RANK[existing.status] ?? 0)) {
-      // Out-of-order delivery: a later-arriving weaker event must not regress the recorded status.
       console.info(`[resend-webhook] ignoring ${eventType}; ${existing.status} already recorded`)
     } else {
       const { error } = await admin
@@ -148,8 +116,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
   }
 
-  // Suppress only on a hard bounce or a complaint. A soft bounce is a full mailbox or a transient
-  // server error — suppressing on those would permanently cut off users over a temporary problem.
+  // Soft bounces are temporary, so only hard bounces and complaints suppress the address.
   const isHardBounce = eventType === 'email.bounced' && (event.data?.bounce?.type ?? '').toLowerCase() === 'hard'
   const isComplaint = eventType === 'email.complained'
   if ((isHardBounce || isComplaint) && recipient !== undefined) {
@@ -157,8 +124,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       await createResendSuppressions({ apiKey }).add(recipient)
       console.warn(`[resend-webhook] suppressed ${recipient} after ${eventType}`)
     } catch (err) {
-      // Log, don't fail: a retried webhook would repeat the log update too, and the send path already
-      // refuses suppressed recipients on the provider side.
+      // Log, don't fail: a retry would redo the log update, and Resend already blocks bounced addresses.
       console.error(`[resend-webhook] could not suppress ${recipient}: ${String(err)}`)
     }
   }

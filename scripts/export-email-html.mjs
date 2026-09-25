@@ -1,19 +1,5 @@
-// Renders every template to static HTML + text under `.email-preview/`.
-//
-// Two uses:
-//   * Reviewing the real output without starting the dev server, and pasting a rendered file into a
-//     client-compatibility checker (Litmus, Email on Acid) or into the Supabase dashboard's auth
-//     templates as a manual fallback.
-//   * A cheap sanity pass: if any template throws, this exits non-zero.
-//
-// It renders from the SAME fixtures the tests and the dev-server preview use, so the exported files can
-// never disagree with what the suite asserts.
-//
-// The package is TypeScript/TSX, so it needs compiling before Node can import it. We reuse `esbuild`
-// (already a devDependency, and already the tool behind `bundle-functions.mjs`) rather than adding a
-// TypeScript loader just for this script.
-//
-// Run:  yarn email:export
+// Renders every email template from the test fixtures to HTML and text in .email-preview/. Run: yarn email:export
+// Compiles the TSX package with esbuild first; exits non-zero if any template throws.
 
 import * as esbuild from 'esbuild'
 import fs from 'node:fs/promises'
@@ -23,16 +9,14 @@ import { pathToFileURL, fileURLToPath } from 'node:url'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const outDir = path.join(root, '.email-preview')
 
-/** Entry point compiled on the fly: pulls the renderer and the shared fixtures into one module. */
+// Virtual entry that re-exports the renderer and fixtures.
 const ENTRY = `
 export { TEMPLATE_NAMES, renderTemplate } from '${path.join(root, 'packages/email/src/index.ts').replace(/\\/g, '/')}'
 export { templateFixtures } from '${path.join(root, 'packages/email/src/templates/fixtures.ts').replace(/\\/g, '/')}'
 export { previewBrand } from '${path.join(root, 'packages/email/src/templates/preview.ts').replace(/\\/g, '/')}'
 `
 
-// Inside the repo, not the OS temp dir: the bundle keeps `@react-email/render` and friends external, so
-// it has to sit somewhere Node's resolver can walk up to `node_modules`. `node_modules/.tmp` is already
-// where the tsconfigs put their build info.
+// Inside the repo, not the OS temp dir, so Node can resolve the external packages from node_modules.
 const tempDir = path.join(root, 'node_modules/.tmp')
 const bundlePath = path.join(tempDir, 'octant-email-render.mjs')
 await fs.mkdir(tempDir, { recursive: true })
@@ -47,8 +31,7 @@ try {
     target: 'node20',
     jsx: 'automatic',
     jsxImportSource: 'react',
-    // Leave the runtime deps to Node's own resolution — notably `@react-email/render`, whose package
-    // exports pick the correct build per environment.
+    // Let Node resolve deps so @react-email/render picks its Node build.
     packages: 'external',
     logLevel: 'warning',
   })
@@ -72,6 +55,6 @@ try {
   await fs.writeFile(path.join(outDir, 'index.json'), `${JSON.stringify(index, null, 2)}\n`, 'utf8')
   console.log(`\n${index.length} templates written to ${path.relative(root, outDir)}/`)
 } finally {
-  // Remove only our own artefact — `node_modules/.tmp` is shared with the TypeScript build info.
+  // node_modules/.tmp also holds TypeScript build info, so remove only our file.
   await fs.rm(bundlePath, { force: true })
 }

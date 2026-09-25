@@ -7,11 +7,7 @@ interface SubscriptionState {
   /** Current plan tier. Defaults to 'free' until hydrated from Supabase. */
   tier: PlanTier
   _fetchFromSupabase: () => Promise<void>
-  /**
-   * Re-reads the tier until it is 'pro' or the attempts run out; resolves whether it got there. Used after
-   * Stripe Checkout returns: the tier is written by the webhook, which usually lands a few seconds after
-   * the redirect, and `subscriptions` is not on the realtime publication.
-   */
+  /** Polls the tier until 'pro' after Checkout; the webhook lags the redirect and tiers are not realtime. */
   refreshUntilPro: (options?: { attempts?: number; intervalMs?: number; signal?: AbortSignal }) => Promise<boolean>
   /** Clears in-memory state (sign-out / user switch) so no data bleeds across sessions. */
   reset: () => void

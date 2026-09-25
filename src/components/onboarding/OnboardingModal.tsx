@@ -24,7 +24,6 @@ export function OnboardingModal() {
   const [result, setResult] = useState<ExtractProfileResult['counts'] | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  // Keep keyboard focus inside the dialog while it is open, and restore it on close.
   useFocusTrap(dialogRef, !onboardingCompleted)
 
   // Escape dismisses the tour (same as "I'll do this later").

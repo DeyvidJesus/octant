@@ -49,13 +49,13 @@ export function JobBoardPage() {
         actions={addButton}
       />
 
-      {/* The one button: run the agent; discovered opportunities render below, streaming in. */}
+      {/* Agent controls; discovered opportunities stream in below. */}
       <div className="mb-6">
         <AgentStatusHeader />
       </div>
       <ReviewQueue />
 
-      {/* Opportunities you approved / added — tracked on your board. */}
+      {/* Approved or manually added jobs. */}
       <div className="mt-12">
         <div className="flex items-center justify-between mb-3">
           <SectionLabel>Your board</SectionLabel>

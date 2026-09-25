@@ -50,7 +50,7 @@ export function CoachPanel({ job, resume, question, resumeEvidence, missingSkill
         config,
       )
       setResult(coachResult)
-      // Closed loop: persist the answer and blend its AI score into the skill's mastery.
+      // Persist the answer and blend its AI score into the skill's mastery.
       const updated = await recordAnswer({
         job: { id: job.id, company: job.company, role: job.role },
         skill: skillKeyFor(question.topic, question.category),

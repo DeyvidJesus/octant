@@ -19,10 +19,10 @@ import { applyLearnedToProfile } from '@/services/discovery/signals'
 import { enrichCandidate, type EnrichCompleteFn } from '@/services/discovery/enrich'
 import { createGroundedGeminiSource, GEMINI_DISCOVERY_MODEL } from '@/services/discovery/sources/groundedGemini'
 
-/** Only the top-K new candidates per run get an AI explanation — controls cost (rest are on-demand). */
+/** Only the top-K new candidates per run are AI-enriched, to bound cost; the rest are on demand. */
 const ENRICH_TOP_K = 5
 
-/** Client enrichment transport: the reasoning provider via ai-proxy (budget enforced server-side). */
+/** Enrichment completion via ai-proxy, which enforces the AI budget. */
 const clientEnrichComplete: EnrichCompleteFn = async (system, user) => {
   const config = resolveAiRunConfig()
   const result = await getProvider(config.providerId).complete({
@@ -36,7 +36,7 @@ const clientEnrichComplete: EnrichCompleteFn = async (system, user) => {
   return result.text
 }
 
-/** Enriches one candidate on demand (card "Explain fit"), persisting + streaming the result. */
+/** Enriches one candidate on demand ("Explain fit") and persists the result. */
 export async function enrichOneCandidate(candidate: DiscoveredCandidate): Promise<void> {
   const resume = useResumeStore.getState().resume
   const patch = await enrichCandidate(candidate, resume, clientEnrichComplete)
@@ -45,7 +45,7 @@ export async function enrichOneCandidate(candidate: DiscoveredCandidate): Promis
   await discoveryRepository.updateCandidateData(patched).catch(() => {})
 }
 
-/** Enriches the highest-scoring fresh candidates (top-K), persisting + streaming each. */
+/** Enriches and persists the top-K fresh candidates. */
 async function enrichTopK(candidates: DiscoveredCandidate[], resume: MasterResume): Promise<void> {
   const targets = candidates
     .filter((c) => c.analysis && c.enrichmentStatus !== 'done')
@@ -59,7 +59,7 @@ async function enrichTopK(candidates: DiscoveredCandidate[], resume: MasterResum
   }
 }
 
-/** Gemini strategy-generation completion (via ai-proxy). Falls back deterministically on failure. */
+/** Gemini completion for search strategies (via ai-proxy). */
 async function geminiComplete(prompt: string, opts?: { temperature?: number; maxTokens?: number }): Promise<string> {
   const result = await getProvider('gemini').complete({
     model: GEMINI_DISCOVERY_MODEL,
@@ -80,11 +80,7 @@ export function isDiscoveryRunning(): boolean {
   return inFlight
 }
 
-/**
- * The "in-session" half of the hybrid model: when the app is open, quietly advance discovery if the
- * user is due per their plan cadence — so the agent feels continuously at work without a manual click.
- * Cadence-gated (free 24h / pro 1h) and skipped for empty profiles, so cost stays bounded.
- */
+/** Runs discovery while the app is open when the plan cadence says it is due (free 24h, pro 1h). */
 export function maybeRunSessionHeartbeat(): void {
   if (inFlight) return
   const kb = useResumeStore.getState().knowledgeBase
@@ -96,12 +92,7 @@ export function maybeRunSessionHeartbeat(): void {
   void runInSessionDiscovery('session')
 }
 
-/**
- * Runs one discovery cycle client-side (the "in-session" half of the hybrid model): the shared pure
- * `runDiscovery` core with a grounded-Gemini source, deterministic scoring, and incremental
- * persistence. Each fresh candidate is written to `discovered_jobs` as it is produced and streams
- * back into the feed via realtime. Per-user AI budget is enforced server-side by `ai-proxy`.
- */
+/** Runs one client-side discovery cycle, writing each fresh candidate to `discovered_jobs` as it arrives. */
 export async function runInSessionDiscovery(trigger: DiscoveryRunTrigger = 'manual'): Promise<void> {
   if (inFlight) return
   inFlight = true
@@ -122,8 +113,7 @@ export async function runInSessionDiscovery(trigger: DiscoveryRunTrigger = 'manu
   trackEvent(AnalyticsEvent.DiscoveryRunStarted, { trigger })
 
   try {
-    // Bias the profile with what we've learned from the user's past reactions, then generate diverse
-    // strategies (deterministic fallback on any failure).
+    // Bias the profile with learned preferences; strategy generation falls back deterministically.
     const learnedProfile = applyLearnedToProfile(profile, useDiscoveryStore.getState().learnedPreferences)
     const strategies = await generateStrategiesWithAi(learnedProfile, geminiComplete)
 
@@ -144,7 +134,7 @@ export async function runInSessionDiscovery(trigger: DiscoveryRunTrigger = 'manu
         source: createGroundedGeminiSource(),
         analyze: (job, r) => analyzer.analyze({ job, resume: r }),
         onCandidate: async (candidate) => {
-          // Optimistic local upsert (idempotent) + persist; realtime echo is absorbed by id.
+          // Optimistic upsert; the realtime echo is absorbed by id.
           useDiscoveryStore.getState().receiveCandidate(candidate)
           freshThisRun.push(candidate)
           await discoveryRepository.insertCandidates([candidate])
@@ -153,8 +143,6 @@ export async function runInSessionDiscovery(trigger: DiscoveryRunTrigger = 'manu
       },
     )
 
-    // Intelligence: enrich the top-K most relevant new candidates with a grounded explanation +
-    // recommendation. Cost-bounded; the rest can be enriched on demand from the card.
     await enrichTopK(freshThisRun, resume)
 
     useDiscoveryStore.getState().markSweepRan()

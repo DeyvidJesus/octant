@@ -4,11 +4,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router-dom'
 import { ResetPasswordPage } from './ResetPasswordPage'
 
-/**
- * The ordering assertions here are the point. The "your password changed" email must be sent ONLY after
- * the update succeeds — telling someone their password changed when it didn't is worse for a security
- * notice than sending nothing, and it would train users to ignore the real one.
- */
+// The "password changed" email must be sent only after the update succeeds.
 
 const updatePassword = vi.fn()
 const sendPasswordChangedEmail = vi.fn()

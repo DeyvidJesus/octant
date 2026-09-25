@@ -1,9 +1,4 @@
-/**
- * Welcome — sent once, after the address is confirmed.
- *
- * Deliberately short and single-purpose: one CTA into the product, and a three-step "what to do first"
- * list that mirrors the real onboarding path (Knowledge Base → job → tailored résumé).
- */
+// Sent once after the address is confirmed: one CTA and the three onboarding steps.
 
 import { Section } from '@react-email/components'
 import { urlsFor } from '../../brand/urls.ts'

@@ -3,11 +3,7 @@ import type { MasterResume } from '@/types/resume'
 import { SKILL_CATEGORY_LABELS } from '@/constants/skillTaxonomy'
 import { extractSkills, type TaxonomyHit } from './extract'
 
-/**
- * Everything the Master Resume can truthfully claim, as canonical taxonomy
- * names: explicit skill lists, project tech, plus skills mentioned in the
- * summary and experience/project bullets.
- */
+/** Canonical skills the resume can truthfully claim, from skill lists, project tech, and bullet text. */
 export function collectResumeSkills(resume: MasterResume): Set<string> {
   const explicitTerms = [
     ...resume.skills.map((skill) => skill.canonical),
@@ -16,8 +12,7 @@ export function collectResumeSkills(resume: MasterResume): Set<string> {
     ...resume.projects.flatMap((project) => project.accomplishments.flatMap((a) => a.skills)),
   ].join('\n')
 
-  // Factual profile fields only — goals are aspirational and must never
-  // contribute claimable skills.
+  // Factual fields only; career goals must never contribute claimable skills.
   const narrativeText = [
     resume.summary,
     resume.personal.location,
@@ -33,17 +28,12 @@ export function collectResumeSkills(resume: MasterResume): Set<string> {
   return canonical
 }
 
-/**
- * Builds the match report from JD hits vs the resume skill set.
- * `matched` is a strict intersection — this is the structural guarantee that
- * no analysis ever claims experience the resume doesn't contain.
- */
+/** `matched` is a strict intersection, so no analysis claims experience the resume lacks. */
 export function buildMatchReport(jdHits: TaxonomyHit[], resumeSkills: Set<string>): MatchReport {
   const matchedHits = jdHits.filter((hit) => resumeSkills.has(hit.entry.canonical))
   const missingHits = jdHits.filter((hit) => !resumeSkills.has(hit.entry.canonical))
 
-  // Required skills count double so the score tracks hard-requirement coverage
-  // rather than being diluted by "nice to have" keywords.
+  // Required skills count double so "nice to have" keywords don't dilute the score.
   const totalWeight = jdHits.reduce((sum, hit) => sum + weightOf(hit), 0)
   const matchedWeight = matchedHits.reduce((sum, hit) => sum + weightOf(hit), 0)
   const atsScore = totalWeight === 0 ? 0 : Math.round((matchedWeight / totalWeight) * 100)

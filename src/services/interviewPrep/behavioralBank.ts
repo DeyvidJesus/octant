@@ -1,11 +1,7 @@
 import type { JobOpportunity } from '@/types/job'
 import type { PrepDifficulty, PrepQuestion } from '@/types/interviewPrep'
 
-/**
- * A small deterministic set of STAR-style behavioral prompts. These are
- * job-agnostic by design but lightly personalized with the target company/role
- * so the candidate rehearses answers framed for the specific interview.
- */
+// Job-agnostic STAR behavioral prompts, lightly personalized with the target company and role.
 
 interface BehavioralTemplate {
   topic: string

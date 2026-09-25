@@ -1,9 +1,4 @@
-/**
- * Magic Link — passwordless sign-in (Supabase Auth's `magiclink` action).
- *
- * The single-use warning is not decoration: a magic link IS a credential, and forwarding one hands over
- * the account. Saying so plainly is the cheapest control available.
- */
+// Passwordless sign-in (`magiclink`); the single-use warning matters because the link is a credential.
 
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'

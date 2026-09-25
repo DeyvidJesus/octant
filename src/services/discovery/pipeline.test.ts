@@ -72,7 +72,7 @@ describe('runDiscovery', () => {
     expect(stats.duplicates).toBeGreaterThanOrEqual(1)
     expect(streamed).toHaveLength(3) // streamed incrementally, one per fresh
 
-    // Thin description was NOT scored; substantial ones were.
+    // Thin description was not scored; substantial ones were.
     const thinCandidate = streamed.find((c) => c.company === 'Thin Co')!
     expect(thinCandidate.matchScore).toBeUndefined()
     expect(thinCandidate.analysis).toBeUndefined()

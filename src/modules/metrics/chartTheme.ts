@@ -1,9 +1,4 @@
-/**
- * Chart palette for the app's dark surface. Values are taken from the data-viz
- * reference palette's dark column and the app's own accent recipe, so charts read
- * as one system. The app is dark-only today; when light mode lands (roadmap #9)
- * these become the dark half of a themed set.
- */
+/** Chart palette for the app's dark surface. */
 export const CHART = {
   surface: '#111111',
   grid: '#222222',

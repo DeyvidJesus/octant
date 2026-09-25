@@ -1,16 +1,5 @@
-/**
- * Centralised email configuration.
- *
- * Every knob lives here and every value comes from the environment — no API key, sender address or URL
- * is hardcoded anywhere in the package. The env reader is INJECTED rather than read directly, because
- * this code has to run under three different runtimes: Deno (`Deno.env.get`) in Edge Functions, Node
- * (`process.env`) in scripts, and a plain object in tests.
- *
- * `loadEmailConfig` throws only for values that are present but WRONG (a malformed sender would make
- * every send fail at the provider). Absent optional values fall back to documented defaults and are
- * reported through `warnings`, which the composition root logs — so a missing key degrades to a no-op
- * instead of crashing a webhook, matching how `sentry.ts` and `analytics.ts` behave in this repo.
- */
+// Email config from the environment. The env reader is injected so this runs under Deno, Node and tests;
+// malformed values throw, missing ones fall back to defaults and are reported as warnings.
 
 import { EmailConfigError } from './errors.ts'
 import { DEFAULT_RETRY_POLICY, type RetryPolicy } from './transport/retry.ts'
@@ -27,16 +16,16 @@ export interface EmailConfig {
   supportEmail: string
   /** Product name shown in subjects, header and footer. */
   appName: string
-  /** Absent means "email is not configured here" → the service composes a no-op transport. */
+  /** Absent means email is not configured and the service uses a no-op transport. */
   apiKey?: string
   retry: RetryPolicy
 }
 
 export interface LoadedEmailConfig {
   config: EmailConfig
-  /** Human-readable notes about defaulted values, for the caller to log once at startup. */
+  /** Notes about defaulted values, for the caller to log once at startup. */
   warnings: string[]
-  /** False when `RESEND_API_KEY` is absent — sends will be skipped rather than attempted. */
+  /** False when `RESEND_API_KEY` is absent, so sends are skipped. */
   isConfigured: boolean
 }
 
@@ -45,11 +34,11 @@ const DEFAULTS = {
   domain: 'useoctant.com',
   from: 'Octant <noreply@useoctant.com>',
   supportEmail: 'support@useoctant.com',
-  /** Vite's dev server origin — only ever used locally, and always warned about. */
+  /** Vite dev server origin; using it always produces a warning. */
   appUrl: 'http://localhost:5173',
 } as const
 
-/** `local@domain.tld` or `Display Name <local@domain.tld>`. Deliberately permissive but not empty. */
+/** `local@domain.tld` or `Display Name <local@domain.tld>`; permissive on purpose. */
 const SENDER_PATTERN = /^(?:[^<>]*<\s*[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+\s*>|[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+)$/
 
 /** Bare address, for Reply-To and support. */
@@ -76,27 +65,14 @@ function readPositiveInt(readEnv: EnvReader, key: string, fallback: number): num
   return parsed
 }
 
-/**
- * Builds the config from the environment.
- *
- * Recognised variables:
- *   RESEND_API_KEY      — provider credential. Absent → sends are skipped (no-op transport).
- *   EMAIL_FROM          — sender. Default `Octant <noreply@useoctant.com>`.
- *   EMAIL_REPLY_TO      — optional Reply-To.
- *   EMAIL_SUPPORT       — support address shown in footers.
- *   EMAIL_APP_NAME      — product name. Default `Octant`.
- *   APP_URL             — app origin for links. Shared with the billing functions.
- *   EMAIL_RETRY_ATTEMPTS / EMAIL_RETRY_BASE_DELAY_MS / EMAIL_RETRY_MAX_DELAY_MS — retry overrides,
- *                         so a provider incident can be ridden out by changing a secret, not code.
- */
+/** Reads RESEND_API_KEY, EMAIL_FROM, EMAIL_REPLY_TO, EMAIL_SUPPORT, EMAIL_APP_NAME, APP_URL and EMAIL_RETRY_*. */
 export function loadEmailConfig(readEnv: EnvReader): LoadedEmailConfig {
   const warnings: string[] = []
   const read = (key: string): string | undefined => {
     const value = readEnv(key)
     if (value === undefined) return undefined
-    // Strip one layer of surrounding quotes. `EMAIL_FROM="Octant <noreply@…>"` needs quotes in a shell,
-    // and they routinely survive into the stored secret when it is pasted into a dashboard field instead.
-    // Rejecting that spelling meant a whole auth flow failing over two characters.
+    // Strip one layer of surrounding quotes, which often survive when a shell-quoted value is pasted
+    // into a secrets dashboard.
     const unquoted = value.trim().replace(/^(['"])([\s\S]*)\1$/, '$2').trim()
     return unquoted === '' ? undefined : unquoted
   }

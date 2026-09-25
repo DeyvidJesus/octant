@@ -5,11 +5,7 @@ import { blendMastery } from '@/services/interviewPrep/mastery'
 import { interviewPrepRepository } from '@/repositories/InterviewPrepRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
 
-/**
- * Interview simulation progress. Mastery is per-SKILL and driven by AI answer scores (not manual
- * self-rating): each coached answer is recorded as a `mock_answer` and blended into the skill's
- * mastery in `user_skills`. Replaces the retired per-question self-rating blob.
- */
+/** A coached answer; its AI score is blended into the skill's mastery in `user_skills`. */
 export interface RecordAnswerInput {
   job: { id: string; company: string; role: string }
   skill: string

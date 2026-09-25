@@ -1,19 +1,5 @@
-/**
- * The single document shell every template renders inside.
- *
- * Every template is `<BaseLayout preview="…" brand={brand}> …body… </BaseLayout>`, so the `<Html>`,
- * `<Head>`, dark-mode meta tags, width constraint, header and footer exist in exactly one place.
- *
- * Email-client notes baked in here:
- *   • `color-scheme` / `supported-color-schemes` tell iOS Mail and Apple Mail we've already handled
- *     dark mode, which stops them force-inverting our palette into mud.
- *   • Every container repeats its `backgroundColor`. Gmail's dark-mode transform only leaves a colour
- *     alone when it is stated explicitly on the element.
- *   • The outer table carries a literal `width` as well as `maxWidth`, because Outlook's Word engine
- *     ignores `max-width` entirely.
- *   • `<Preview>` is mandatory. Without it the client shows the first words of the body as the inbox
- *     snippet, which for an action email is usually the fallback-link boilerplate.
- */
+// Document shell for every template. The color-scheme meta stops Apple Mail force-inverting the palette,
+// and the explicit width covers Outlook, which ignores max-width.
 
 import { Body, Container, Head, Html, Preview, Section } from '@react-email/components'
 import type { ReactNode } from 'react'

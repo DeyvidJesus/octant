@@ -1,12 +1,5 @@
--- 0010_user_id_fk_cascade.sql
--- Phase 13: account deletion hygiene.
---
--- Every `user_id` column references auth.users with NO on-delete action, so deleting an auth user
--- fails on the FK (or, if forced, orphans rows). This migration recreates each user_id FK with
--- ON DELETE CASCADE so removing a user cleanly removes all of their data.
---
--- Idempotent: it discovers the actual constraint name per table (never assumes a default) and
--- re-applies cascade on repeat runs.
+-- Recreates every user_id FK with ON DELETE CASCADE so deleting an auth user removes their data.
+-- Looks up each existing constraint name instead of assuming the default.
 
 do $$
 declare
@@ -20,7 +13,7 @@ declare
   ];
 begin
   foreach t in array owned_tables loop
-    -- Skip tables that don't exist yet (defensive on partial schemas).
+    -- Skip tables missing from partial schemas.
     if to_regclass('public.' || t) is null then
       continue;
     end if;

@@ -15,8 +15,7 @@ import { SettingsPage } from '@/modules/settings/SettingsPage'
 import { GeneratorPage } from '@/modules/resume-generator/GeneratorPage'
 import { PlaceholderPage } from '@/modules/PlaceholderPage'
 
-// Heavy / secondary routes are split out of the initial bundle (recharts, the résumé paper + PDF
-// export, the 13-section Knowledge Base, the AI interview coach). The landing Dashboard stays eager.
+// Heavy secondary routes are lazy-loaded; the landing Dashboard stays eager.
 const JobAnalysisPage = lazy(() =>
   import('@/modules/job-opportunities/JobAnalysisPage').then((m) => ({ default: m.JobAnalysisPage })),
 )
@@ -44,10 +43,8 @@ function RouteFallback() {
 export function AppRoutes() {
   return (
     <Routes>
-      {/* Public auth routes. `/auth/callback` and `/reset-password` are where the transactional email
-          links land; without them a verification or recovery link has nowhere to go. `/reset-password`
-          must stay OUTSIDE ProtectedRoute — the recovery session exists, but sending the user through
-          the app shell first would drop them on the dashboard with the reset unfinished. */}
+      {/* Email links land on these public routes. `/reset-password` must stay outside ProtectedRoute,
+          or the recovery session would drop the user on the dashboard with the reset unfinished. */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -57,7 +54,6 @@ export function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route
             element={
-              // A single Suspense boundary for all lazily-loaded pages under the app shell.
               <Suspense fallback={<RouteFallback />}>
                 <Outlet />
               </Suspense>

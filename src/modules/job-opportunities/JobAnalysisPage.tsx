@@ -60,9 +60,7 @@ export function JobAnalysisPage() {
     }
   }
 
-  // Analysis is instant, local, and non-destructive — run it automatically the
-  // first time an unanalyzed job is opened so there's no extra click. Re-runs
-  // stay explicit via the "Re-run" button.
+  // Analysis is local and non-destructive, so run it automatically the first time a job is opened.
   useEffect(() => {
     if (job && !analysis && !autoRan.current) {
       autoRan.current = true

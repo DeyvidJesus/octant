@@ -92,8 +92,7 @@ export const useApplicationsStore = create<ApplicationsState>()(
     },
     _subscribeRealtime: () =>
       applicationRepository.subscribeToApplications({
-        // Idempotent by id: replace an existing application, else prepend. Absorbs the realtime echo
-        // of this device's own writes.
+        // Idempotent by id, which also absorbs the realtime echo of this device's own writes.
         onUpsert: (application) =>
           set((state) => ({
             applications: state.applications.some((existing) => existing.id === application.id)

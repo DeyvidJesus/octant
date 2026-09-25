@@ -27,15 +27,10 @@ function withTimestamp(knowledgeBase: CareerKnowledgeBase): CareerKnowledgeBase 
 
 export const useResumeStore = create<ResumeState>()(
   (set, get) => {
-    /**
-     * What we believe is currently persisted, used to compute per-row diffs so that editing one
-     * bullet writes one `resume_facts` row instead of the whole graph. `null` until the first
-     * write / hydration. Advanced optimistically (persistence is fire-and-forget), consistent with
-     * the rest of the store layer.
-     */
+    // Last state assumed persisted, used for per-row diffs. Null until hydration; advanced optimistically.
     let persistedBaseline: CareerKnowledgeBase | null = null
 
-    /** Applies a new knowledge base to state and schedules a diffed, per-row persist. */
+    // Applies a new knowledge base to state and schedules a diffed, per-row persist.
     const commit = (knowledgeBase: CareerKnowledgeBase, context: string) => {
       const projection = projectKnowledgeBase(knowledgeBase)
       set({ knowledgeBase, resume: projection })

@@ -1,23 +1,5 @@
-// Sends a correctly-signed Send Email Hook request straight to the deployed `auth-email-hook`.
-//
-// WHY: GoTrue rate-limits auth emails per project (`over_email_send_rate_limit`, 429). Debugging the hook
-// through real signups burns that quota fast — and every failed attempt also leaves a half-created,
-// unconfirmed user behind. This talks to the function directly, so you can iterate on the hook without
-// touching the rate limit and without creating users.
-//
-// It signs the payload with the Standard Webhooks scheme, exactly as GoTrue does, so the function's
-// signature verification is exercised for real rather than bypassed.
-//
-// Usage — values come from the local `.env`, so usually just:
-//   yarn email:probe [action] [recipient]
-//
-//   action     signup (default) | recovery | magiclink | invite | email_change | reauthentication
-//   recipient  the address the email would go to (default probe@example.com)
-//
-// Any variable already set in the shell wins over `.env`, so a one-off override works:
-//   SEND_EMAIL_HOOK_SECRET='v1,whsec_...' yarn email:probe signup you@example.com
-//
-// A real email IS sent if the function is fully configured — use an address you own.
+// Sends a signed Send Email Hook request to the deployed auth-email-hook, bypassing GoTrue's email rate limit.
+// Usage: yarn email:probe [signup|recovery|magiclink|invite|email_change|reauthentication] [recipient]  (sends real mail)
 
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -25,12 +7,11 @@ import { Webhook } from 'standardwebhooks'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
-// Node does not read `.env` on its own, and the secrets this needs already live there. `loadEnvFile`
-// leaves variables that are already set alone, so an inline override still takes precedence.
+// loadEnvFile keeps variables already set in the shell, so inline overrides win.
 try {
   process.loadEnvFile(path.join(root, '.env'))
 } catch {
-  // No local `.env` (or a Node without loadEnvFile) — fall back to whatever the shell provides.
+  // No .env; use the shell environment.
 }
 
 const action = process.argv[2] ?? 'signup'
@@ -52,13 +33,7 @@ if (!supabaseUrl) {
   process.exit(1)
 }
 
-/**
- * Finds a REAL user id.
- *
- * `email_log.user_id` has a foreign key to `auth.users`, so a made-up uuid makes the hook's claim insert
- * fail with 23503 — which looks exactly like a broken hook while actually being a broken probe. Using a
- * real id exercises the same path a genuine signup takes.
- */
+// Uses an existing user id so the probe follows the same path as a real signup.
 async function findRealUserId() {
   const serviceKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
   if (serviceKey === undefined) return undefined
@@ -83,21 +58,13 @@ if (userId === undefined) {
   )
 }
 
-/**
- * Unique per run, and that matters: the hook keys de-duplication on `token_hash`, so a constant value
- * made every probe after the first return 200 via dedup WITHOUT sending anything — a false "it works"
- * that hides a real breakage. A fresh hash makes each run a genuine send.
- */
+// Unique per run: the hook dedupes on token_hash, so a constant value would skip the send and still return 200.
 const runId = `probe-${Date.now()}`
 
-/**
- * Mirrors the shape GoTrue posts. `token_hash` is fake — the email will render and send, but its link
- * will not verify anything, which is exactly what you want for a probe.
- */
+// Same shape GoTrue posts; the token is fake, so the email's link verifies nothing.
 const payload = JSON.stringify({
   user: {
-    // Empty when no real user exists. A made-up uuid would trip the foreign key on `email_log.user_id`
-    // and look like a broken hook; `sendLogged` maps blank to NULL instead.
+    // Blank when no user exists; sendLogged maps it to NULL.
     id: userId ?? '',
     email: recipient,
     new_email: action.startsWith('email_change') ? `new+${recipient}` : null,
@@ -139,14 +106,7 @@ const text = await response.text()
 console.log(`HTTP ${response.status}`)
 console.log(text || '(empty body)')
 
-/**
- * The status code alone is NOT the verdict.
- *
- * A hook reports a business failure as HTTP 200 with an `{ error: … }` body — that is the contract GoTrue
- * requires (a non-200 makes it discard the body and report "Unexpected status code"). So checking only the
- * status would call a failed send a success, which is precisely the false positive this probe exists to
- * eliminate.
- */
+// GoTrue's contract has hooks report failures as HTTP 200 with an `error` body, so check the body too.
 let hookErrorMessage
 try {
   hookErrorMessage = JSON.parse(text)?.error?.message

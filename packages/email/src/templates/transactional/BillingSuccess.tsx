@@ -1,9 +1,4 @@
-/**
- * Billing Success — the receipt for a paid invoice (`invoice.payment_succeeded`).
- *
- * Money amounts and dates arrive pre-formatted; this template never does currency or locale maths, so
- * there's no second formatting implementation to drift from the app's own.
- */
+// Receipt for a paid invoice (`invoice.payment_succeeded`); amounts and dates arrive pre-formatted.
 
 import { Section } from '@react-email/components'
 import { spacing } from '../../brand/tokens.ts'

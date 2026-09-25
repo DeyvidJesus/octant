@@ -2,21 +2,11 @@ import { UnauthenticatedError } from '@/repositories/errors'
 import { useToastStore } from './toastStore'
 
 interface PersistOptions {
-  /**
-   * Reconcile in-memory state with the server after a failed write — typically the store's
-   * `_fetchFromSupabase`. Runs on non-auth failures so an optimistic row rejected by the backend
-   * (e.g. a free-tier RLS cap) is dropped from the UI instead of lingering until the next reload.
-   */
+  /** Re-syncs from the server after a failed write so a rejected optimistic row (e.g. RLS cap) disappears. */
   reconcile?: () => void
 }
 
-/**
- * Runs a fire-and-forget persistence action for an optimistic store mutation.
- *
- * Store mutators update in-memory state synchronously and return `void`; the write to the
- * backend happens here, out of band, so the UI never blocks on the network. On failure this single
- * boundary surfaces a toast, logs the error, and (optionally) reconciles the optimistic state.
- */
+/** Fire-and-forget write for an optimistic store mutation; on failure it toasts, logs and reconciles. */
 export function persist(
   action: () => Promise<unknown>,
   context: string,

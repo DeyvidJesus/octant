@@ -1,23 +1,7 @@
-/**
- * Octant's email design tokens.
- *
- * Mirrors the app theme in `src/styles/index.css` (dark, minimal, terminal-inspired) so an email looks
- * like the product it came from. The accent is `#863bff`, the purple already in `public/favicon.svg` —
- * previously the only brand-coloured asset and disconnected from everything else.
- *
- * Email-specific constraints these values respect:
- *   • Hex only. `oklch()`, `color-mix()` and CSS variables are unsupported in Outlook and stripped by
- *     Gmail, so the semantic names live here in TypeScript and resolve to literal hex at render time.
- *   • Every surface declares an explicit background. Gmail's and Outlook's dark-mode transforms only
- *     leave a colour alone if it was stated outright — omitting it produces unreadable grey-on-grey.
- *   • System font stack, matching `body` in the app. Webfonts in email are unreliable and slow.
- */
+// Email design tokens mirroring the app theme. Hex only: Outlook and Gmail drop oklch(), color-mix() and
+// CSS variables, and every surface sets an explicit background so dark-mode transforms leave it alone.
 
-/**
- * Marks nodes that carry no meaning once styling is stripped, so the plain-text renderer drops them.
- * Lives here — at the bottom of the dependency graph — rather than in `renderer.ts`, because the
- * components that apply it would otherwise import the renderer that imports them.
- */
+/** Class for decorative nodes the plain-text renderer drops; lives here to avoid an import cycle. */
 export const TEXT_SKIP_CLASS = 'octant-text-skip'
 
 export const colors = {
@@ -47,7 +31,7 @@ export const colors = {
   accentDeep: '#7e14ff',
   /** Text on top of the accent. */
   accentInk: '#ffffff',
-  /** Status colours, taken from `src/modules/metrics/chartTheme.ts` so charts and email agree. */
+  /** Status colours, matching `src/modules/metrics/chartTheme.ts`. */
   success: '#0ca30c',
   warning: '#fab219',
   danger: '#d03b3b',
@@ -94,10 +78,7 @@ export const layout = {
   contentWidthPx: 600,
 } as const
 
-/**
- * Semantic tone for callouts and status accents. An `as const` object rather than an enum, because the
- * tsconfig sets `erasableSyntaxOnly` (enums emit runtime code and are therefore banned).
- */
+/** Semantic tone for callouts and status accents (`as const` object; enums are banned by `erasableSyntaxOnly`). */
 export const Tone = {
   Neutral: 'neutral',
   Success: 'success',
@@ -108,8 +89,7 @@ export const Tone = {
 
 export type ToneValue = (typeof Tone)[keyof typeof Tone]
 
-/** Border/text/background triplet for each tone. Backgrounds are opaque — email has no alpha support
- *  worth relying on, so these are pre-blended against `surface`. */
+/** Border/text/background per tone; backgrounds are pre-blended against `surface` since email alpha is unreliable. */
 export const toneStyles: Record<ToneValue, { border: string; text: string; background: string }> = {
   neutral: { border: colors.edge2, text: colors.ink2, background: colors.surface2 },
   success: { border: '#1c4a1c', text: '#7ee07e', background: '#0e1f0e' },

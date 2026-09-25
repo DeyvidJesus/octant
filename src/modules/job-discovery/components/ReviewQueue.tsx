@@ -7,10 +7,7 @@ import { useDiscoveryStore } from '@/stores/discoveryStore'
 import { approveCandidates } from '../approveCandidates'
 import { CandidateCard } from './CandidateCard'
 
-/**
- * The triage surface: discovered jobs never reach the board without an
- * explicit approve here. Quality over quantity, enforced by flow.
- */
+/** Triage queue: discovered jobs reach the board only through an explicit approve here. */
 export function ReviewQueue() {
   const candidates = useDiscoveryStore((state) => state.candidates)
   const dismissCandidates = useDiscoveryStore((state) => state.dismissCandidates)

@@ -1,19 +1,5 @@
-/**
- * Where every email link lands.
- *
- * GoTrue's `/auth/v1/verify` endpoint validates the token hash, establishes the session, and then
- * redirects here. Before this route existed there was nowhere for a verification or magic link to go —
- * the only public route was `/login`, so a confirmed user was bounced to a sign-in form with no
- * explanation.
- *
- * Two cases have to be distinguished, because Supabase reuses the same redirect for both:
- *   * `type=recovery` → the session exists ONLY so the user can set a new password. Send them to
- *     `/reset-password`, not into the app; dropping them on the dashboard leaves the reset unfinished.
- *   * everything else → a normal session. Go to the app.
- *
- * An error arrives as query or hash params (`error`, `error_description`) — most often an expired link,
- * which needs an actionable message rather than a spinner that never resolves.
- */
+// Landing route for every email link after GoTrue verifies it. Recovery goes to /reset-password,
+// anything else into the app; `error` params (usually an expired link) show a message.
 
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
@@ -66,7 +52,7 @@ export function AuthCallbackPage() {
     )
   }
 
-  // Session established → into the app. AuthContext also fires the welcome email at this point.
+  // AuthContext also sends the welcome email at this point.
   if (!isLoading && session) return <Navigate to="/" replace />
   if (!isLoading && !session) return <Navigate to="/login" replace />
 

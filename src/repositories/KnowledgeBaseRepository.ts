@@ -18,12 +18,8 @@ interface DataRow<T> {
 /** Tables holding a normalized collection as `{ id, user_id, data }`. */
 type NormalizedTable = 'resume_skills' | 'resume_facts'
 
-/**
- * Data-access boundary for the knowledge base. The four structural/high-churn collections
- * (organizations, roles, skills, facts) live in relational tables; the rest of the graph lives in
- * the `resumes.knowledge_base` residual document. Edits are persisted as per-row diffs, so changing
- * one bullet is a single-row UPDATE. RLS-scoped; throws `AppError` subclasses on failure.
- */
+/** Knowledge base data access: orgs, roles, skills and facts are tables; the rest is a residual JSONB. */
+// Edits are written as per-row diffs, so changing one bullet is a single-row UPDATE.
 export class KnowledgeBaseRepository extends BaseRepository {
   /** Reassembles the full knowledge base from the residual document + the four tables. */
   async getKnowledgeBase(): Promise<CareerKnowledgeBase | null> {
@@ -56,13 +52,8 @@ export class KnowledgeBaseRepository extends BaseRepository {
     })
   }
 
-  /**
-   * Persists the change from `prev` to `next` as targeted per-row writes. `prev` is `null` on the
-   * first write (nothing persisted yet), which makes every current row an insert.
-   *
-   * Ordering respects the role → organization foreign key: organizations are written before roles,
-   * and the residual last.
-   */
+  /** Persists `prev` to `next` as per-row writes (`prev` null means insert everything). */
+  // Organizations are written before roles to satisfy the FK; the residual goes last.
   async applyChanges(prev: CareerKnowledgeBase | null, next: CareerKnowledgeBase): Promise<void> {
     const userId = this.requireUserId()
     const before = prev
@@ -94,8 +85,7 @@ export class KnowledgeBaseRepository extends BaseRepository {
       const rows = diff.upserts.map((role) => ({
         id: role.id,
         user_id: userId,
-        // FK column mirrors data.organizationId, but only when the org actually exists — a dangling
-        // reference (which the projection tolerates) is stored as null rather than violating the FK.
+        // A dangling organizationId is stored as null instead of violating the FK.
         organization_id: orgIds.has(role.organizationId) ? role.organizationId : null,
         data: role,
       }))
@@ -127,9 +117,7 @@ export class KnowledgeBaseRepository extends BaseRepository {
   }
 
   private async saveResidual(userId: string, residual: KnowledgeBaseResidual): Promise<void> {
-    // NOTE: `resumes.user_id` is UNIQUE; the correct upsert conflict target is `user_id`. Kept as a
-    // plain upsert to match existing behavior; conflict-target wiring is deferred to the schema-
-    // reconciliation phase (consistent with the other singleton-table repos).
+    // `resumes.user_id` is UNIQUE, but this upsert does not yet use it as the conflict target.
     this.unwrap(
       await supabase.from('resumes').upsert({ user_id: userId, knowledge_base: residual }),
       'save your resume',
@@ -137,5 +125,5 @@ export class KnowledgeBaseRepository extends BaseRepository {
   }
 }
 
-/** Shared singleton — import this from stores. The class is exported for testing/DI. */
+/** Shared singleton for stores; the class is exported for tests. */
 export const knowledgeBaseRepository = new KnowledgeBaseRepository()

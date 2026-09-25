@@ -1,4 +1,4 @@
-# Email (Fase 15)
+# Email
 
 Infraestrutura transacional de email do Octant: templates React Email, um único serviço tipado, e um só
 arquivo que fala com o Resend.
