@@ -963,7 +963,8 @@ async function geminiGenerate(apiKey, prompt, grounded) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(`Gemini HTTP ${res.status}: ${JSON.stringify(data).slice(0, 200)}`);
-  const text = (data?.candidates?.[0]?.content?.parts ?? []).map((p) => p?.text ?? "").join("");
+  const parts = data?.candidates?.[0]?.content?.parts;
+  const text = (Array.isArray(parts) ? parts : []).map((p) => p?.text ?? "").join("");
   const tokens = Number(data?.usageMetadata?.totalTokenCount ?? 0);
   return { text, tokens };
 }

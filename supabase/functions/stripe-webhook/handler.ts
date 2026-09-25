@@ -9,7 +9,7 @@ import {
   userIdFromSubscription,
   type StripeEventLike,
 } from '@octant/email'
-import { createAdminClient } from '../_shared/admin.ts'
+import { createAdminClient, type SupabaseClient } from '../_shared/admin.ts'
 import { preferencesUrlFor, sendLogged } from '../_shared/mailer.ts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
@@ -19,8 +19,7 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
 // Web Crypto verification, since Node's sync crypto isn't available in Deno.
 const cryptoProvider = Stripe.createSubtleCryptoProvider()
 
-// deno-lint-ignore no-explicit-any
-type Admin = any
+type Admin = SupabaseClient
 
 /** Events that change a user's tier. */
 const SUBSCRIPTION_EVENTS = new Set([

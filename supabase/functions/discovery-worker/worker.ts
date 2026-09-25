@@ -1,7 +1,7 @@
 // discovery-worker: runs job discovery for one user (Bearer JWT) or a scheduled batch of due users
 // (x-discovery-secret header). Reuses the app's domain code from src/ via the deno.json `@/` import map.
 
-import { createAdminClient, createUserClient } from '../_shared/admin.ts'
+import { createAdminClient, createUserClient, type SupabaseClient } from '../_shared/admin.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import { runDiscovery, type DiscoveryStrategy, type JobSource } from '@/services/discovery/pipeline'
 import { generateStrategiesWithAi } from '@/services/discovery/strategies'
@@ -24,6 +24,12 @@ const MAX_CANDIDATES_PER_RUN = 30
 const MAX_USERS_PER_TICK = 25
 const ENRICH_TOP_K = 5
 
+/** The fields read from a Gemini generateContent response; optional because the body is not trusted. */
+interface GeminiResponse {
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+  usageMetadata?: { totalTokenCount?: number }
+}
+
 async function geminiGenerate(
   apiKey: string,
   prompt: string,
@@ -38,12 +44,10 @@ async function geminiGenerate(
       generationConfig: { temperature: grounded ? 0.3 : 0, maxOutputTokens: 4000 },
     }),
   })
-  // deno-lint-ignore no-explicit-any
-  const data: any = await res.json()
+  const data: GeminiResponse = await res.json()
   if (!res.ok) throw new Error(`Gemini HTTP ${res.status}: ${JSON.stringify(data).slice(0, 200)}`)
-  const text: string = (data?.candidates?.[0]?.content?.parts ?? [])
-    .map((p: { text?: string }) => p?.text ?? '')
-    .join('')
+  const parts = data?.candidates?.[0]?.content?.parts
+  const text = (Array.isArray(parts) ? parts : []).map((p) => p?.text ?? '').join('')
   const tokens = Number(data?.usageMetadata?.totalTokenCount ?? 0)
   return { text, tokens }
 }
@@ -94,8 +98,7 @@ function monthlyLimitFor(tier: PlanTier): number {
   return raw === undefined || raw === '' ? fallback : Number(raw)
 }
 
-// deno-lint-ignore no-explicit-any
-async function tierOverBudget(admin: any, userId: string, tier: PlanTier): Promise<boolean> {
+async function tierOverBudget(admin: SupabaseClient, userId: string, tier: PlanTier): Promise<boolean> {
   const limit = monthlyLimitFor(tier)
   if (limit <= 0) return false
   const monthStart = new Date()
@@ -110,8 +113,7 @@ async function tierOverBudget(admin: any, userId: string, tier: PlanTier): Promi
   return used >= limit
 }
 
-// deno-lint-ignore no-explicit-any
-async function runForUser(admin: any, apiKey: string, userId: string, trigger: string): Promise<void> {
+async function runForUser(admin: SupabaseClient, apiKey: string, userId: string, trigger: string): Promise<void> {
   const { data: profileRow } = await admin
     .from('search_profiles')
     .select('data, scoring_snapshot')
@@ -227,8 +229,7 @@ async function runForUser(admin: any, apiKey: string, userId: string, trigger: s
 }
 
 /** Users with a search profile whose last successful run is older than their plan's cadence. */
-// deno-lint-ignore no-explicit-any
-async function selectDueUsers(admin: any): Promise<string[]> {
+async function selectDueUsers(admin: SupabaseClient): Promise<string[]> {
   const { data: profiles } = await admin.from('search_profiles').select('user_id').limit(500)
   const due: string[] = []
   const nowMs = Date.now()

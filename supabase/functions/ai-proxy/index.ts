@@ -1,7 +1,7 @@
 // ai-proxy: verifies the caller's Supabase JWT, enforces the monthly token budget, and calls the LLM vendor
 // with server-held keys, returning `{ text, model }`.
 
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
 type ProviderId = 'openai' | 'openrouter' | 'claude' | 'gemini'
@@ -19,6 +19,27 @@ interface ProxyRequest {
   temperature?: number
   maxTokens?: number
   webSearch?: boolean
+}
+
+/** The fields read from each vendor's response; all optional because the body is not trusted. */
+interface VendorResponse {
+  model?: string
+  /** OpenAI-compatible. */
+  choices?: Array<{ message?: { content?: string } }>
+  /** Anthropic. */
+  content?: Array<{ type?: string; text?: string }>
+  /** Gemini. */
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+  /** OpenAI-compatible (`*_tokens`) and Anthropic (`input_/output_tokens`). */
+  usage?: {
+    prompt_tokens?: number
+    completion_tokens?: number
+    total_tokens?: number
+    input_tokens?: number
+    output_tokens?: number
+  }
+  /** Gemini. */
+  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number }
 }
 
 interface VendorConfig {
@@ -130,7 +151,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     )
   }
 
-  const data = await vendorResponse.json()
+  const data: VendorResponse = await vendorResponse.json()
   const text =
     vendor.wire === 'anthropic'
       ? parseAnthropic(data)
@@ -166,8 +187,7 @@ interface TokenUsage {
 }
 
 /** Normalizes each vendor's usage block to prompt/completion/total. */
-// deno-lint-ignore no-explicit-any
-function extractUsage(data: any, wire: Wire): TokenUsage {
+function extractUsage(data: VendorResponse, wire: Wire): TokenUsage {
   if (wire === 'gemini') {
     const m = data?.usageMetadata ?? {}
     const prompt = Number(m.promptTokenCount ?? 0)
@@ -195,8 +215,7 @@ function monthlyLimitFor(tier: 'free' | 'pro'): number {
 }
 
 /** True when the user has consumed at least their tier's monthly cap this calendar month. */
-// deno-lint-ignore no-explicit-any
-async function tierOverBudget(admin: any, userId: string): Promise<boolean> {
+async function tierOverBudget(admin: SupabaseClient, userId: string): Promise<boolean> {
   const { data: sub } = await admin.from('subscriptions').select('tier').eq('user_id', userId).maybeSingle()
   const tier: 'free' | 'pro' = sub?.tier === 'pro' ? 'pro' : 'free'
   const limit = monthlyLimitFor(tier)
@@ -301,20 +320,17 @@ function buildVendorCall(
   }
 }
 
-// deno-lint-ignore no-explicit-any
-function parseOpenAi(data: any): string | undefined {
+function parseOpenAi(data: VendorResponse): string | undefined {
   return data?.choices?.[0]?.message?.content
 }
 
-// deno-lint-ignore no-explicit-any
-function parseGemini(data: any): string | undefined {
+function parseGemini(data: VendorResponse): string | undefined {
   const parts = data?.candidates?.[0]?.content?.parts
   if (!Array.isArray(parts)) return undefined
   return parts.map((part: { text?: string }) => part?.text ?? '').join('')
 }
 
-// deno-lint-ignore no-explicit-any
-function parseAnthropic(data: any): string | undefined {
+function parseAnthropic(data: VendorResponse): string | undefined {
   return Array.isArray(data?.content)
     ? data.content
         .filter((block: { type?: string }) => block?.type === 'text')

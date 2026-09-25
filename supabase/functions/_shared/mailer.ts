@@ -10,8 +10,9 @@ import {
   type TemplateName,
 } from '@octant/email'
 
-// deno-lint-ignore no-explicit-any
-type Admin = any
+import type { SupabaseClient } from './admin.ts'
+
+type Admin = SupabaseClient
 
 let cached: EmailService | null = null
 

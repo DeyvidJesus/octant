@@ -1,7 +1,10 @@
 // Supabase clients for Edge Functions. Keys are resolved from both the new and legacy env names, because
 // passing '' to createClient throws an opaque "supabaseKey is required".
 
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+
+// Untyped schema: the rows hold JSONB documents whose shapes live in src/types, not in generated DB types.
+export type { SupabaseClient }
 
 /** RLS-bypassing key names, newest first: `sb_secret_…`, then the legacy service-role JWT. */
 const SERVICE_KEY_VARS = ['SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY'] as const
@@ -27,8 +30,7 @@ export class MissingServiceKeyError extends Error {
 }
 
 /** Admin client that bypasses RLS. Throws `MissingServiceKeyError`; callers should catch it, not 500. */
-// deno-lint-ignore no-explicit-any
-export function createAdminClient(): any {
+export function createAdminClient(): SupabaseClient {
   const url = requireUrl()
   const key = serviceRoleKey()
   if (key === undefined) throw new MissingServiceKeyError()
@@ -54,8 +56,7 @@ function requireUrl(): string {
 }
 
 /** Client scoped to the caller's JWT (public key + their Authorization header), so RLS still applies. */
-// deno-lint-ignore no-explicit-any
-export function createUserClient(authHeader: string): any {
+export function createUserClient(authHeader: string): SupabaseClient {
   const url = requireUrl()
   const key = publicKey()
   if (key === undefined) {
