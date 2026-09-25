@@ -131,9 +131,54 @@ mas nada é enviado e nada estoura. Mesmo env-gating do `initSentry()` / `initAn
 ```bash
 yarn email:dev        # preview dos 14 templates (React Email dev server)
 yarn email:export     # renderiza tudo para .email-preview/*.html e *.txt
+yarn email:probe      # POST assinado direto no auth-email-hook (ver abaixo)
 yarn test             # inclui packages/email (252 testes)
 yarn build:functions  # regenera os index.ts das 5 functions empacotadas
 ```
+
+## Duas armadilhas do Send Email Hook
+
+Ambas custaram tempo de debug real. Estão aqui para não custarem de novo.
+
+**1. O hook roda dentro da transação não commitada do GoTrue.** Durante um signup, a linha nova em
+`auth.users` só existe dentro daquela transação — e a Edge Function conecta em outra sessão, então **não a
+vê**. Qualquer FK apontando para `auth.users` falha com `23503`, o hook devolve erro, e o GoTrue faz
+rollback do signup inteiro. O sintoma é traiçoeiro: todo signup dá 500, `auth.users` fica vazia, e
+`email_log` não tem linha nenhuma explicando. Probes sem `user_id` funcionam, então o pipeline parece
+saudável.
+
+Por isso a migration [0015](../supabase/migrations/0015_email_log_drop_user_fk.sql) remove a FK de
+`email_log.user_id`. O `sendLogged` também tem fallback: em `23503`, regrava sem a associação — perder o
+vínculo com o usuário é muito melhor que bloquear cadastros.
+
+**2. Erro de negócio tem que voltar com HTTP 200.** Responder com o status da falha (500, 422…) faz o
+GoTrue **descartar o corpo** e reportar só `"Unexpected status code returned from hook: 500"` — sua
+mensagem morre ali. O transporte funcionou; foi o resultado que falhou. Então: status 200, e o
+`error.http_code` no corpo carrega a intenção. Só assim a mensagem chega ao log e ao cliente.
+
+Assinatura inválida é a exceção — aí o status HTTP real (401) é correto, porque não é uma chamada válida do
+GoTrue.
+
+## Debugando o auth-email-hook
+
+**Não debugue pelo signup.** O GoTrue tem um rate limit de emails por projeto e ele dispara em
+`/auth/v1/signup` **antes** de chamar o hook — `over_email_send_rate_limit`, HTTP 429. O default é baixo
+(2/hora no SMTP embutido), então três ou quatro tentativas esgotam a cota e você fica sem conseguir testar.
+Pior: cada tentativa falha deixa um usuário criado e não confirmado, e o próximo signup passa a dizer
+"já registrado".
+
+Use o probe, que fala direto com a função — assinando o payload do mesmo jeito que o GoTrue, então a
+verificação de assinatura é exercitada de verdade:
+
+```bash
+SEND_EMAIL_HOOK_SECRET='v1,whsec_...' SUPABASE_URL='https://<ref>.supabase.co' \
+  yarn email:probe signup você@seudominio.com
+```
+
+Ele imprime o status e o corpo. Desde a correção do handler, **a causa vem na mensagem** — chave
+service-role ausente, `EMAIL_FROM` inválido, rejeição do Resend — em vez do antigo 500 opaco.
+
+Onde ajustar o limite: Dashboard › Authentication › Rate Limits › "Rate limit for sending emails".
 
 ## Deliverability
 

@@ -26,11 +26,29 @@ import { createAdminClient } from '../_shared/admin.ts'
 import { sendLogged } from '../_shared/mailer.ts'
 
 /**
- * GoTrue's expected error envelope. Returning it surfaces `message` to the end user and aborts the auth
- * operation, which is the right outcome for a send failure: a user who silently never receives a
- * verification link has no way to tell that anything went wrong.
+ * GoTrue's error envelope, returned with **HTTP 200**.
+ *
+ * This is counter-intuitive and cost real debugging time to get right: replying with the failure's own
+ * status code (500, 422, …) makes GoTrue discard the body entirely and report the useless
+ * `"Unexpected status code returned from hook: 500"`. The transport succeeded — it is the hook's BUSINESS
+ * outcome that failed — so the HTTP status must be 200 and `error.http_code` carries the intent. Only then
+ * does `message` reach the auth log and the client.
  */
 function hookError(message: string, httpCode: number): Response {
+  return new Response(JSON.stringify({ error: { http_code: httpCode, message } }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  })
+}
+
+/**
+ * A genuine transport-level rejection, with a real HTTP status.
+ *
+ * Reserved for requests that are not a valid GoTrue call at all — an unsigned or wrongly-signed body.
+ * Those must NOT be dressed up as a 200: the caller may be an attacker probing the endpoint, and there is
+ * no auth flow to report a business error into.
+ */
+function transportError(message: string, httpCode: number): Response {
   return new Response(JSON.stringify({ error: { http_code: httpCode, message } }), {
     status: httpCode,
     headers: { 'content-type': 'application/json' },
@@ -43,7 +61,7 @@ function hookOk(): Response {
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
-  if (req.method !== 'POST') return hookError('Method not allowed.', 405)
+  if (req.method !== 'POST') return transportError('Method not allowed.', 405)
 
   const rawSecret = Deno.env.get('SEND_EMAIL_HOOK_SECRET')
   if (rawSecret === undefined || rawSecret === '') {
@@ -65,7 +83,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     payload = webhook.verify(body, headers) as AuthHookPayload
   } catch (err) {
     console.error(`[auth-email-hook] signature verification failed: ${String(err)}`)
-    return hookError('Invalid hook signature.', 401)
+    return transportError('Invalid hook signature.', 401)
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''

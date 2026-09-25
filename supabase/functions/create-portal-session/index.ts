@@ -12,23 +12,22 @@
 
 import Stripe from 'npm:stripe@16'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-import { staticCorsHeaders } from '../_shared/cors.ts'
+import { corsHeaders } from '../_shared/cors.ts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2024-06-20',
   httpClient: Stripe.createFetchHttpClient(),
 })
 
-const CORS_HEADERS = staticCorsHeaders()
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
-  })
-}
-
 Deno.serve(async (req: Request): Promise<Response> => {
+  // Per request, not module-level: a fixed header can only ever serve one origin.
+  const CORS_HEADERS = corsHeaders(req)
+  const json = (body: unknown, status = 200): Response =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
+    })
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
   if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405)
 

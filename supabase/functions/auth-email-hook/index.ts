@@ -2055,22 +2055,37 @@ async function sendLogged(admin, input) {
     console.error(`[email] could not prepare ${input.template}: ${described.code} ${described.message}`);
     return { status: "failed", ...described };
   }
-  const { error: claimError } = await admin.from("email_log").insert({
-    user_id: input.userId ?? null,
+  const ownerId = input.userId === void 0 || input.userId.trim() === "" ? null : input.userId;
+  const claimRow = {
+    user_id: ownerId,
     to_email: input.to,
     template: input.template,
     subject,
     status: "queued",
     idempotency_key: idempotencyKey,
     metadata: input.metadata ?? {}
-  });
+  };
+  let { error: claimError } = await admin.from("email_log").insert(claimRow);
+  if (claimError !== null && claimError.code === "23503" && ownerId !== null) {
+    console.warn(
+      `[email] user ${ownerId} not visible yet (uncommitted signup?); logging ${input.template} without the association. Apply migration 0015 to drop the email_log.user_id foreign key.`
+    );
+    const retry = await admin.from("email_log").insert({ ...claimRow, user_id: null });
+    claimError = retry.error;
+  }
   if (claimError !== null) {
     if (claimError.code === "23505") {
       console.info(`[email] deduped ${input.template} for ${input.to}`);
       return { status: "deduped" };
     }
-    console.error(`[email] could not claim ${input.template}: ${claimError.message}`);
-    return { status: "failed", code: "EMAIL_LOG_CLAIM", message: claimError.message };
+    console.error(
+      `[email] could not claim ${input.template}: [${claimError.code ?? "no-code"}] ${claimError.message}` + (claimError.details === void 0 || claimError.details === null ? "" : ` \u2014 ${claimError.details}`)
+    );
+    return {
+      status: "failed",
+      code: `EMAIL_LOG_CLAIM${claimError.code === void 0 ? "" : `_${claimError.code}`}`,
+      message: claimError.message
+    };
   }
   try {
     const result = await mailer.send(input.template, input.to, input.props, options);
@@ -2091,6 +2106,12 @@ async function sendLogged(admin, input) {
 // supabase/functions/auth-email-hook/handler.ts
 function hookError(message, httpCode) {
   return new Response(JSON.stringify({ error: { http_code: httpCode, message } }), {
+    status: 200,
+    headers: { "content-type": "application/json" }
+  });
+}
+function transportError(message, httpCode) {
+  return new Response(JSON.stringify({ error: { http_code: httpCode, message } }), {
     status: httpCode,
     headers: { "content-type": "application/json" }
   });
@@ -2099,7 +2120,7 @@ function hookOk() {
   return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
 }
 Deno.serve(async (req) => {
-  if (req.method !== "POST") return hookError("Method not allowed.", 405);
+  if (req.method !== "POST") return transportError("Method not allowed.", 405);
   const rawSecret = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
   if (rawSecret === void 0 || rawSecret === "") {
     console.error("[auth-email-hook] SEND_EMAIL_HOOK_SECRET is not set \u2014 refusing to process the hook.");
@@ -2116,7 +2137,7 @@ Deno.serve(async (req) => {
     payload = webhook.verify(body2, headers);
   } catch (err) {
     console.error(`[auth-email-hook] signature verification failed: ${String(err)}`);
-    return hookError("Invalid hook signature.", 401);
+    return transportError("Invalid hook signature.", 401);
   }
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const appUrl = (Deno.env.get("APP_URL") ?? "").replace(/\/+$/, "");

@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "email:dev": "email dev --dir ./packages/email/src/templates/transactional --port 3010",
-    "email:export": "node scripts/export-email-html.mjs"
+    "email:export": "node scripts/export-email-html.mjs",
+    "email:probe": "node scripts/probe-auth-email-hook.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.67.0",
