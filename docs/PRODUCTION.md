@@ -84,8 +84,11 @@ Supabase, Netlify (ou similar), Google AI Studio (Gemini). Opcionais: OpenAI, St
 ### A) Supabase — banco, auth, realtime
 1. Crie o projeto; copie **Project URL** e **anon key** (Project Settings › API).
 2. **Aplique o schema.** Fonte de verdade: [`supabase-schema.sql`](../supabase-schema.sql) (consolidado — já inclui as tabelas de descoberta das Fases 1–4).
-   - **Projeto novo:** SQL Editor → cole `supabase-schema.sql` → Run. (Cria tudo, incl. `search_profiles`, `discovery_runs`, `discovery_signals`, `discovered_jobs.score` e o realtime.)
-   - **Projeto existente:** aplique as migrations pendentes por `supabase db push` (ou cole no SQL Editor, em ordem): `0009` → `0010` → `0011` → `0012` → `0013` → `0014` → `0015` → `0016`. Todas são **idempotentes**.
+   - **Projeto novo:** SQL Editor → cole `supabase-schema.sql` → Run; depois rode todas as migrations em ordem (são idempotentes). É exatamente o caminho que `supabase/tests` executa no CI.
+   - **Projeto existente:** cole no SQL Editor, em ordem, as migrations que ainda não rodaram (as mais recentes: `0015`, `0016`, `0017`, `0018`). Todas são **idempotentes**.
+   - **Cuidado com `supabase db push`:** ele só sabe o que já rodou pela tabela `supabase_migrations.schema_migrations`. Se as migrations foram aplicadas pelo SQL Editor, esse histórico está vazio e o `db push` tentaria rodar tudo desde a `0001`. Nesse caso, registre as já aplicadas antes (`supabase migration repair --status applied 0001 0002 …`) ou use o SQL Editor.
+   - **Ordem do deploy:** migrations **antes** das Edge Functions. O `stripe-webhook` atual chama `apply_subscription_event` (0018) e responde 500 se ela não existir; o Stripe reentrega o evento depois, então nada se perde, mas o plano atrasa.
+   - **Conferir as checagens de JSONB (0017):** se alguma constraint ficou `NOT VALID` por causa de linhas antigas, ela aparece em `select conrelid::regclass, conname from pg_constraint where conname like '%\_data\_shape' and not convalidated;`. Escritas novas já são checadas; depois de corrigir as linhas, rode `alter table <tabela> validate constraint <nome>`.
 3. **Auth:** Authentication › Providers → habilite **Email**. (Confirme a política de confirmação de email conforme sua preferência.)
 4. **Realtime:** garanta que Realtime está ligado no projeto (padrão no Supabase). As migrations já adicionam `discovered_jobs` e `discovery_runs` à publicação `supabase_realtime` com `replica identity full` — é o que faz o **feed incremental** (Fase 1) chegar sozinho.
 5. **RLS:** confirme (Table Editor) que todas as tabelas mostram RLS habilitado. O schema já define as policies `auth.uid() = user_id`.

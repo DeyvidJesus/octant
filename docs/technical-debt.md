@@ -13,12 +13,12 @@ The audit below is kept as written. This table records what happened to each iss
 | 1 | JSON blob synchronization | ✅ Mostly resolved: discoveries, knowledge base, interview prep and tailored résumés are one row per entity | migrations 0002, 0003, 0005, 0006 |
 | 2 | Missing indexes | ✅ Resolved | 0001, plus indexes in later migrations |
 | 3 | Client-side AI execution | ✅ Resolved: vendor keys only in the `ai-proxy` Edge Function, with a per-plan monthly token budget | `supabase/functions/ai-proxy` |
-| 4 | No schema validation of JSONB | ⏳ **Open**: RLS limits *who* writes, not *what*; `pg_jsonschema` not enabled | — |
+| 4 | No schema validation of JSONB | ✅ Resolved: CHECK constraints per JSONB column plus zod validation on read, covered by database tests | migration 0017, `src/repositories/schemas.ts`, `supabase/tests` |
 | 5 | DB logic inside stores | ✅ Resolved: repository layer, plus lint rules that keep UI away from it | `src/repositories`, `.oxlintrc.json` |
 | 6 | Redundant auth checks | ✅ Resolved: in-memory session mirror | `src/services/supabase/session.ts` |
 | 7 | Duplicated provider logic | ✅ Resolved: shared OpenAI-compatible adapter + server proxy | `src/services/ai/providers` |
 | 8 | Legacy migration logic | ✅ Resolved (see below) | — |
-| 9 | Knowledge-base editor gap | ✅ Resolved; relation pickers (fact → role/project) still missing | `src/modules/knowledge-base` |
+| 9 | Knowledge-base editor gap | ✅ Resolved, including links from facts to roles and projects | `src/modules/knowledge-base` |
 
 ---
 

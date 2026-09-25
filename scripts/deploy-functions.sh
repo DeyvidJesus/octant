@@ -27,4 +27,4 @@ for fn in "${NO_JWT_FUNCTIONS[@]}"; do
   should_deploy "$fn" && supabase functions deploy "$fn" --no-verify-jwt
 done
 
-echo "Done. Apply pending migrations with: supabase db push"
+echo "Done. Migrations must be applied before these functions; see docs/PRODUCTION.md (section A)."

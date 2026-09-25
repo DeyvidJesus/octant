@@ -137,6 +137,9 @@ export function KnowledgeBasePage() {
       {section === 'facts' && (
         <FactsSection
           facts={knowledgeBase.facts}
+          roles={knowledgeBase.roles}
+          organizations={knowledgeBase.organizations}
+          initiatives={knowledgeBase.initiatives}
           query={query}
           statusFilter={statusFilter}
           onChange={(facts) => patchKnowledgeBase({ facts })}

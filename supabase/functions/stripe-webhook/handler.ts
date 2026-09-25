@@ -36,33 +36,31 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 }
 
-/** Mirrors the subscription into public.subscriptions: `pro` while active or trialing, else `free`. */
+// Mirrors the subscription (`pro` while active or trialing, else `free`) unless a newer event already
+// applied (migration 0018). Returns the DB error, or `stale` when this event was older.
 async function upsertSubscription(
   admin: Admin,
   event: Stripe.Event,
   subscription: Stripe.Subscription,
   userId: string,
-): Promise<string | null> {
+): Promise<{ error: string | null; stale: boolean }> {
   const isActive =
     event.type !== 'customer.subscription.deleted' &&
     (subscription.status === 'active' || subscription.status === 'trialing')
 
-  const { error } = await admin.from('subscriptions').upsert(
-    {
-      user_id: userId,
-      tier: isActive ? 'pro' : 'free',
-      status: subscription.status,
-      stripe_customer_id:
-        typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id,
-      stripe_subscription_id: subscription.id,
-      current_period_end: subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
-        : null,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'user_id' },
-  )
-  return error === null ? null : error.message
+  const { data: applied, error } = await admin.rpc('apply_subscription_event', {
+    p_user_id: userId,
+    p_tier: isActive ? 'pro' : 'free',
+    p_status: subscription.status,
+    p_customer_id: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id,
+    p_subscription_id: subscription.id,
+    p_current_period_end: subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : null,
+    p_event_created: new Date(event.created * 1000).toISOString(),
+  })
+  if (error !== null) return { error: error.message, stale: false }
+  return { error: null, stale: applied === false }
 }
 
 // Subscription events carry user_id in metadata; for invoice events the subscription is fetched to read it.
@@ -139,8 +137,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   // A DB error returns 5xx so Stripe retries the tier update.
   if (SUBSCRIPTION_EVENTS.has(event.type) && subscription !== undefined) {
-    const dbError = await upsertSubscription(admin, event, subscription, userId)
+    const { error: dbError, stale } = await upsertSubscription(admin, event, subscription, userId)
     if (dbError !== null) return new Response(`Database error: ${dbError}`, { status: 500 })
+    // A late delivery must not email about a state the subscription has already left.
+    if (stale) return json({ received: true, applied: false, reason: 'older than the last applied event' })
   }
 
   // Email is best-effort and never causes a 5xx, which would redeliver an already-applied tier update.

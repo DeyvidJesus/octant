@@ -2,6 +2,7 @@ import type { JobOpportunity } from '@/types/job'
 import type { JobAnalysis } from '@/types/analysis'
 import { supabase } from '@/services/supabase/client'
 import { BaseRepository } from './BaseRepository'
+import { jobAnalysisSchema, jobSchema } from './schemas'
 
 /** Row shape persisted in `public.jobs` — the domain object lives in the `data` JSONB column. */
 interface JobRow {
@@ -26,7 +27,7 @@ export class JobRepository extends BaseRepository {
       await supabase.from('jobs').select('*').eq('user_id', userId),
       'load your jobs',
     ) as JobRow[] | null
-    return (rows ?? []).map((row) => row.data)
+    return this.parseRows<JobOpportunity>(rows?.map((row) => row.data), jobSchema, 'jobs')
   }
 
   async upsertJob(job: JobOpportunity): Promise<void> {
@@ -60,9 +61,8 @@ export class JobRepository extends BaseRepository {
     ) as JobAnalysisRow[] | null
 
     const byJobId: Record<string, JobAnalysis> = {}
-    for (const row of rows ?? []) {
-      byJobId[row.job_id] = row.data
-    }
+    const analyses = this.parseRows<JobAnalysis>(rows?.map((row) => row.data), jobAnalysisSchema, 'job_analyses')
+    for (const analysis of analyses) byJobId[analysis.jobId] = analysis
     return byJobId
   }
 
@@ -71,7 +71,7 @@ export class JobRepository extends BaseRepository {
     onUpsert: (job: JobOpportunity) => void
     onDelete: (id: string) => void
   }): () => void {
-    return this.subscribeToOwnedTable<JobOpportunity>('jobs', (change) => {
+    return this.subscribeToOwnedTable<JobOpportunity>('jobs', jobSchema, (change) => {
       if (change.type === 'upsert') handlers.onUpsert(change.row)
       else handlers.onDelete(change.id)
     })

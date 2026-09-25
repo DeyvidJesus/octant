@@ -2,6 +2,7 @@ import type { TailoredResume } from '@/types/generator'
 import { supabase } from '@/services/supabase/client'
 import { nowIso } from '@/utils/dates'
 import { BaseRepository } from './BaseRepository'
+import { tailoredResumeSchema } from './schemas'
 
 type TailoredMap = Record<string, TailoredResume>
 
@@ -22,7 +23,8 @@ export class TailoredResumeRepository extends BaseRepository {
     ) as TailoredResumeRow[] | null
 
     const byJobId: TailoredMap = {}
-    for (const row of rows ?? []) byJobId[row.job_id] = row.data
+    const resumes = this.parseRows<TailoredResume>(rows?.map((row) => row.data), tailoredResumeSchema, 'tailored_resumes')
+    for (const resume of resumes) byJobId[resume.jobId] = resume
     return byJobId
   }
 

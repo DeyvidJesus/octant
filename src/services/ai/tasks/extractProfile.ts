@@ -74,10 +74,6 @@ function optional(value: unknown): string | undefined {
   return s || undefined
 }
 
-function slug(value: string): string {
-  return value.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item'
-}
-
 /** Builds a knowledge base from untrusted model output; ids and provenance are assigned here, not by the model. */
 export function buildKnowledgeBaseFromExtraction(raw: unknown): {
   knowledgeBase: CareerKnowledgeBase
@@ -111,7 +107,7 @@ export function buildKnowledgeBaseFromExtraction(raw: unknown): {
       if (seenSkill.has(key)) continue
       seenSkill.add(key)
       skills.push({
-        id: `skill-${slug(canonical)}`,
+        id: createId(),
         canonical,
         category: str(rec.category) || 'General',
         evidenceFactIds: [],
@@ -127,7 +123,6 @@ export function buildKnowledgeBaseFromExtraction(raw: unknown): {
   const orgIdByName = new Map<string, string>()
 
   if (Array.isArray(record.experiences)) {
-    let expIndex = 0
     for (const item of record.experiences) {
       if (roles.length >= MAX_EXPERIENCES) break
       const rec = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>
@@ -138,13 +133,12 @@ export function buildKnowledgeBaseFromExtraction(raw: unknown): {
       const orgName = company || 'Unspecified'
       let orgId = orgIdByName.get(orgName.toLowerCase())
       if (!orgId) {
-        orgId = `org-${slug(orgName)}`
+        orgId = createId()
         orgIdByName.set(orgName.toLowerCase(), orgId)
         organizations.push({ id: orgId, name: orgName, type: 'employer', provenance: provenance(orgName) })
       }
 
-      const roleId = `role-${slug(orgName)}-${expIndex}`
-      expIndex += 1
+      const roleId = createId()
       roles.push({
         id: roleId,
         organizationId: orgId,

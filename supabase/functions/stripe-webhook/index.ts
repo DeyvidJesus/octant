@@ -2118,19 +2118,17 @@ function json(body2, status = 200) {
 }
 async function upsertSubscription(admin, event, subscription, userId) {
   const isActive = event.type !== "customer.subscription.deleted" && (subscription.status === "active" || subscription.status === "trialing");
-  const { error } = await admin.from("subscriptions").upsert(
-    {
-      user_id: userId,
-      tier: isActive ? "pro" : "free",
-      status: subscription.status,
-      stripe_customer_id: typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id,
-      stripe_subscription_id: subscription.id,
-      current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1e3).toISOString() : null,
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    },
-    { onConflict: "user_id" }
-  );
-  return error === null ? null : error.message;
+  const { data: applied, error } = await admin.rpc("apply_subscription_event", {
+    p_user_id: userId,
+    p_tier: isActive ? "pro" : "free",
+    p_status: subscription.status,
+    p_customer_id: typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id,
+    p_subscription_id: subscription.id,
+    p_current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1e3).toISOString() : null,
+    p_event_created: new Date(event.created * 1e3).toISOString()
+  });
+  if (error !== null) return { error: error.message, stale: false };
+  return { error: null, stale: applied === false };
 }
 async function resolveUserId(event) {
   if (SUBSCRIPTION_EVENTS.has(event.type) || event.type === "customer.subscription.trial_will_end") {
@@ -2188,8 +2186,9 @@ Deno.serve(async (req) => {
     return new Response(detail, { status: 500 });
   }
   if (SUBSCRIPTION_EVENTS.has(event.type) && subscription !== void 0) {
-    const dbError = await upsertSubscription(admin, event, subscription, userId);
+    const { error: dbError, stale } = await upsertSubscription(admin, event, subscription, userId);
     if (dbError !== null) return new Response(`Database error: ${dbError}`, { status: 500 });
+    if (stale) return json({ received: true, applied: false, reason: "older than the last applied event" });
   }
   const { email, name } = await resolveRecipient(admin, userId);
   if (email === void 0) {

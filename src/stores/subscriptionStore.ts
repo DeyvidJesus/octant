@@ -9,6 +9,8 @@ interface SubscriptionState {
   _fetchFromSupabase: () => Promise<void>
   /** Polls the tier until 'pro' after Checkout; the webhook lags the redirect and tiers are not realtime. */
   refreshUntilPro: (options?: { attempts?: number; intervalMs?: number; signal?: AbortSignal }) => Promise<boolean>
+  /** Subscribes to tier changes (upgrade, cancellation in the portal); returns an unsubscribe. */
+  _subscribeRealtime: () => () => void
   /** Clears in-memory state (sign-out / user switch) so no data bleeds across sessions. */
   reset: () => void
 }
@@ -38,5 +40,6 @@ export const useSubscriptionStore = create<SubscriptionState>()((set) => ({
     }
     return false
   },
+  _subscribeRealtime: () => subscriptionRepository.subscribeToTier((tier) => set({ tier })),
   reset: () => set({ tier: 'free' }),
 }))

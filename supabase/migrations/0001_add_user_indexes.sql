@@ -9,8 +9,14 @@ alter table public.jobs
 create index if not exists idx_jobs_user_id_status
   on public.jobs (user_id, status);
 
-create index if not exists idx_applications_user_id_stage
-  on public.applications (user_id, stage);
+-- Fresh installs from supabase-schema.sql keep the stage inside `data`, so there is no column to index.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'applications' and column_name = 'stage') then
+    create index if not exists idx_applications_user_id_stage on public.applications (user_id, stage);
+  end if;
+end $$;
 
 create index if not exists idx_job_analyses_user_id
   on public.job_analyses (user_id);

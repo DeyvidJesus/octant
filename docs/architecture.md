@@ -169,12 +169,21 @@ one place.
 
 ---
 
+## JSONB integrity
+
+RLS decides *who* writes a row; two layers decide *what* it may hold.
+
+- **Database (migration 0017):** a CHECK per JSONB column. Entity rows must be objects whose `id` matches the
+  row id, with the fields the app reads, under a size cap. Constraints are added `NOT VALID` and validated
+  only when existing rows pass, so legacy data never blocks a deploy while new writes are always checked.
+- **Read side (`src/repositories/schemas.ts`):** zod schemas per entity. `parseRows` repairs what has a safe
+  default (a missing list becomes `[]`), drops and reports what does not (to Sentry, without content), for
+  queries and realtime payloads alike. One corrupt row cannot break a page.
+- **Tests:** `supabase/tests` replays the schema and every migration on PGlite (Postgres in WebAssembly)
+  and checks the constraints, RLS, plan caps and Stripe event ordering.
+
 ## Known trade-offs (open)
 
 - **No offline queue or rollback.** A failed write is surfaced and reconciled by refetch, not retried.
 - **Last write wins.** Concurrent edits from two devices are not merged; realtime makes the window small.
-- **JSONB rows are not schema-validated in the database** (`pg_jsonschema` is not enabled). RLS protects
-  *who* writes, not *what* is written.
-- **Knowledge-base relations** (fact → role/project) have no picker in the editor yet.
-- **Tier changes are not pushed** to the client (no realtime on `subscriptions`). Returning from Stripe
-  Checkout, the settings page polls until the webhook lands (`refreshUntilPro`); other changes apply on reload.
+- **The token budget is checked before the AI call**, not reserved atomically; the per-request cap bounds it.

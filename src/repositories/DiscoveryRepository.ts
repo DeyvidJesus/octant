@@ -10,6 +10,7 @@ import { supabase } from '@/services/supabase/client'
 import { getSessionUserId } from '@/services/supabase/session'
 import type { DiscoverySignal, SignalAction, SignalFeatures } from '@/services/discovery/signals'
 import { BaseRepository } from './BaseRepository'
+import { discoveredCandidateSchema } from './schemas'
 
 export type DiscoveredJobStatus = 'pending' | 'approved' | 'rejected'
 
@@ -82,7 +83,7 @@ export class DiscoveryRepository extends BaseRepository {
       ) as DiscoveredJobRow[] | null
 
       if (!rows || rows.length === 0) break
-      for (const row of rows) candidates.push(row.data)
+      candidates.push(...this.parseRows<DiscoveredCandidate>(rows.map((row) => row.data), discoveredCandidateSchema, 'discovered_jobs'))
       if (rows.length < PAGE_SIZE) break
     }
 
@@ -192,8 +193,9 @@ export class DiscoveryRepository extends BaseRepository {
           }
           const row = payload.new
           if (!row?.data) return
-          if (row.status === 'pending') handlers.onUpsert(row.data)
-          else handlers.onRemove(row.data.id)
+          if (row.status !== 'pending') return handlers.onRemove(row.id)
+          const [candidate] = this.parseRows<DiscoveredCandidate>([row.data], discoveredCandidateSchema, 'discovered_jobs')
+          if (candidate) handlers.onUpsert(candidate)
         },
       )
       .subscribe()
