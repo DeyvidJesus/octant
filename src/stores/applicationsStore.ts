@@ -4,7 +4,7 @@ import { nowIso } from '@/utils/dates'
 import { appendEvent, changeStage } from '@/services/applications/events'
 import { applicationRepository } from '@/repositories/ApplicationRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
-import { persist } from '@/repositories/persist'
+import { persist } from './persist'
 import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
 
 interface ApplicationsState {

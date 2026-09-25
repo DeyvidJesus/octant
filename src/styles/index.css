@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 
+/* Tailwind v4 scans the whole repo for class names. The archived prototype and the email templates
+ * are not part of the app, so keep their classes out of the bundle. */
+@source not '../../docs';
+@source not '../../packages';
+
 /*
  * Octant design tokens — the visual identity extracted from the original
  * prototype. Dark, minimal, terminal-inspired. These are the ONLY places the
@@ -30,6 +35,31 @@
   --color-accent: #863bff;
   --color-accent-deep: #7e14ff;
   --color-accent-ink: #ffffff;
+
+  /* Emphasis and inversion. The dark theme's "loudest" colours, named by role so
+   * components never hard-code white/black. */
+  --color-ink-strong: #ffffff; /* headings, emphasized text, focus rings */
+  --color-inverse: #ffffff; /* primary CTA / active tab surface */
+  --color-inverse-hover: oklch(92.8% 0.006 264.531); /* inverse surface on hover */
+  --color-inverse-ink: #000000; /* text on an inverse surface */
+  --color-scrim: #000000; /* modal/drawer backdrop, always used with opacity */
+  --color-paper: #ffffff; /* printed resume sheet (ResumePaper keeps its own neutral ink) */
+
+  /* Status intents. Each has a base (text/icons), -strong (solid fills, emphasized
+   * borders), -soft (text on tinted surfaces) and -deep (tinted surfaces/borders, used
+   * with opacity). Values are Tailwind's emerald/red/amber/indigo steps. */
+  --color-success: oklch(76.5% 0.177 163.223);
+  --color-success-strong: oklch(69.6% 0.17 162.48);
+  --color-success-soft: oklch(84.5% 0.143 164.978);
+  --color-success-deep: oklch(37.8% 0.077 168.94);
+  --color-danger: oklch(70.4% 0.191 22.216);
+  --color-danger-strong: oklch(63.7% 0.237 25.331);
+  --color-danger-soft: oklch(80.8% 0.114 19.571);
+  --color-danger-deep: oklch(39.6% 0.141 25.723);
+  --color-warning: oklch(82.8% 0.189 84.429);
+  --color-info: oklch(67.3% 0.182 276.935);
+  --color-info-soft: oklch(78.5% 0.115 274.713);
+  --color-info-deep: oklch(35.9% 0.144 278.697);
 
   --animate-fade-in: fade-in 0.5s ease both;
   --animate-rise-in: rise-in 0.3s ease both;

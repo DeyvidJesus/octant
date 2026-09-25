@@ -3,7 +3,7 @@ import { Check, ChevronDown, ChevronUp, ExternalLink, Sparkles, Loader2, X } fro
 import { Badge } from '@/components/ui/Badge'
 import { IconButton } from '@/components/ui/IconButton'
 import type { DiscoveredCandidate } from '@/types/discovery'
-import { enrichOneCandidate } from '@/services/discovery/executor'
+import { enrichOneCandidate } from '@/stores/discoveryRunner'
 import { formatDate } from '@/utils/dates'
 
 /** Missing must-have skills from the persisted deterministic analysis. */
@@ -52,12 +52,12 @@ export function CandidateCard({ candidate, selected, onToggleSelect, onApprove, 
           checked={selected}
           onChange={onToggleSelect}
           aria-label={`Select ${candidate.company} — ${candidate.role}`}
-          className="mt-1.5 accent-white"
+          className="mt-1.5 accent-ink-strong"
         />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-white">{candidate.company}</span>
+            <span className="font-medium text-ink-strong">{candidate.company}</span>
             <span className="text-muted text-sm truncate">{candidate.role}</span>
             {candidate.url && (
               <a
@@ -74,7 +74,7 @@ export function CandidateCard({ candidate, selected, onToggleSelect, onApprove, 
 
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             {candidate.matchScore !== undefined ? (
-              <Badge tone={candidate.matchScore >= 60 ? 'emerald' : 'default'}>
+              <Badge tone={candidate.matchScore >= 60 ? 'success' : 'default'}>
                 ATS {candidate.matchScore}%
               </Badge>
             ) : (
@@ -105,7 +105,7 @@ export function CandidateCard({ candidate, selected, onToggleSelect, onApprove, 
           {gaps.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-3">
               {gaps.slice(0, 5).map((skill) => (
-                <Badge key={skill} tone="red">
+                <Badge key={skill} tone="danger">
                   Missing: {skill}
                 </Badge>
               ))}
@@ -115,7 +115,7 @@ export function CandidateCard({ candidate, selected, onToggleSelect, onApprove, 
           {/* Recommendation + grounded explanation (AI enrichment) */}
           {candidate.recommendation && (
             <p className="text-sm text-ink-2 mt-3 flex gap-2 leading-relaxed">
-              <Sparkles size={14} className="text-indigo-400 mt-0.5 shrink-0" aria-hidden />
+              <Sparkles size={14} className="text-info mt-0.5 shrink-0" aria-hidden />
               <span>{candidate.recommendation}</span>
             </p>
           )}
@@ -129,7 +129,7 @@ export function CandidateCard({ candidate, selected, onToggleSelect, onApprove, 
               type="button"
               onClick={handleExplain}
               disabled={enriching}
-              className="text-xs text-indigo-400 hover:text-indigo-300 mt-3 inline-flex items-center gap-1 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
+              className="text-xs text-info hover:text-info-soft mt-3 inline-flex items-center gap-1 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong rounded"
             >
               {enriching ? <Loader2 size={12} className="animate-spin" aria-hidden /> : <Sparkles size={12} aria-hidden />}
               {enriching ? 'Analysing…' : 'Explain fit'}

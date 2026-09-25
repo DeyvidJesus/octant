@@ -46,9 +46,13 @@ export function InterviewPrepPage() {
   const resume = useResumeStore((state) => state.resume)
   const skills = useInterviewPrepStore((state) => state.skills)
 
-  const [aiQuestions, setAiQuestions] = useState<PrepQuestion[] | null>(null)
+  // Keyed by the job they were generated for: switching `?jobId=` does not remount this page, so plain
+  // state would keep showing the previous job's questions (and a late response could land on the wrong job).
+  const [aiResult, setAiResult] = useState<{ jobId: string; questions: PrepQuestion[] } | null>(null)
   const [generating, setGenerating] = useState(false)
-  const [genError, setGenError] = useState<string | null>(null)
+  const [genError, setGenError] = useState<{ jobId: string; message: string } | null>(null)
+  const aiQuestions = aiResult && aiResult.jobId === activeJobId ? aiResult.questions : null
+  const genErrorMessage = genError && genError.jobId === activeJobId ? genError.message : null
 
   const activeJob = activeJobId ? jobs.find((job) => job.id === activeJobId) : undefined
   const activeAnalysis = activeJobId ? analyses[activeJobId] : undefined
@@ -95,9 +99,9 @@ export function InterviewPrepPage() {
       <div className="p-8 max-w-5xl mx-auto animate-fade-in">
         <div className="mb-8">
           <div className="w-12 h-12 rounded-2xl bg-surface border border-edge-2 flex items-center justify-center mb-4">
-            <MessageSquare className="text-white" size={24} aria-hidden />
+            <MessageSquare className="text-ink-strong" size={24} aria-hidden />
           </div>
-          <h1 className="text-3xl font-semibold text-white">Interview Preparation</h1>
+          <h1 className="text-3xl font-semibold text-ink-strong">Interview Preparation</h1>
           <p className="text-muted mt-2 max-w-2xl">
             Select an analyzed opportunity to generate targeted technical, behavioral, and system-design
             questions with model answers and an AI practice coach. Jobs without analysis need to be
@@ -124,7 +128,7 @@ export function InterviewPrepPage() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-white font-medium">
+                      <div className="text-ink-strong font-medium">
                         {job.company} — {job.role}
                       </div>
                       <div className="text-xs text-muted mt-1">
@@ -132,7 +136,7 @@ export function InterviewPrepPage() {
                         {analysis.match.atsScore}%
                       </div>
                     </div>
-                    <Badge tone="emerald">Analyzed</Badge>
+                    <Badge tone="success">Analyzed</Badge>
                   </div>
                 </Link>
               )
@@ -149,6 +153,7 @@ export function InterviewPrepPage() {
 
   const generate = async () => {
     const config = resolveAiRunConfig()
+    const jobId = activeJob.id
     setGenerating(true)
     setGenError(null)
     try {
@@ -156,9 +161,9 @@ export function InterviewPrepPage() {
         { job: activeJob, resume, missingSkills, count: 8 },
         config,
       )
-      setAiQuestions(generated)
+      setAiResult({ jobId, questions: generated })
     } catch (error) {
-      setGenError(error instanceof Error ? error.message : 'Question generation failed.')
+      setGenError({ jobId, message: error instanceof Error ? error.message : 'Question generation failed.' })
     } finally {
       setGenerating(false)
     }
@@ -169,7 +174,7 @@ export function InterviewPrepPage() {
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
           <div className="text-xs text-faint font-semibold uppercase tracking-widest mb-2">Active prep context</div>
-          <h1 className="text-3xl font-semibold text-white">
+          <h1 className="text-3xl font-semibold text-ink-strong">
             {activeJob.company} — {activeJob.role}
           </h1>
           <p className="text-muted mt-2 max-w-2xl">
@@ -188,7 +193,7 @@ export function InterviewPrepPage() {
           <Sparkles size={14} aria-hidden />
           {generating ? 'Generating…' : aiQuestions ? 'Regenerate AI questions' : 'Generate AI questions'}
         </Button>
-        {genError && <span className="text-xs text-red-400">{genError}</span>}
+        {genErrorMessage && <span className="text-xs text-danger">{genErrorMessage}</span>}
       </div>
 
       <div className="grid md:grid-cols-3 gap-4 mb-8">
@@ -200,7 +205,7 @@ export function InterviewPrepPage() {
               <div className="text-xs text-faint font-semibold uppercase tracking-widest mb-2">
                 {CATEGORY_LABEL[category]}
               </div>
-              <div className="text-2xl font-semibold text-white">{readiness}%</div>
+              <div className="text-2xl font-semibold text-ink-strong">{readiness}%</div>
               <div className="text-xs text-muted mt-1">{categoryQuestions.length} questions</div>
             </div>
           )
@@ -213,7 +218,7 @@ export function InterviewPrepPage() {
           if (categoryQuestions.length === 0) return null
           return (
             <section key={category}>
-              <h2 className="text-lg font-semibold text-white mb-4">{CATEGORY_LABEL[category]}</h2>
+              <h2 className="text-lg font-semibold text-ink-strong mb-4">{CATEGORY_LABEL[category]}</h2>
               <div className="space-y-4">
                 {categoryQuestions.map((question) => (
                   <QuestionCard

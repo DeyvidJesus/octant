@@ -1,4 +1,3 @@
-import { DiscoverySettings } from './components/DiscoverySettings'
 import { SearchProfileSettings } from './components/SearchProfileSettings'
 import { PlanCard } from './components/PlanCard'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -15,7 +14,6 @@ export function SettingsPage() {
       <div className="space-y-6">
         <PlanCard />
         <SearchProfileSettings />
-        <DiscoverySettings />
       </div>
     </div>
   )

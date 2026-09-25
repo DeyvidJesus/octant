@@ -38,6 +38,7 @@ export function ReviewQueue() {
     const candidate = candidates.find((c) => c.id === id)
     if (!candidate) return
     const [job] = approveCandidates([candidate])
+    if (!job) return // held back by the plan cap (a toast explains why)
     clearSelection([id])
     navigate(`/jobs/${job.id}/analysis`)
   }
@@ -45,8 +46,9 @@ export function ReviewQueue() {
   const approveSelected = () => {
     const chosen = candidates.filter((c) => selectedIds.has(c.id))
     if (chosen.length === 0) return
-    approveCandidates(chosen)
-    clearSelection(chosen.map((c) => c.id))
+    const approved = approveCandidates(chosen)
+    // Only the approved prefix left the queue; the rest stay selected for after an upgrade.
+    clearSelection(chosen.slice(0, approved.length).map((c) => c.id))
   }
 
   const dismissSelected = () => {
@@ -61,7 +63,7 @@ export function ReviewQueue() {
       <div className="text-center py-12 border border-dashed border-edge rounded-xl">
         <Inbox size={28} className="text-edge-2 mx-auto mb-3" aria-hidden />
         <p className="text-sm text-muted">
-          The review queue is empty. Import or discover jobs above — they land here for triage.
+          The review queue is empty. Run the discovery agent above (or wait for its next scheduled run) — new openings land here for triage.
         </p>
       </div>
     )
@@ -86,7 +88,7 @@ export function ReviewQueue() {
           </Button>
           <Button
             variant="ghost"
-            className="text-red-400 hover:text-red-300"
+            className="text-danger hover:text-danger-soft"
             disabled={selectedCount === 0}
             onClick={dismissSelected}
           >

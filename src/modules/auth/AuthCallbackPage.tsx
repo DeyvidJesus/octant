@@ -18,7 +18,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { APP_NAME } from '@/constants/brand'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/contexts/useAuth'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 
@@ -73,7 +73,7 @@ export function AuthCallbackPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-base" role="status" aria-live="polite">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink-strong mx-auto mb-4" />
         <p className="text-sm text-muted">Signing you in to {APP_NAME}…</p>
       </div>
     </div>

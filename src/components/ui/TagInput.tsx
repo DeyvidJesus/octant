@@ -36,7 +36,7 @@ export function TagInput({ values, onChange, placeholder = 'Add and press Enter'
             type="button"
             aria-label={`Remove ${value}`}
             onClick={() => onChange(values.filter((v) => v !== value))}
-            className="text-faint hover:text-red-400"
+            className="text-faint hover:text-danger"
           >
             <X size={12} aria-hidden />
           </button>

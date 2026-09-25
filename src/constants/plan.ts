@@ -15,6 +15,11 @@ export function jobLimitReached(tier: PlanTier, jobCount: number): boolean {
   return tier === 'free' && jobCount >= FREE_LIMITS.jobs
 }
 
+/** How many more opportunities the plan accepts (`Infinity` on Pro). Never negative. */
+export function remainingJobSlots(tier: PlanTier, jobCount: number): number {
+  return tier === 'free' ? Math.max(0, FREE_LIMITS.jobs - jobCount) : Infinity
+}
+
 export function tailoredResumeLimitReached(tier: PlanTier, tailoredCount: number): boolean {
   return tier === 'free' && tailoredCount >= FREE_LIMITS.tailoredResumes
 }

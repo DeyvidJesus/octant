@@ -10,8 +10,8 @@ export function GapReport({ analysis }: { analysis: JobAnalysis }) {
 
   return (
     <div className="space-y-6">
-      <Card className="border-red-900/30 bg-red-900/5">
-        <h3 className="text-sm font-medium text-red-400 mb-4 flex items-center gap-2">
+      <Card className="border-danger-deep/30 bg-danger-deep/5">
+        <h3 className="text-sm font-medium text-danger mb-4 flex items-center gap-2">
           <AlertCircle size={16} aria-hidden /> Missing Must-Haves
         </h3>
         {missingMustHaves.length === 0 ? (
@@ -22,7 +22,7 @@ export function GapReport({ analysis }: { analysis: JobAnalysis }) {
           <ul className="space-y-2">
             {missingMustHaves.map((skill) => (
               <li key={skill.canonical} className="text-sm text-ink-2 flex gap-2">
-                <span className="text-red-500/50" aria-hidden>
+                <span className="text-danger-strong/50" aria-hidden>
                   -
                 </span>
                 {skill.canonical} — required and not found in your Master Resume. Add it only if you
@@ -51,8 +51,8 @@ export function GapReport({ analysis }: { analysis: JobAnalysis }) {
         </Card>
       )}
 
-      <Card className="border-emerald-900/30 bg-emerald-900/5">
-        <h3 className="text-sm font-medium text-emerald-400 mb-4 flex items-center gap-2">
+      <Card className="border-success-deep/30 bg-success-deep/5">
+        <h3 className="text-sm font-medium text-success mb-4 flex items-center gap-2">
           <CheckCircle2 size={16} aria-hidden /> Confirmed Strengths
         </h3>
         {matched.length === 0 ? (
@@ -61,7 +61,7 @@ export function GapReport({ analysis }: { analysis: JobAnalysis }) {
           <ul className="space-y-2">
             {matched.map((skill) => (
               <li key={skill} className="text-sm text-ink-2 flex gap-2">
-                <span className="text-emerald-500/50" aria-hidden>
+                <span className="text-success-strong/50" aria-hidden>
                   +
                 </span>
                 {skill} — emphasize this when tailoring your resume for this role.

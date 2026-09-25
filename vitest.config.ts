@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   test: {
-    // Default to node; component tests opt into jsdom with a `// @vitest-environment jsdom` docblock.
+    // Default to node; component tests opt into happy-dom with a `// @vitest-environment happy-dom` docblock.
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'packages/*/src/**/*.test.ts', 'packages/*/src/**/*.test.tsx'],
     setupFiles: ['./src/test/setup.ts'],

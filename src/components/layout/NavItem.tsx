@@ -9,20 +9,20 @@ export function NavItem({ entry, badge }: { entry: NavEntry; badge?: number }) {
       to={entry.path}
       end={entry.path === '/'}
       className={({ isActive }) =>
-        `w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+        `w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong ${
           isActive
-            ? 'bg-surface-2 text-white font-medium border-edge-2'
+            ? 'bg-surface-2 text-ink-strong font-medium border-edge-2'
             : 'text-muted hover:bg-surface hover:text-ink-2 border-transparent'
         }`
       }
     >
       {({ isActive }) => (
         <>
-          <Icon size={16} className={isActive ? 'text-white' : 'text-faint'} aria-hidden />
+          <Icon size={16} className={isActive ? 'text-ink-strong' : 'text-faint'} aria-hidden />
           <span className="flex-1">{entry.label}</span>
           {badge !== undefined && badge > 0 && (
             <span
-              className="min-w-5 text-center text-[10px] font-semibold text-black bg-emerald-400 rounded-full px-1.5 py-0.5"
+              className="min-w-5 text-center text-[10px] font-semibold text-inverse-ink bg-success rounded-full px-1.5 py-0.5"
               aria-label={`${badge} new`}
             >
               {badge > 99 ? '99+' : badge}

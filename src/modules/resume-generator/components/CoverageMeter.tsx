@@ -8,7 +8,7 @@ import type { CoverageReport } from '@/services/generator/coverage'
  * of a build status.
  */
 export function CoverageMeter({ coverage }: { coverage: CoverageReport }) {
-  const tone = coverage.score >= 75 ? 'text-emerald-400' : coverage.score >= 45 ? 'text-amber-400' : 'text-red-400'
+  const tone = coverage.score >= 75 ? 'text-success' : coverage.score >= 45 ? 'text-warning' : 'text-danger'
 
   return (
     <div>
@@ -22,7 +22,7 @@ export function CoverageMeter({ coverage }: { coverage: CoverageReport }) {
           <p className="text-xs text-faint mb-1.5">Not covered by included content:</p>
           <div className="flex flex-wrap gap-1.5">
             {coverage.missing.map((skill) => (
-              <Badge key={skill} tone="red">
+              <Badge key={skill} tone="danger">
                 {skill}
               </Badge>
             ))}
@@ -35,7 +35,7 @@ export function CoverageMeter({ coverage }: { coverage: CoverageReport }) {
           <p className="text-xs text-faint mb-1.5">Covered:</p>
           <div className="flex flex-wrap gap-1.5">
             {coverage.covered.map((skill) => (
-              <Badge key={skill} tone="emerald">
+              <Badge key={skill} tone="success">
                 {skill}
               </Badge>
             ))}

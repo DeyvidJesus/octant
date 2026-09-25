@@ -49,7 +49,7 @@ export function ForgotPasswordPage() {
 
           {sent ? (
             <div className="space-y-5">
-              <p className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-lg">
+              <p className="text-sm text-success bg-success-strong/10 border border-success-strong/20 p-3 rounded-lg">
                 If an account exists for {email}, a reset link is on its way. It expires in an hour.
               </p>
               <p className="text-sm text-muted">
@@ -75,7 +75,7 @@ export function ForgotPasswordPage() {
 
               {error && (
                 <p
-                  className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-lg"
+                  className="text-sm text-danger bg-danger-strong/10 border border-danger-strong/20 p-3 rounded-lg"
                   role="alert"
                 >
                   {error}
@@ -91,7 +91,7 @@ export function ForgotPasswordPage() {
           <div className="text-center mt-6">
             <Link
               to="/login"
-              className="text-sm text-ink-3 hover:text-ink font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
+              className="text-sm text-ink-3 hover:text-ink font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong rounded"
             >
               Back to sign in
             </Link>

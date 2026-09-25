@@ -17,7 +17,7 @@ export function ScoreBar({ label, score, max }: ScoreBarProps) {
       <span className="text-sm text-muted font-medium">{label}</span>
       <div className="flex gap-1">
         {Array.from({ length: max }, (_, i) => (
-          <div key={i} className={`w-8 h-2 rounded-full ${i < score ? 'bg-white' : 'bg-edge'}`} />
+          <div key={i} className={`w-8 h-2 rounded-full ${i < score ? 'bg-ink-strong' : 'bg-edge'}`} />
         ))}
       </div>
     </div>

@@ -21,7 +21,11 @@ export const INTERVIEW_STAGES: ApplicationStage[] = ['screening', 'interviewing'
 /** Terminal stages — the application is closed, favorably or not. */
 export const TERMINAL_STAGES: ApplicationStage[] = ['accepted', 'rejected', 'withdrawn', 'ghosted']
 
-/** Pill classes per stage (background/border/text) for badges and board headers. */
+/**
+ * Pill classes per stage (background/border/text) for badges and board headers. This is a
+ * categorical palette (one hue per pipeline stage), not a status intent, so it uses Tailwind hues
+ * directly and lives only here. Status meaning (success/danger/…) comes from the tokens in index.css.
+ */
 export const APPLICATION_STAGE_COLORS: Record<ApplicationStage, string> = {
   saved: 'bg-surface-2 border-edge-2 text-ink-2',
   applied: 'bg-indigo-900/30 border-indigo-800/50 text-indigo-300',

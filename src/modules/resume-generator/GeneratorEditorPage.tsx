@@ -135,14 +135,14 @@ export function GeneratorEditorPage() {
             <ArrowLeft size={12} aria-hidden /> All tailored resumes
           </button>
           <div className="text-xs text-faint font-semibold uppercase tracking-widest mb-1">Tailored for</div>
-          <div className="text-white font-medium">{job.company}</div>
+          <div className="text-ink-strong font-medium">{job.company}</div>
           <div className="text-muted text-xs">{job.role}</div>
         </div>
 
         {coverage && <CoverageMeter coverage={coverage} />}
 
         {stale && (
-          <p className="text-xs text-amber-400/90 leading-relaxed">
+          <p className="text-xs text-warning/90 leading-relaxed">
             Your Master Resume changed since this was generated. Regenerate to pick up the latest
             content (your bullet selections will reset).
           </p>
@@ -153,7 +153,7 @@ export function GeneratorEditorPage() {
             <Download size={14} aria-hidden /> {exporting ? 'Generating PDF…' : 'Download PDF'}
           </Button>
           {exportError && (
-            <p className="text-xs text-red-400/90 leading-relaxed">{exportError}</p>
+            <p className="text-xs text-danger/90 leading-relaxed">{exportError}</p>
           )}
           <Button variant="subtle" className="w-full" onClick={() => copy('markdown', toMarkdown(tailored))}>
             <ClipboardCopy size={14} aria-hidden />
@@ -176,7 +176,7 @@ export function GeneratorEditorPage() {
       </div>
 
       {/* Paper preview — the only thing that prints */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-base print:overflow-visible print:p-0 print:bg-white">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-base print:overflow-visible print:p-0 print:bg-paper">
         <ResumePaper tailored={tailored} onToggleBullet={handleToggle} onToggleProject={handleToggleProject} />
       </div>
     </div>

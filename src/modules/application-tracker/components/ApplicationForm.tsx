@@ -61,7 +61,7 @@ export function ApplicationForm({ initial, submitLabel, onSubmit, onCancel }: Ap
                   type="checkbox"
                   checked={values.priority}
                   onChange={(e) => set('priority', e.target.checked)}
-                  className="accent-white"
+                  className="accent-ink-strong"
                 />
                 Flag as a priority application
               </label>

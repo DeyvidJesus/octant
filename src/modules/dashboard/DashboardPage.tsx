@@ -133,7 +133,7 @@ export function DashboardPage() {
       </div>
 
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-white uppercase tracking-widest">Pipeline &amp; activity</h2>
+        <h2 className="text-sm font-semibold text-ink-strong uppercase tracking-widest">Pipeline &amp; activity</h2>
         <Link to="/metrics" className="text-sm text-muted hover:text-ink-2">
           View all metrics →
         </Link>
@@ -157,17 +157,17 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <h3 className="text-sm font-medium text-white mb-4">Recommended next steps</h3>
+          <h3 className="text-sm font-medium text-ink-strong mb-4">Recommended next steps</h3>
           {nextSteps.length > 0 ? (
             <ul className="space-y-3">
               {nextSteps.map((step) => (
                 <li key={step.id}>
                   <Link
                     to={step.to}
-                    className="group flex items-start gap-3 text-sm text-ink-3 hover:text-ink transition-colors rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                    className="group flex items-start gap-3 text-sm text-ink-3 hover:text-ink transition-colors rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong"
                   >
                     {step.primary ? (
-                      <Sparkles size={16} className="text-indigo-400 mt-0.5 shrink-0" aria-hidden />
+                      <Sparkles size={16} className="text-info mt-0.5 shrink-0" aria-hidden />
                     ) : (
                       <CheckCircle2 size={16} className="text-ghost mt-0.5 shrink-0" aria-hidden />
                     )}
@@ -179,7 +179,7 @@ export function DashboardPage() {
             </ul>
           ) : (
             <p className="flex items-center gap-2 text-sm text-muted">
-              <CheckCircle2 size={16} className="text-emerald-400 shrink-0" aria-hidden />
+              <CheckCircle2 size={16} className="text-success shrink-0" aria-hidden />
               You're all caught up — nothing needs your attention right now.
             </p>
           )}

@@ -21,7 +21,7 @@ vi.mock('@/services/supabase/auth', () => ({
   sendMagicLink: (...args: unknown[]) => sendMagicLink(...args),
 }))
 
-vi.mock('@/contexts/AuthContext', () => ({
+vi.mock('@/contexts/useAuth', () => ({
   useAuth: () => ({ session: null, user: null, isLoading: false }),
 }))
 

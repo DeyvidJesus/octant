@@ -52,10 +52,10 @@ export function PlanCard() {
   return (
     <div className="bg-surface border border-edge rounded-xl p-6">
       <div className="flex items-center justify-between gap-3 mb-3">
-        <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-          <Crown size={16} className="text-amber-400" aria-hidden /> Plan
+        <h2 className="text-sm font-semibold text-ink-strong flex items-center gap-2">
+          <Crown size={16} className="text-warning" aria-hidden /> Plan
         </h2>
-        <Badge tone={tier === 'pro' ? 'emerald' : 'indigo'}>{tier === 'pro' ? 'Pro' : 'Free'}</Badge>
+        <Badge tone={tier === 'pro' ? 'success' : 'info'}>{tier === 'pro' ? 'Pro' : 'Free'}</Badge>
       </div>
 
       {tier === 'pro' ? (
@@ -67,7 +67,7 @@ export function PlanCard() {
           <Button variant="subtle" onClick={manage} disabled={managing}>
             {managing ? 'Opening…' : 'Manage subscription'}
           </Button>
-          {error && <p className="text-xs text-red-400/90 leading-relaxed mt-3">{error}</p>}
+          {error && <p className="text-xs text-danger/90 leading-relaxed mt-3">{error}</p>}
         </>
       ) : (
         <>
@@ -76,18 +76,18 @@ export function PlanCard() {
             {FREE_LIMITS.tailoredResumes} tailored resume. Upgrade to Pro for unlimited access.
           </p>
           {price && (
-            <p className="text-2xl font-semibold text-white mb-4">
+            <p className="text-2xl font-semibold text-ink-strong mb-4">
               {price}
             </p>
           )}
           <ul className="text-sm text-ink-2 space-y-1.5 mb-5">
-            <li className="flex items-center gap-2"><Check size={14} className="text-emerald-400" aria-hidden /> Unlimited opportunities</li>
-            <li className="flex items-center gap-2"><Check size={14} className="text-emerald-400" aria-hidden /> Unlimited tailored resumes</li>
+            <li className="flex items-center gap-2"><Check size={14} className="text-success" aria-hidden /> Unlimited opportunities</li>
+            <li className="flex items-center gap-2"><Check size={14} className="text-success" aria-hidden /> Unlimited tailored resumes</li>
           </ul>
           <Button onClick={upgrade} disabled={loading}>
             <Crown size={14} aria-hidden /> {loading ? 'Starting checkout…' : 'Upgrade to Pro'}
           </Button>
-          {error && <p className="text-xs text-red-400/90 leading-relaxed mt-3">{error}</p>}
+          {error && <p className="text-xs text-danger/90 leading-relaxed mt-3">{error}</p>}
         </>
       )}
     </div>

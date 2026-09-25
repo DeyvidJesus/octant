@@ -23,7 +23,7 @@ export function ConfirmDialog() {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:hidden"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-scrim/60 backdrop-blur-sm p-4 print:hidden"
       onClick={() => respond(false)}
     >
       <div
@@ -35,7 +35,7 @@ export function ConfirmDialog() {
       >
         <Card className="border-edge-2 shadow-2xl bg-surface p-6">
           {request.title && (
-            <h2 id="confirm-title" className="text-lg font-semibold text-white mb-2">
+            <h2 id="confirm-title" className="text-lg font-semibold text-ink-strong mb-2">
               {request.title}
             </h2>
           )}
@@ -49,7 +49,7 @@ export function ConfirmDialog() {
             <Button
               autoFocus
               variant="primary"
-              className={danger ? 'bg-red-500 text-white hover:bg-red-400' : ''}
+              className={danger ? 'bg-danger-strong text-ink-strong hover:bg-danger' : ''}
               onClick={() => respond(true)}
             >
               {request.confirmLabel ?? 'Confirm'}

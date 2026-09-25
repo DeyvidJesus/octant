@@ -22,7 +22,7 @@ export function ResumePaper({ tailored, onToggleBullet, onToggleProject }: Resum
   return (
     <div
       id="resume-paper"
-      className="bg-white text-neutral-900 rounded-lg shadow-2xl px-10 py-9 max-w-[52rem] text-[13.5px] leading-relaxed print:shadow-none print:rounded-none print:px-0 print:py-0 print:max-w-none"
+      className="bg-paper text-neutral-900 rounded-lg shadow-2xl px-10 py-9 max-w-[52rem] text-[13.5px] leading-relaxed print:shadow-none print:rounded-none print:px-0 print:py-0 print:max-w-none"
     >
       {/* Header */}
       <header className="mb-5">

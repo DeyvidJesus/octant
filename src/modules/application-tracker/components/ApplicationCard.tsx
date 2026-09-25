@@ -53,8 +53,8 @@ export function ApplicationCard({ application, compact = false, onDragStart, onM
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            {application.priority && <Star size={13} className="text-amber-400 shrink-0" aria-label="Priority" />}
-            <h3 className="text-white font-medium truncate">{application.company}</h3>
+            {application.priority && <Star size={13} className="text-warning shrink-0" aria-label="Priority" />}
+            <h3 className="text-ink-strong font-medium truncate">{application.company}</h3>
           </div>
           <p className="text-muted text-sm truncate">{application.role}</p>
         </div>
@@ -67,7 +67,7 @@ export function ApplicationCard({ application, compact = false, onDragStart, onM
         <StagePill stage={application.stage} />
         {application.followUpAt && (
           <span
-            className={`inline-flex items-center gap-1 text-xs ${overdue ? 'text-red-400' : 'text-faint'}`}
+            className={`inline-flex items-center gap-1 text-xs ${overdue ? 'text-danger' : 'text-faint'}`}
             title="Next follow-up"
           >
             <CalendarClock size={12} aria-hidden />

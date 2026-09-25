@@ -42,14 +42,14 @@ export function QuestionCard({ question, job, resume, resumeEvidence, missingSki
     <div className="bg-surface border border-edge rounded-xl p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-ink-2 leading-relaxed">{question.question}</p>
-        {mastered && <CheckCircle2 size={18} className="text-emerald-500 shrink-0 mt-0.5" aria-hidden />}
+        {mastered && <CheckCircle2 size={18} className="text-success-strong shrink-0 mt-0.5" aria-hidden />}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {question.topic && <Badge tone="indigo">{question.topic}</Badge>}
+        {question.topic && <Badge tone="info">{question.topic}</Badge>}
         <Badge>{question.difficulty}</Badge>
         {question.priority !== 'resume-core' && <Badge tone="default">{PRIORITY_LABEL[question.priority]}</Badge>}
-        <Badge tone={mastered ? 'emerald' : 'default'}>
+        <Badge tone={mastered ? 'success' : 'default'}>
           {mastery === undefined ? 'Not attempted' : `Mastery ${mastery}%`}
         </Badge>
       </div>

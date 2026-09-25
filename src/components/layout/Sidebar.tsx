@@ -3,7 +3,7 @@ import { LogOut, X } from 'lucide-react'
 import { APP_NAME } from '@/constants/brand'
 import { NAV_ENTRIES } from '@/constants/navigation'
 import { NavItem } from './NavItem'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/contexts/useAuth'
 import { signOut } from '@/services/supabase/auth'
 import { useDiscoveryStore } from '@/stores/discoveryStore'
 import { countUnseen } from '@/services/discovery/proactivity'
@@ -49,7 +49,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     >
       <div className="p-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-md bg-white text-black flex items-center justify-center font-bold text-sm">
+          <div className="w-8 h-8 rounded-md bg-inverse text-inverse-ink flex items-center justify-center font-bold text-sm">
             {initials}
           </div>
           <h1 className="font-semibold text-lg tracking-tight">{APP_NAME}</h1>
@@ -58,7 +58,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           type="button"
           onClick={onClose}
           aria-label="Close navigation"
-          className="md:hidden text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
+          className="md:hidden text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong rounded"
         >
           <X size={20} aria-hidden />
         </button>
@@ -84,7 +84,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           type="button"
           onClick={handleSignOut}
           disabled={signingOut}
-          className="w-full flex items-center gap-2 px-2 py-2 rounded-md text-sm text-muted hover:text-ink hover:bg-surface transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50"
+          className="w-full flex items-center gap-2 px-2 py-2 rounded-md text-sm text-muted hover:text-ink hover:bg-surface transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong disabled:opacity-50"
         >
           <LogOut size={16} aria-hidden />
           {signingOut ? 'Signing out…' : 'Sign out'}

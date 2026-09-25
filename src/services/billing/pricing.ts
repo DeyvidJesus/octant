@@ -35,7 +35,7 @@ export async function fetchPlanPricing(): Promise<PlanPricing | null> {
   }
 }
 
-/** Formats a Stripe price for display, e.g. `{ amount: 2900, currency: 'brl', interval: 'month' }` → "R$ 29,00/mês". */
+/** Formats a Stripe price for display, e.g. `{ amount: 2900, currency: 'brl', interval: 'month' }` → "R$ 29.00/month" (currency per the browser locale). */
 export function formatPlanPricing(pricing: PlanPricing): string {
   const money = new Intl.NumberFormat(undefined, {
     style: 'currency',
@@ -43,10 +43,10 @@ export function formatPlanPricing(pricing: PlanPricing): string {
   }).format(pricing.amount / 100)
 
   const suffix: Record<NonNullable<PlanPricing['interval']>, string> = {
-    day: '/dia',
-    week: '/semana',
-    month: '/mês',
-    year: '/ano',
+    day: '/day',
+    week: '/week',
+    month: '/month',
+    year: '/year',
   }
   return pricing.interval ? `${money}${suffix[pricing.interval]}` : money
 }

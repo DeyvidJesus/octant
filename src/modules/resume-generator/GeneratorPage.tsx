@@ -55,19 +55,19 @@ export function GeneratorPage() {
               className="bg-surface border border-edge rounded-xl p-5 flex items-center gap-4 hover:bg-surface-2 transition-colors"
             >
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-white flex items-center gap-2 flex-wrap">
+                <div className="font-medium text-ink-strong flex items-center gap-2 flex-wrap">
                   {job.company}
                   <span className="text-muted text-sm font-normal truncate">{job.role}</span>
                 </div>
                 <div className="flex items-center gap-2 mt-1.5">
                   {analysis ? (
-                    <Badge tone={analysis.match.atsScore >= 60 ? 'emerald' : 'default'}>
+                    <Badge tone={analysis.match.atsScore >= 60 ? 'success' : 'default'}>
                       ATS {analysis.match.atsScore}%
                     </Badge>
                   ) : (
                     <Badge>not analyzed</Badge>
                   )}
-                  {doc && <Badge tone="indigo">tailored {formatDate(doc.generatedAt)}</Badge>}
+                  {doc && <Badge tone="info">tailored {formatDate(doc.generatedAt)}</Badge>}
                 </div>
               </div>
 

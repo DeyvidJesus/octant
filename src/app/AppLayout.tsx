@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import { APP_NAME } from '@/constants/brand'
@@ -6,7 +6,11 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal'
 import { Toaster } from '@/components/ui/Toaster'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { maybeRunSessionHeartbeat } from '@/services/discovery/executor'
+import { maybeRunSessionHeartbeat } from '@/stores/discoveryRunner'
+import { useDiscoveryStore } from '@/stores/discoveryStore'
+
+/** The route that hosts the discovery review queue. */
+const FEED_PATH = '/jobs'
 
 export function AppLayout() {
   const [navOpen, setNavOpen] = useState(false)
@@ -14,6 +18,16 @@ export function AppLayout() {
 
   // Close the mobile drawer on navigation.
   useEffect(() => setNavOpen(false), [location.pathname])
+
+  // Mark the discovery feed as seen when the user LEAVES the board, so the sidebar badge and the
+  // "N new since you last looked" digest count only what arrived after this visit. Marking on arrival
+  // would hide the digest the moment it is shown.
+  const markFeedSeen = useDiscoveryStore((state) => state.markSeen)
+  const previousPath = useRef(location.pathname)
+  useEffect(() => {
+    if (previousPath.current === FEED_PATH && location.pathname !== FEED_PATH) markFeedSeen()
+    previousPath.current = location.pathname
+  }, [location.pathname, markFeedSeen])
 
   // Session heartbeat: once the app is open (stores hydrated by ProtectedRoute), let the discovery
   // agent quietly advance if the user is due per their cadence. Runs once per app open; cadence-gated.
@@ -25,13 +39,13 @@ export function AppLayout() {
   return (
     // print: overrides let a full document (e.g. a tailored resume) flow across
     // pages instead of being clipped to one screen-height viewport.
-    <div className="flex h-screen bg-base text-ink font-sans overflow-hidden print:h-auto print:overflow-visible print:bg-white">
+    <div className="flex h-screen bg-base text-ink font-sans overflow-hidden print:h-auto print:overflow-visible print:bg-paper">
       <OnboardingModal />
 
       {/* Mobile drawer backdrop */}
       {navOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/60 md:hidden print:hidden"
+          className="fixed inset-0 z-30 bg-scrim/60 md:hidden print:hidden"
           onClick={() => setNavOpen(false)}
           aria-hidden
         />
@@ -47,7 +61,7 @@ export function AppLayout() {
             onClick={() => setNavOpen(true)}
             aria-label="Open navigation"
             aria-expanded={navOpen}
-            className="text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
+            className="text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong rounded"
           >
             <Menu size={22} aria-hidden />
           </button>

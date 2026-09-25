@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { APP_NAME } from '@/constants/brand'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/contexts/useAuth'
 import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
 import { sendMagicLink, signIn, signUp } from '@/services/supabase/auth'
 import { Button } from '@/components/ui/Button'
@@ -127,14 +127,14 @@ export function LoginPage() {
 
             {error && (
               <p
-                className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-lg"
+                className="text-sm text-danger bg-danger-strong/10 border border-danger-strong/20 p-3 rounded-lg"
                 role="alert"
               >
                 {error}
               </p>
             )}
             {notice && (
-              <p className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-lg">
+              <p className="text-sm text-success bg-success-strong/10 border border-success-strong/20 p-3 rounded-lg">
                 {notice}
               </p>
             )}
@@ -147,7 +147,7 @@ export function LoginPage() {
           <div className="mt-6 space-y-3 text-center">
             <button
               type="button"
-              className="block w-full text-sm text-ink-3 hover:text-ink font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
+              className="block w-full text-sm text-ink-3 hover:text-ink font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong rounded"
               onClick={() => switchTo(mode === 'signup' ? 'signin' : 'signup')}
             >
               {mode === 'signup' ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
@@ -155,7 +155,7 @@ export function LoginPage() {
 
             <button
               type="button"
-              className="block w-full text-sm text-muted hover:text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
+              className="block w-full text-sm text-muted hover:text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong rounded"
               onClick={() => switchTo(mode === 'magic' ? 'signin' : 'magic')}
             >
               {mode === 'magic' ? 'Use a password instead' : 'Email me a sign-in link instead'}
@@ -164,7 +164,7 @@ export function LoginPage() {
             {mode === 'signin' && (
               <Link
                 to="/forgot-password"
-                className="block text-sm text-muted hover:text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
+                className="block text-sm text-muted hover:text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong rounded"
               >
                 Forgot your password?
               </Link>

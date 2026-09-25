@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/services/supabase/client'
 import { setSessionUserId } from '@/services/supabase/session'
@@ -15,18 +15,7 @@ import { useDiscoveryStore } from '@/stores/discoveryStore'
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
 import { useSearchProfileStore } from '@/stores/searchProfileStore'
 import { resetAllStores } from '@/stores/reset'
-
-interface AuthContextValue {
-  session: Session | null
-  user: User | null
-  isLoading: boolean
-}
-
-const AuthContext = createContext<AuthContextValue>({
-  session: null,
-  user: null,
-  isLoading: true,
-})
+import { AuthContext, type AuthContextValue } from './useAuth'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
@@ -43,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // The user id we've already hydrated for. `undefined` = not yet initialized. Keyed on user id
-    // (not the access token) so a TOKEN_REFRESHED event for the same user does NOT re-run the eight
+    // (not the access token) so a TOKEN_REFRESHED event for the same user does NOT re-run the nine
     // fetches or re-subscribe — and so both getSession() and onAuthStateChange's INITIAL_SESSION
     // (which fire on load) only hydrate once. Set synchronously before any await to win that race.
     let currentUserId: string | null | undefined = undefined
@@ -123,13 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  return (
-    <AuthContext.Provider value={{ session, user, isLoading }}>
-      {children}
-    </AuthContext.Provider>
-  )
-}
+  // Stable identity so consumers only re-render when auth state actually changes.
+  const value = useMemo<AuthContextValue>(() => ({ session, user, isLoading }), [session, user, isLoading])
 
-export function useAuth() {
-  return useContext(AuthContext)
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

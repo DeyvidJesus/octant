@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { TailoredResume } from '@/types/generator'
 import { tailoredResumeRepository } from '@/repositories/TailoredResumeRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
-import { persist } from '@/repositories/persist'
+import { persist } from './persist'
 import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
 
 /**

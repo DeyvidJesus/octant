@@ -13,7 +13,7 @@ import { candidateKey } from '@/services/discovery/dedupe'
 import { nowIso } from '@/utils/dates'
 import { discoveryRepository, type DiscoveryMeta } from '@/repositories/DiscoveryRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
-import { persist } from '@/repositories/persist'
+import { persist } from './persist'
 import { useToastStore } from '@/stores/toastStore'
 
 const MAX_DISMISSED_KEYS = 500

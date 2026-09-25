@@ -23,7 +23,7 @@ vi.mock('@/services/email/notifications', () => ({
 }))
 
 let mockSession: object | null = { user: { id: 'u1' } }
-vi.mock('@/contexts/AuthContext', () => ({
+vi.mock('@/contexts/useAuth', () => ({
   useAuth: () => ({ session: mockSession, user: null, isLoading: false }),
 }))
 

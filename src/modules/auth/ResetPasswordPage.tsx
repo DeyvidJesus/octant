@@ -12,7 +12,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { APP_NAME } from '@/constants/brand'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/contexts/useAuth'
 import { sendPasswordChangedEmail } from '@/services/email/notifications'
 import { updatePassword } from '@/services/supabase/auth'
 import { Button } from '@/components/ui/Button'
@@ -112,7 +112,7 @@ export function ResetPasswordPage() {
 
             {error && (
               <p
-                className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-lg"
+                className="text-sm text-danger bg-danger-strong/10 border border-danger-strong/20 p-3 rounded-lg"
                 role="alert"
               >
                 {error}

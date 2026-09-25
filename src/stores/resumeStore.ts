@@ -6,7 +6,7 @@ import { nowIso } from '@/utils/dates'
 import { knowledgeBaseRepository } from '@/repositories/KnowledgeBaseRepository'
 import { searchProfileRepository } from '@/repositories/SearchProfileRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
-import { persist } from '@/repositories/persist'
+import { persist } from './persist'
 
 interface ResumeState {
   /** Persisted source of truth. */

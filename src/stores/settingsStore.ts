@@ -3,12 +3,13 @@ import type { AiRunConfig } from '@/services/ai/types'
 import { DEFAULT_DISCOVERY_PREFS, type DiscoveryPrefs } from '@/types/discovery'
 import { settingsRepository } from '@/repositories/SettingsRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
-import { persist } from '@/repositories/persist'
+import { persist } from './persist'
 
 interface SettingsState {
+  /** Legacy free-text discovery prefs, kept only so older rows round-trip. Discovery now reads
+   * `search_profiles` (edited in SearchProfileSettings). */
   discovery: DiscoveryPrefs
   onboardingCompleted: boolean
-  setDiscoveryPrefs: (patch: Partial<DiscoveryPrefs>) => void
   completeOnboarding: () => void
   _fetchFromSupabase: () => Promise<void>
   /** Clears in-memory state (sign-out / user switch) so no data bleeds across sessions. */
@@ -20,13 +21,6 @@ export const useSettingsStore = create<SettingsState>()(
     discovery: DEFAULT_DISCOVERY_PREFS,
     onboardingCompleted: false,
 
-    setDiscoveryPrefs: (patch) => {
-      set((state) => ({ discovery: { ...state.discovery, ...patch } }))
-      persist(
-        () => settingsRepository.saveSettings({ discovery: get().discovery, onboardingCompleted: get().onboardingCompleted }),
-        'settings.setDiscoveryPrefs',
-      )
-    },
     completeOnboarding: () => {
       set({ onboardingCompleted: true })
       persist(

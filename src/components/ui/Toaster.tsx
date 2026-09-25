@@ -3,9 +3,9 @@ import { X } from 'lucide-react'
 import { useToastStore, type Toast } from '@/stores/toastStore'
 
 const TONE_CLASSES: Record<Toast['tone'], string> = {
-  error: 'border-red-500/30 bg-red-500/10 text-red-300',
+  error: 'border-danger-strong/30 bg-danger-strong/10 text-danger-soft',
   info: 'border-edge-2 bg-surface-2 text-ink-2',
-  success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+  success: 'border-success-strong/30 bg-success-strong/10 text-success-soft',
 }
 
 const AUTO_DISMISS_MS = 6000
@@ -27,7 +27,7 @@ function ToastRow({ toast }: { toast: Toast }) {
         type="button"
         onClick={() => dismiss(toast.id)}
         aria-label="Dismiss notification"
-        className="shrink-0 opacity-70 hover:opacity-100 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
+        className="shrink-0 opacity-70 hover:opacity-100 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong rounded"
       >
         <X size={14} aria-hidden />
       </button>

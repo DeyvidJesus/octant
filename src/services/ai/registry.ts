@@ -18,7 +18,7 @@ export const AI_PROVIDERS: AiProviderDescriptor[] = [
       { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5 (fast)' },
     ],
     docsUrl: 'https://console.anthropic.com/settings/keys',
-    hint: 'Recommended for career reasoning. Uses direct browser access.',
+    hint: 'Recommended for career reasoning. Proxied through the ai-proxy Edge Function.',
   },
   {
     id: 'openai',

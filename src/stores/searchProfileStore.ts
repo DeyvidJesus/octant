@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { DEFAULT_SEARCH_PROFILE, type SearchProfile } from '@/types/searchProfile'
 import { searchProfileRepository } from '@/repositories/SearchProfileRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
-import { persist } from '@/repositories/persist'
+import { persist } from './persist'
 
 interface SearchProfileState {
   /** The user's stored, structured search profile. Null until hydrated / first edit. */

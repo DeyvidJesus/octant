@@ -4,7 +4,7 @@ import type { JobAnalysis } from '@/types/analysis'
 import { initialJobs } from '@/constants/seedData'
 import { jobRepository } from '@/repositories/JobRepository'
 import { UnauthenticatedError } from '@/repositories/errors'
-import { persist } from '@/repositories/persist'
+import { persist } from './persist'
 import { AnalyticsEvent, trackEvent } from '@/services/analytics/analytics'
 
 interface JobsState {

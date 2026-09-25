@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react'
+import { cn } from '@/utils/cn'
 
 type ButtonVariant = 'primary' | 'subtle' | 'ghost' | 'accent'
 
@@ -7,16 +8,16 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: 'bg-white text-black hover:bg-gray-200 font-semibold',
-  subtle: 'bg-surface-2 text-white border border-edge-2 hover:bg-white hover:text-black hover:border-white font-medium',
+  primary: 'bg-inverse text-inverse-ink hover:bg-inverse-hover font-semibold',
+  subtle: 'bg-surface-2 text-ink-strong border border-edge-2 hover:bg-inverse hover:text-inverse-ink hover:border-ink-strong font-medium',
   ghost: 'text-muted hover:text-ink-2 hover:bg-surface font-medium',
-  accent: 'bg-emerald-600/10 text-emerald-500 border border-emerald-600/20 hover:bg-emerald-600/20 font-medium',
+  accent: 'bg-success-strong/10 text-success-strong border border-success-strong/20 hover:bg-success-strong/20 font-medium',
 }
 
-export function Button({ variant = 'primary', className = '', ...props }: ButtonProps) {
+export function Button({ variant = 'primary', className, ...props }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${VARIANT_CLASSES[variant]} ${className}`}
+      className={cn('inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong', VARIANT_CLASSES[variant], className)}
       {...props}
     />
   )

@@ -98,7 +98,7 @@ export function JobBoardPage() {
                   return (
                     <tr key={job.id} className="hover:bg-surface-2 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="font-medium text-white flex items-center gap-2">
+                        <div className="font-medium text-ink-strong flex items-center gap-2">
                           {job.company}
                           {job.url && (
                             <a
@@ -118,7 +118,7 @@ export function JobBoardPage() {
                             {job.category ? ` • ${job.category}` : ''}
                           </span>
                           {job.source !== 'manual' && (
-                            <Badge tone="indigo" className="py-0.5! text-[10px]">
+                            <Badge tone="info" className="py-0.5! text-[10px]">
                               {job.source}
                             </Badge>
                           )}

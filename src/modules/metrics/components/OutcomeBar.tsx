@@ -34,7 +34,7 @@ export function OutcomeBar({ outcomes }: { outcomes: OutcomeBreakdown }) {
           <li key={segment.key} className="flex items-center gap-2 text-sm">
             <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: segment.color }} aria-hidden />
             <span className="text-muted">{segment.label}</span>
-            <span className="ml-auto text-white tabular-nums">{outcomes[segment.key]}</span>
+            <span className="ml-auto text-ink-strong tabular-nums">{outcomes[segment.key]}</span>
           </li>
         ))}
       </ul>

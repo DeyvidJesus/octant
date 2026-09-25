@@ -63,8 +63,8 @@ export function SearchProfileSettings() {
                   type="button"
                   aria-pressed={active}
                   onClick={() => toggleWorkMode(mode)}
-                  className={`px-3 py-1.5 rounded-lg text-sm border capitalize transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                    active ? 'bg-surface-2 text-white border-edge-2' : 'text-muted border-edge hover:text-ink-2'
+                  className={`px-3 py-1.5 rounded-lg text-sm border capitalize transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong ${
+                    active ? 'bg-surface-2 text-ink-strong border-edge-2' : 'text-muted border-edge hover:text-ink-2'
                   }`}
                 >
                   {mode}
