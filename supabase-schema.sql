@@ -1,5 +1,6 @@
 -- Consolidated schema for a fresh project. It does NOT include every migration: after running this,
--- apply supabase/migrations/0014_email_infrastructure.sql and 0016_lock_down_unsubscribe_token_rpc.sql
+-- apply supabase/migrations/0014_email_infrastructure.sql, 0015_email_log_drop_user_fk.sql and
+-- 0016_lock_down_unsubscribe_token_rpc.sql
 -- (the email tables are required once the auth email hook is enabled, or signup fails).
 
 -- Enable UUID extension

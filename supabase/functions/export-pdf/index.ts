@@ -14,7 +14,8 @@
 // Deploy: supabase functions deploy export-pdf
 
 import puppeteer from 'npm:puppeteer-core@22.15.0'
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { createUserClient } from '../_shared/admin.ts'
+import { corsHeaders } from '../_shared/cors.ts'
 
 interface LabeledLink { label: string; url: string }
 interface TailoredBullet { text: string; metric?: string; included: boolean }
@@ -43,18 +44,6 @@ interface TailoredResume {
   languages: TailoredLanguage[]
 }
 
-const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-}
-
-function jsonError(message: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
-  })
-}
 
 /** Escapes text so user content can never break the template markup. */
 function esc(value: string): string {
@@ -112,7 +101,7 @@ function buildAtsHtml(resume: TailoredResume): string {
   if (experiences.length) {
     const entries = experiences
       .map((entry) => {
-        const meta = [entry.duration, entry.location].filter(Boolean).map(esc).join(' | ')
+        const meta = [entry.duration, entry.location].filter((part): part is string => Boolean(part)).map(esc).join(' | ')
         return `<div class="entry"><h3>${esc(entry.role)} — ${esc(entry.company)}</h3>${meta ? `<p class="meta">${meta}</p>` : ''}${bulletHtml(entry.bullets)}</div>`
       })
       .join('')
@@ -196,19 +185,28 @@ function buildAtsHtml(resume: TailoredResume): string {
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
+  // Same origin allowlist as every other browser-facing function (ALLOWED_ORIGINS / APP_URL).
+  const CORS_HEADERS = corsHeaders(req)
+  const jsonError = (message: string, status: number): Response =>
+    new Response(JSON.stringify({ error: message }), {
+      status,
+      headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
+    })
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
   if (req.method !== 'POST') return jsonError('Method not allowed.', 405)
 
   // 1. Verify the caller's Supabase JWT.
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return jsonError('Missing authorization header.', 401)
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
-  )
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return jsonError('Invalid or expired session.', 401)
+  try {
+    // Resolves the publishable/anon key under either naming scheme (see _shared/admin.ts).
+    const { data, error: authError } = await createUserClient(authHeader).auth.getUser()
+    if (authError || !data.user) return jsonError('Invalid or expired session.', 401)
+  } catch (err) {
+    console.error(`[export-pdf] ${err instanceof Error ? err.message : String(err)}`)
+    return jsonError('PDF export is not configured on the server.', 500)
+  }
 
   // 2. Parse + minimally validate the TailoredResume payload.
   let resume: TailoredResume
@@ -252,7 +250,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   // 4. Return the binary.
   const safeName = (resume.header.name || 'resume').replace(/[^\w.-]+/g, '_')
-  return new Response(pdf, {
+  // Copy into an ArrayBuffer-backed view: BodyInit does not accept a SharedArrayBuffer-typed Uint8Array.
+  return new Response(new Uint8Array(pdf), {
     status: 200,
     headers: {
       ...CORS_HEADERS,

@@ -37,6 +37,21 @@ jobs:
       - name: Build
         run: yarn build
 
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # Hand-written Edge Functions are Deno code the app's tsc never sees. (The five bundled ones are
+      # esbuild output with types stripped, and their sources are covered by the build above.)
+      - name: Type-check Edge Functions
+        run: |
+          deno check --no-config \
+            supabase/functions/ai-proxy/index.ts \
+            supabase/functions/export-pdf/index.ts \
+            supabase/functions/create-checkout-session/index.ts \
+            supabase/functions/create-portal-session/index.ts \
+            supabase/functions/get-plan-pricing/index.ts
+
       # The Supabase edge runtime cannot resolve the shared `@/` sources, so five functions deploy a
       # generated bundle. Fail if a source changed without regenerating it (`yarn build:functions`).
       - name: Edge Function bundles are up to date

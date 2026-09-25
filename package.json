@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:functions": "node scripts/bundle-functions.mjs",
+    "deploy:functions": "bash scripts/deploy-functions.sh",
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",

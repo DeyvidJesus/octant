@@ -26,7 +26,7 @@ While all core features are shipped and functional, the codebase retains signifi
 ## Main Features
 
 1. **Master Resume & Knowledge Base**: A centralized, rich entity model of a user's entire career history.
-2. **Job Discovery & Analysis**: Ingests job descriptions (via pasting, web sweeps, or deep research) and runs a deterministic gap analysis against the Master Resume.
+2. **Job Discovery & Analysis**: Ingests job descriptions (pasted by hand, or found by the discovery agent) and runs a deterministic gap analysis against the Master Resume.
 3. **AI-Driven Insights**: Features like "Recruiter Read" provide honest feedback using pluggable LLMs.
 4. **Resume Generator**: Deterministically tailors a resume for a specific job by ranking, reordering, and selecting facts from the Master Resume. It calculates live ATS keyword coverage.
 5. **Application Tracker**: A Kanban and table view of ongoing applications with stage velocity and timeline tracking.

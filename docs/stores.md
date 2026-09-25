@@ -20,7 +20,7 @@ Below is an exhaustive breakdown of every store in the application.
 
 ## 2. `discoveryStore.ts`
 * **Purpose**: Orchestrates the intake queue for new job opportunities.
-* **Responsibilities**: Deduplicates incoming jobs, tracks dismissed job keys (to prevent re-surfacing), and manages the async state of Deep Research runs.
+* **Responsibilities**: Deduplicates incoming jobs, tracks dismissed job keys (to prevent re-surfacing), and mirrors the discovery agent's runs and progress.
 * **State**: `candidates`, `dismissedKeys`, `lastSweepAt`, `pendingInteractionId`.
 * **Actions**: `addCandidates`, `removeCandidates`, `dismissCandidates`, `markSweepRan`, `setPendingInteraction`.
 * **Persistence**: Saved to the `discoveries` table as a unified JSON state.
