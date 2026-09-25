@@ -1,6 +1,6 @@
 # Octant — Runbook de Produção (Go-Live)
 
-Guia único e ordenado para colocar todo o projeto no ar, **incluindo as 5 fases do agente de descoberta**. Complementa o [DEPLOY.md](../DEPLOY.md) (base do app) com o passo a passo completo: quais chaves, onde obter, onde subir, e a ordem que faz tudo fluir.
+Guia único e ordenado para colocar todo o projeto no ar, **incluindo as 5 fases do agente de descoberta**: quais chaves, onde obter, onde subir, e a ordem que faz tudo fluir.
 
 ## 0. Arquitetura em produção
 
@@ -27,7 +27,9 @@ Regras de ouro:
 
 ## 1. Pré-requisitos (contas)
 
-Supabase, Netlify (ou similar), Google AI Studio (Gemini). Opcionais: OpenAI, Stripe, PostHog, Sentry. Ferramentas locais: Node 20.19+ ou 22.12+ (o repo roda em 22, mas o Vite pede 22.12+ — alinhe para evitar `--ignore-engines`), `supabase` CLI, `git`.
+Supabase, Netlify (ou similar), Google AI Studio (Gemini). Opcionais: OpenAI, Stripe, PostHog, Sentry, um Chrome headless remoto (ex.: browserless.io) para o export de PDF. Ferramentas locais: Node 20.19+ ou 22.12+ (o repo roda em 22, mas o Vite pede 22.12+ — alinhe para evitar `--ignore-engines`), `supabase` CLI, `git`.
+
+Antes do primeiro deploy, rode `yarn lint`, `yarn test` e `yarn build` localmente: a Netlify executa exatamente o `yarn build`, então se ele falhar aqui, falha lá.
 
 ---
 
@@ -99,11 +101,26 @@ Supabase, Netlify (ou similar), Google AI Studio (Gemini). Opcionais: OpenAI, St
 3. Anthropic/OpenRouter são opcionais (só se você quiser oferecer esses modelos).
 
 ### C) Stripe (billing — opcional)
+Sem Stripe, todo mundo fica no plano **Free**. O cliente nunca vê chaves da Stripe.
+
+0. Quando a Stripe perguntar *"How do you want to accept payments?"*, escolha **Prebuilt checkout form** (página hospedada pela Stripe). A `create-checkout-session` cria uma sessão `mode: 'subscription'` e o app redireciona para ela. **Payment Links** não amarram o pagamento ao `user_id`, e **Elements/Embedded** exigiriam um formulário de cartão que o código não tem.
 1. Products → crie o produto **Pro** e uma **Price** recorrente → copie o `price_...` (→ `STRIPE_PRICE_ID`).
 2. Developers › API keys → copie o `sk_...` (→ `STRIPE_SECRET_KEY`).
 3. Developers › Webhooks → **Add endpoint**: `https://<ref>.supabase.co/functions/v1/stripe-webhook`; eventos `customer.subscription.created/updated/deleted`, `customer.subscription.trial_will_end`, `invoice.payment_succeeded` e `invoice.payment_failed` → copie o signing secret (→ `STRIPE_WEBHOOK_SECRET`).
    - Os três primeiros definem o tier; os três últimos são o que dispara os emails de billing (recibo, falha de pagamento, fim de trial). Sem habilitá-los, esses emails simplesmente nunca saem — a lista canônica é `BILLING_EVENT_TYPES` em `packages/email/src/integrations/stripeBilling.ts`.
-4. Settings › Billing › Customer portal → **ative** o portal.
+4. Settings › Billing › Customer portal → **ative** o portal. Sem isso, a Stripe recusa a criação da sessão e o botão "Manage subscription" falha.
+5. `APP_URL` define os redirects: o checkout volta para `/settings?checkout=success` ou `/settings?checkout=cancelled`, e o portal volta para `/settings`.
+
+**Modelo de segurança:** o cliente nunca grava o `tier`. Só o `stripe-webhook`, com a chave de service role, grava em `subscriptions` (via `apply_subscription_event`, que ignora eventos mais antigos que o último aplicado). `subscriptions` e `token_usage_logs` têm RLS só de leitura para o dono, e os limites do Free são checados no INSERT pelo próprio RLS.
+
+### C.1) Export de PDF (opcional)
+Um isolate Deno não consegue subir o Chromium, então a `export-pdf` se conecta a um Chrome **remoto** por WebSocket.
+1. Provisione um Chrome headless (ex.: [browserless.io](https://www.browserless.io/)) e copie o token e o host da sua região. Contas novas usam subdomínios regionais, como `wss://production-sfo.browserless.io?token=SEU_TOKEN` (também há `-lon` e `-ams`); o antigo `wss://chrome.browserless.io` só vale para contas legadas.
+2. Configure o secret **entre aspas**, porque o `?` e o `=` da URL quebram o shell:
+   ```bash
+   supabase secrets set BROWSER_PDF_WS_ENDPOINT="wss://production-sfo.browserless.io?token=SEU_TOKEN"
+   ```
+3. Sem o secret, a exportação responde `500`; com host ou token errados, responde `502`. Teste exportando um currículo pelo app e confira se a sessão aparece no painel do serviço.
 
 ### D) Subir os segredos (Supabase CLI)
 ```bash
@@ -176,6 +193,8 @@ supabase functions deploy send-email
 1. Netlify → **Add new site › Import from Git** → selecione o repo. Build já vem do [`netlify.toml`](../netlify.toml) (`yarn build`, publish `dist`, SPA fallback).
 2. Site settings › Environment variables → adicione as **`VITE_*`** da seção 2.1.
 3. Deploy. O `tsc -b && vite build` roda; se faltar `VITE_SUPABASE_*`, o build de produção **falha de propósito** (fail-fast) — corrija as envs e refaça.
+4. Com a URL pública definitiva em mãos, confira se `APP_URL` e `ALLOWED_ORIGINS` (secrets do Supabase) apontam para ela.
+5. PostHog e Sentry são opcionais: sem `VITE_POSTHOG_KEY` ou `VITE_SENTRY_DSN`, o respectivo módulo não faz nada e o app funciona normalmente.
 
 ### G) Scheduler do agente (Fase 2 — coleta offline)
 Crie `.github/workflows/discovery-tick.yml` (o worker seleciona sozinho os usuários "due" por cadência de plano — free 24h / pro 1h):
@@ -219,7 +238,8 @@ Alternativas equivalentes (só mudam "quem chama o endpoint"): **pg_cron + pg_ne
 5. **Aprendizado:** dispensar um candidato de uma empresa e aprovar outro; rodar de novo → o ranking/estratégias refletem as preferências.
 6. **Agente offline:** dispare o workflow (`workflow_dispatch`) ou aguarde o cron → novos candidatos aparecem sem ninguém clicar; toast "seu agente encontrou N…".
 7. **Billing (se configurado):** Settings mostra o preço; upgrade abre o Stripe; ao concluir em test mode, `subscriptions.tier` vira `pro`; "Manage subscription" abre o portal.
-8. **Observabilidade:** um evento aparece no PostHog; um erro forçado aparece no Sentry.
+8. **Export de PDF (se configurado):** exportar um currículo baixa o PDF.
+9. **Observabilidade:** um evento aparece no PostHog; um erro forçado aparece no Sentry.
 
 ---
 
