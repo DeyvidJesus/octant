@@ -215,7 +215,7 @@ hand-written Edge Functions and the bundle freshness check on every push and pul
 - **Last write wins** across devices.
 - **The AI token budget is checked before each call**, not reserved atomically; a per-request cap bounds it.
 
-Details and history: [docs/technical-debt.md](docs/technical-debt.md).
+Why things are the way they are: [docs/decisoes-tecnicas.md](docs/decisoes-tecnicas.md) (Portuguese).
 
 ## Documentation
 
@@ -227,4 +227,4 @@ Details and history: [docs/technical-debt.md](docs/technical-debt.md).
 | [docs/resume-engine.md](docs/resume-engine.md) · [docs/interview-engine.md](docs/interview-engine.md) | Generator and interview prep |
 | [docs/email.md](docs/email.md) | Email architecture |
 | [docs/PRODUCTION.md](docs/PRODUCTION.md) | Go-live runbook |
-| [docs/DESIGN_REVIEW.md](docs/DESIGN_REVIEW.md) · [docs/technical-debt.md](docs/technical-debt.md) | Reviews that shaped the roadmap |
+| [docs/decisoes-tecnicas.md](docs/decisoes-tecnicas.md) | Technical decision records (Portuguese) |

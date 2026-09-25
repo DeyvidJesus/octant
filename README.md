@@ -221,7 +221,7 @@ build, `deno check` nas Edge Functions escritas à mão e a checagem dos bundles
 - **O orçamento de tokens de IA é checado antes de cada chamada**, não reservado de forma atômica; o teto
   por requisição limita o excesso.
 
-Detalhes e histórico: [docs/technical-debt.md](docs/technical-debt.md).
+Por que as coisas são assim: [docs/decisoes-tecnicas.md](docs/decisoes-tecnicas.md).
 
 ## Documentação
 
@@ -233,6 +233,6 @@ Detalhes e histórico: [docs/technical-debt.md](docs/technical-debt.md).
 | [docs/resume-engine.md](docs/resume-engine.md) · [docs/interview-engine.md](docs/interview-engine.md) | Gerador de currículo e preparação para entrevista |
 | [docs/email.md](docs/email.md) | Arquitetura de email |
 | [docs/PRODUCTION.md](docs/PRODUCTION.md) | Guia para colocar em produção |
-| [docs/DESIGN_REVIEW.md](docs/DESIGN_REVIEW.md) · [docs/technical-debt.md](docs/technical-debt.md) | Revisões que orientaram o roadmap |
+| [docs/decisoes-tecnicas.md](docs/decisoes-tecnicas.md) | Decisões técnicas: contexto, decisão, trade-off e resultado |
 
-Os documentos técnicos em `docs/` estão em inglês, exceto `email.md` e `PRODUCTION.md`, que estão em português.
+Os documentos técnicos em `docs/` estão em inglês, exceto o índice (`README.md`), `decisoes-tecnicas.md`, `email.md` e `PRODUCTION.md`, que estão em português.

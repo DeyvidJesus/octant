@@ -4,8 +4,8 @@
 
 Octant is a React single-page app backed by Supabase (Postgres + Auth + RLS + Realtime + Edge
 Functions). This document describes the architecture **as it is in the code today**: the layers, the
-rules between them, how data moves, and where the known trade-offs are. For the history of how it got
-here, see [DESIGN_REVIEW.md](DESIGN_REVIEW.md) and [technical-debt.md](technical-debt.md).
+rules between them, how data moves, and where the known trade-offs are. The reasoning behind the main
+choices is recorded in [decisoes-tecnicas.md](decisoes-tecnicas.md) (Portuguese).
 
 ## Why this architecture exists
 
